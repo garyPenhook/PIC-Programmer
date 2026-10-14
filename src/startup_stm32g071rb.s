@@ -46,7 +46,7 @@ g_pfnVectors:
     .word Default_Handler  /* 0x30: reserved */
     .word 0                /* 0x34: reserved */
     .word Default_Handler  /* 0x38: PendSV */
-    .word Default_Handler  /* 0x3C: SysTick (not used; the LED uses TIM16) */
+    .word Default_Handler  /* 0x3C: SysTick (interrupt off; icsp.c polls it) */
     /*
      * Peripheral interrupts. IRQ 0..20 (0x40..0x90) are unused and trap in
      * Default_Handler. IRQ 21 (0x94) is "TIM16 / FDCAN_IT0".

@@ -23,7 +23,7 @@ cmake --preset Debug   && cmake --build --preset Debug
 cmake --preset Release && cmake --build --preset Release
 ```
 
-Each build writes `pic_programmer_debugger` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 512 B / 128 KB`. RAM covers static data only (`.data` + `.bss`); the stack is not counted.
+Each build writes `pic_programmer_debugger` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 2772 B  128 KB  2.11%`. RAM covers static data only (`.data` + `.bss`); the stack is not counted.
 
 ## Clock and LED Blink
 
@@ -61,7 +61,12 @@ The target is powered from the Nucleo 3.3 V (the specs allow 1.8 to 5.5 V).
 
 Layers:
 
-- `src/icsp.c`: pins and microsecond delays only. The only hardware-specific file.
+- `src/icsp.c`: pins and microsecond delays only, and the only hardware-specific file
+  under the protocol drivers. The three pins use low output speed (OSPEEDR `01`,
+  RM0444 7.5.3): ICSPCLK runs at about 500 kHz, far below that setting's limit, and the
+  slower edges ring less on a programming cable. ICSPDAT has a weak pull-down, so a
+  missing target reads as 0. Delays poll SysTick as a free-running counter on the core
+  clock (its interrupt stays off), so they stay correct at 64 MHz or the 16 MHz fallback.
 - `src/pic16f171.c`: the PIC16F171XX protocol: low-voltage entry, identify, read, bulk and
   row erase, 32-word row programming, User ID, Configuration Words and EEPROM, verify.
 - `src/pic18q.c`: the PIC18-Q protocol, which uses similar commands that mean different
@@ -95,3 +100,7 @@ Builds with the PC compiler, not the ARM toolchain.
 ```sh
 STM32_Programmer_CLI -c port=SWD mode=UR -w build/Release/pic_programmer_debugger.hex -v -rst
 ```
+
+## License
+
+MIT, see `LICENSE`.
