@@ -8,6 +8,9 @@ add_executable(${PROJECT_NAME}
     src/startup_stm32g071rb.s
     src/main.c
     src/clock.c
+    src/icsp.c
+    src/pic16f171.c
+    src/pic18q.c
     src/system_stm32g0xx.c
     src/platform.c
 )

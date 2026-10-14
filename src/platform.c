@@ -46,7 +46,7 @@
 /*
  * Bring up the board: clock, LED pin, and the timer interrupt that drives the LED.
  * Order matters: the clock is set first because the timer prescaler below is
- * calculated from CLOCK_SYSCLK_HZ.
+ * calculated from SystemCoreClock.
  */
 void platform_init(void)
 {
@@ -75,9 +75,12 @@ void platform_init(void)
     /*
      * Timer: TIM16 raises an update interrupt once per LED_TOGGLE_MS.
      *
-     * The timer is clocked by PCLK (1 MHz here, because the APB prescaler is /1).
-     * The counter ticks at PCLK / (PSC + 1). We pick PSC so one tick is 100 us
-     * (10 kHz): 1 MHz / 10 kHz = 100, so PSC = 100 - 1 = 99.
+     * The timer is clocked by PCLK (the APB prescaler is /1, so PCLK = SystemCoreClock,
+     * which is 64 MHz when the PLL is up). The counter ticks at PCLK / (PSC + 1).
+     * We pick PSC so one tick is 100 us (10 kHz): 64 MHz / 10 kHz = 6400, so
+     * PSC = 6400 - 1 = 6399. PSC is 16 bits, so this still fits.
+     * SystemCoreClock is used (not the constant) so the LED stays at 1 s even if the
+     * PLL failed to lock and clock_init() fell back to 16 MHz (PSC = 1599).
      * The counter counts 0..ARR and then wraps, which is ARR + 1 ticks per period.
      * For LED_TOGGLE_MS: ticks = LED_TOGGLE_MS * 10 (10 ticks per ms), so ARR = ticks - 1.
      * At 1000 ms that is ARR = 9999. PSC and ARR are 16-bit, so the longest period
@@ -85,7 +88,7 @@ void platform_init(void)
      */
     RCC_APBENR2 |= RCC_APBENR2_TIM16EN;
     (void)RCC_APBENR2;
-    TIM16_PSC = (CLOCK_SYSCLK_HZ / 10000u) - 1u;
+    TIM16_PSC = (SystemCoreClock / 10000u) - 1u;
     TIM16_ARR = (LED_TOGGLE_MS * 10u) - 1u;
 
     /*
