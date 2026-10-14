@@ -1,0 +1,33 @@
+[
+  {
+    "label": "cmake: configure",
+    "command": "cmake --preset Debug",
+    "use_new_terminal": false,
+    "reveal": "always"
+  },
+  {
+    "label": "cmake: build",
+    "command": "cmake --build --preset Debug -j",
+    "use_new_terminal": false,
+    "reveal": "always"
+  },
+  {
+    "label": "flash (openocd)",
+    "command": "openocd -f board/st_nucleo_g0.cfg -c 'program build/Debug/nucleo_g071rb_security verify reset exit'",
+    "use_new_terminal": false,
+    "reveal": "always"
+  },
+  {
+    "label": "flash (STM32_Programmer_CLI)",
+    "command": "STM32_Programmer_CLI -c port=SWD -w build/Debug/nucleo_g071rb_security.hex -v -rst",
+    "use_new_terminal": false,
+    "reveal": "always"
+  },
+  {
+    "label": "openocd: gdb server",
+    "command": "openocd -f board/st_nucleo_g0.cfg",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false,
+    "reveal": "always"
+  }
+]

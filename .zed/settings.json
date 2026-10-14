@@ -1,0 +1,14 @@
+{
+  "lsp": {
+    "clangd": {
+      "binary": {
+        "path": "clangd",
+        "arguments": [
+          "--query-driver=/home/gary/.local/share/stm32cube/bundles/gnu-tools-for-stm32/**/arm-none-eabi-*",
+          "--background-index",
+          "--header-insertion=never"
+        ]
+      }
+    }
+  }
+}

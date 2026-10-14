@@ -1,0 +1,4 @@
+CompileFlags:
+  CompilationDatabase: build/Debug
+  # clangd must be allowed to query the cross-compiler for its sysroot/include paths
+  Remove: [-mfloat-abi=*, -mcpu=*, -mthumb, -specs=*, -fno-keep-static-consts]
