@@ -1,6 +1,6 @@
-# NUCLEO-G071RB Bare-Metal Template
+# PIC Programmer/Debugger
 
-Bare-metal C project for the STM32G071RB (NUCLEO-G071RB board): no HAL, no RTOS. It runs the core at 1 MHz and blinks the user LED from a timer interrupt.
+Bare-metal C firmware for the STM32G071RB (NUCLEO-G071RB board) that programs PIC microcontrollers over ICSP: no HAL, no RTOS.
 
 ## Memory
 
@@ -23,7 +23,7 @@ cmake --preset Debug   && cmake --build --preset Debug
 cmake --preset Release && cmake --build --preset Release
 ```
 
-Each build writes `nucleo_g071rb` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 512 B / 128 KB`. RAM covers static data only (`.data` + `.bss`); the stack is not counted.
+Each build writes `pic_programmer_debugger` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 512 B / 128 KB`. RAM covers static data only (`.data` + `.bss`); the stack is not counted.
 
 ## Clock and LED Blink
 
@@ -93,5 +93,5 @@ Builds with the PC compiler, not the ARM toolchain.
 ### Flash
 
 ```sh
-STM32_Programmer_CLI -c port=SWD mode=UR -w build/Release/nucleo_g071rb.hex -v -rst
+STM32_Programmer_CLI -c port=SWD mode=UR -w build/Release/pic_programmer_debugger.hex -v -rst
 ```
