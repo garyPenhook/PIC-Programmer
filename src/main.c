@@ -1,42 +1,25 @@
 #include "icsp.h"
-#include "pic16f171.h"
-#include "pic18q.h"
+#include "pic.h"
 #include "platform.h"
 
 /*
  * Result of the boot-time probe of the target PIC, readable over SWD.
- *   g_pic_family: 0 = nothing recognised, 16 = PIC16F171XX, 18 = PIC18-Q
+ *   g_pic_device: the matching device table row (print *g_pic_device in GDB for its name
+ *                 and geometry), or NULL when nothing recognised
  * The IDs are 0 when nothing answers. A PIC16F17146 reads 0x30E1, a PIC16F17124 0x30DC.
  */
 volatile uint16_t g_pic_device_id;
 volatile uint16_t g_pic_revision_id;
-volatile uint8_t g_pic_family;
+const pic_device_t *volatile g_pic_device;
 
-/* Try each supported interface with read-only commands until one recognises the device. */
 static void probe_target(void)
 {
-    uint16_t id;
+    uint16_t id = 0u;
+    uint16_t rev = 0u;
 
-    /* First targets: the PIC16F171XX family (PIC16F17146, PIC16F17124, ...). */
-    pic16f171_enter();
-    id = pic16f171_read_device_id();
+    g_pic_device = pic_probe(&id, &rev);
     g_pic_device_id = id;
-    g_pic_revision_id = pic16f171_read_revision_id();
-    pic16f171_exit();
-    if (pic16f171_device_name(id) != NULL) {
-        g_pic_family = 16u;
-        return;
-    }
-
-    /* Otherwise try the PIC18-Q interface. */
-    pic18q_enter();
-    id = pic18q_read_device_id();
-    if (pic18q_device_name(id) != NULL) {
-        g_pic_device_id = id;
-        g_pic_revision_id = pic18q_read_revision_id();
-        g_pic_family = 18u;
-    }
-    pic18q_exit();
+    g_pic_revision_id = rev;
 }
 
 /*

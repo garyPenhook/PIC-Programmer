@@ -11,7 +11,8 @@ Sizes are set in `linker/STM32G071RB_FLASH.ld`.
 
 ## Build
 
-Requires `arm-none-eabi-gcc` (the toolchain file pins the GNU Tools for STM32 14.3.1 bundle).
+Requires `arm-none-eabi-gcc` (the toolchain file pins the GNU Tools for STM32 14.3.1 bundle)
+and Python 3, which generates the device table.
 
 | Preset | Flags | Output |
 |---|---|---|
@@ -43,8 +44,9 @@ Verified on hardware by reading registers over SWD: `RCC_CR = 0x03000500` (PLL o
 ## PIC Programmer
 
 The Nucleo acts as an ICSP programmer. **First targets: PIC16F17146 and PIC16F17124**
-(both in the PIC16F171XX family). PIC18-Q devices are also supported, and the plan covers
-all PIC18. `PLAN.md` has the scope, sources, assumptions and milestones.
+(both in the PIC16F171XX family). The PIC18F04/05/06/14/15/16Q41 are also in the device
+table, and the plan covers PIC10, PIC12 and all of PIC16 and PIC18. `PLAN.md` has the
+scope, sources, assumptions and milestones.
 
 Wiring (Arduino header, UM2324 Table 12; target pin numbers from the PIC16F171XX
 programming spec Table 6-1, where MCLR = RA3, ICSPCLK = RA1, ICSPDAT = RA0):
@@ -59,32 +61,53 @@ programming spec Table 6-1, where MCLR = RA3, ICSPCLK = RA1, ICSPDAT = RA0):
 
 The target is powered from the Nucleo 3.3 V (the specs allow 1.8 to 5.5 V).
 
+Supported parts are data, not code. Each one is a row in `data/pic_devices.csv`: its
+device ID, the programming protocol it speaks, and its memory geometry, with the Microchip
+document every value came from. A protocol is one programming specification command set,
+shared by every family that uses it, so adding a part that speaks a known protocol is a
+new row and nothing else. The build turns the CSV into C (`tools/gen_devices.py`, which
+rejects duplicate IDs, a missing source or a geometry that does not divide into rows).
+
 Layers:
 
+- `include/pic.h`, `src/pic.c`: the device API used by everything above the protocols.
+  Memory is addressed as (region, offset) with region = flash, User ID, config or EEPROM,
+  so callers never deal with a family's own address map. It checks every range against
+  the device's geometry before anything reaches the wires, and `pic_probe()` tries each
+  protocol until one returns a device ID that is in the table and the part's own DCI
+  (row size, latches, flash and EEPROM size) agrees with that row. The ID alone is not
+  enough: a part from another protocol answers the same read commands with whatever its
+  memory holds at that address.
+- `src/proto/`: one file per protocol, each a `pic_proto_t` (`include/pic_proto.h`).
+  - `icsp8.c`: the framing shared by the 8-bit-command protocols: low-voltage key entry,
+    8-bit commands, 24-clock payloads.
+  - `p16_8bit.c`: the PIC16F171XX command set: identify, read, bulk and row erase, row
+    programming through the write latches, User ID, Configuration Words and EEPROM, verify.
+  - `p18_8bit.c`: the PIC18-Q command set, which uses similar command bytes that mean
+    different things, so it is a separate protocol.
 - `src/icsp.c`: pins and microsecond delays only, and the only hardware-specific file
-  under the protocol drivers. The three pins use low output speed (OSPEEDR `01`,
+  under the protocols. The three pins use low output speed (OSPEEDR `01`,
   RM0444 7.5.3): ICSPCLK runs at about 500 kHz, far below that setting's limit, and the
   slower edges ring less on a programming cable. ICSPDAT has a weak pull-down, so a
   missing target reads as 0. Delays poll SysTick as a free-running counter on the core
   clock (its interrupt stays off), so they stay correct at 64 MHz or the 16 MHz fallback.
-- `src/pic16f171.c`: the PIC16F171XX protocol: low-voltage entry, identify, read, bulk and
-  row erase, 32-word row programming, User ID, Configuration Words and EEPROM, verify.
-- `src/pic18q.c`: the PIC18-Q protocol, which uses similar commands that mean different
-  things, so it is a separate driver.
-- `tests/`: each driver run on the PC against a simulated device that also checks every
-  wait the spec requires. The PIC16F171XX tests run once as a PIC16F17124 (4 KW flash,
-  128 byte EEPROM) and once as a PIC16F17146 (16 KW, 256 bytes). Run `tests/run_tests.sh`.
+- `tests/`: each protocol run on the PC against a simulated device that also checks every
+  wait the spec requires, once for every table row that uses the protocol (14 PIC16F171XX
+  parts, 6 PIC18-Q41 parts). The simulators hold their own memory sizes, copied from the
+  spec, and the tests compare the part's DCI with its table row, so a wrong size in the
+  CSV fails the tests. Run `tests/run_tests.sh`.
 
-At boot `main()` probes the target once, trying PIC16F171XX first and PIC18-Q second. Read
-the result over SWD from `g_pic_family` (16, 18, or 0 for nothing recognised),
-`g_pic_device_id` and `g_pic_revision_id` (addresses in the map file). A PIC16F17146 should
-read `0x30E1` and a PIC16F17124 `0x30DC`. With nothing attached, all three are 0.
+At boot `main()` probes the target once, trying `p16_8bit` first and `p18_8bit` second.
+Read the result over SWD: `g_pic_device` points at the matching table row (`print
+*g_pic_device` in GDB shows its name and geometry) or is NULL, and `g_pic_device_id` and
+`g_pic_revision_id` hold the IDs (addresses in the map file). A PIC16F17146 should read
+`0x30E1` and a PIC16F17124 `0x30DC`. With nothing attached, the IDs are 0.
 
 Only low-voltage entry is supported: a part whose LVP configuration bit is 0 cannot be
 reached without a high-voltage (7.9 to 9.0 V) MCLR supply.
 
 Not yet tested on real silicon. The PIC16F171XX payload layout comes from figures in the
-spec and the drivers share one reading of it with the simulator, so a first run on a real
+spec and the protocols share one reading of it with the simulators, so a first run on a real
 PIC16F17146 or PIC16F17124 is the real test. See `PLAN.md`.
 
 ## Tests

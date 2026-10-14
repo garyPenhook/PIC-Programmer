@@ -1,17 +1,23 @@
-#include "sim_pic18q.h"
+#include "sim_p18_8bit.h"
 
 #include <string.h>
 
 #include "icsp.h"
 
-/* ---- model constants (PIC18F16Q41: Q41 data sheet DS40002214 section 8.7, DCI table) ---- */
-#define FLASH_WORDS   32768u      /* 64 KB: ERSIZ 128 words x URSIZ 256 pages */
-#define ERASE_PAGE_BYTES 256u     /* 128 words */
-#define USERID_WORDS  32u
-#define CONFIG_BYTES  32u
-#define EEPROM_BYTES  512u
-#define DEVICE_ID     0x7560u
-#define REVISION_ID   0xA041u     /* revision B1, data sheet 8.7.2 tip */
+/*
+ * Q41 model, written out from the data sheet DS40002214 independently of the device table
+ * so the tests cross-check the table: section 8.3 (32 User ID words), 8.7.1 (device IDs),
+ * Table 9-3 (DCI) and the memory map (config bytes 30 0000h to 30 0009h).
+ */
+#define MAX_FLASH_WORDS  32768u
+#define ERASE_WORDS      128u
+#define ERASE_PAGE_BYTES (2u * ERASE_WORDS)
+#define USERID_WORDS     32u
+#define CONFIG_BYTES     10u
+#define EEPROM_BYTES     512u
+#define REVISION_ID      0xA041u  /* revision B1, data sheet 8.7.2 tip */
+
+#define FLASH_WORDS      (s.user_pages * ERASE_WORDS)
 
 #define KEY 0x4D434850u
 
@@ -25,6 +31,7 @@
 /* LVP is on by default (the factory state). It lives outside the device state so that
  * sim_reset() does not change it. */
 static int g_lvp = 1;
+static uint16_t g_device_id = 0x7560u;
 
 typedef enum { ST_IDLE, ST_KEY, ST_CMD, ST_PAYLOAD_IN, ST_PAYLOAD_OUT } state_t;
 typedef enum { OP_NONE, OP_LOAD_PC, OP_BULK, OP_PROGRAM } op_t;
@@ -43,16 +50,24 @@ static struct {
     uint64_t wait_start;
     uint32_t wait_us;
     uint32_t violations, bad_commands;
-    uint16_t flash[FLASH_WORDS];
+    uint32_t user_pages;
+    uint16_t flash[MAX_FLASH_WORDS];
     uint16_t userid[USERID_WORDS];
     uint8_t config[CONFIG_BYTES];
     uint8_t eeprom[EEPROM_BYTES];
 } s;
 
+void sim_select_device(uint16_t device_id) { g_device_id = device_id; }
+
 void sim_reset(void)
 {
     memset(&s, 0, sizeof s);
     s.mclr = 1;
+    switch (g_device_id) {                          /* URSIZ, Table 9-3 */
+    case 0x7540u: case 0x7520u: s.user_pages = 64u; break;    /* PIC18F04/14Q41 */
+    case 0x7500u: case 0x74E0u: s.user_pages = 128u; break;   /* PIC18F05/15Q41 */
+    default:                    s.user_pages = 256u; break;   /* PIC18F06/16Q41 */
+    }
     for (size_t i = 0; i < FLASH_WORDS; i++) s.flash[i] = 0xFFFFu;
     for (size_t i = 0; i < USERID_WORDS; i++) s.userid[i] = 0xFFFFu;
     memset(s.config, 0xFF, sizeof s.config);
@@ -67,9 +82,9 @@ uint64_t sim_time_us(void) { return s.now; }
 uint16_t sim_flash_word(uint32_t i) { return s.flash[i]; }
 void sim_set_flash_word(uint32_t i, uint16_t v) { s.flash[i] = v; }
 uint16_t sim_userid_word(uint32_t i) { return s.userid[i]; }
-uint8_t sim_eeprom_byte(uint32_t i) { return s.eeprom[i]; }
+uint8_t sim_eeprom_byte(uint32_t i) { return i < EEPROM_BYTES ? s.eeprom[i] : 0u; }
 void sim_set_eeprom_byte(uint32_t i, uint8_t v) { s.eeprom[i] = v; }
-uint8_t sim_config_byte(uint32_t i) { return s.config[i]; }
+uint8_t sim_config_byte(uint32_t i) { return i < CONFIG_BYTES ? s.config[i] : 0u; }
 
 /* The device must not see clocks before this much virtual time has passed. */
 static void require_wait(uint32_t us)
@@ -89,13 +104,13 @@ static uint32_t mem_read(uint32_t pc, uint32_t *step)
     if (pc >= 0x300000u && pc < 0x300000u + CONFIG_BYTES) { *step = 1u; return s.config[pc - 0x300000u]; }
     if (pc >= 0x380000u && pc < 0x380000u + EEPROM_BYTES) { *step = 1u; return s.eeprom[pc - 0x380000u]; }
     switch (pc) {                                   /* Device Configuration Information */
-    case 0x3C0000u: return 128u;                    /* ERSIZ */
+    case 0x3C0000u: return ERASE_WORDS;             /* ERSIZ */
     case 0x3C0002u: return 0u;                      /* WLSIZ */
-    case 0x3C0004u: return 256u;                    /* URSIZ */
-    case 0x3C0006u: return 512u;                    /* EESIZ */
+    case 0x3C0004u: return s.user_pages;            /* URSIZ */
+    case 0x3C0006u: return EEPROM_BYTES;            /* EESIZ */
     case 0x3C0008u: return 20u;                     /* PCNT */
     case 0x3FFFFCu: return REVISION_ID;
-    case 0x3FFFFEu: return DEVICE_ID;
+    case 0x3FFFFEu: return g_device_id;
     default:        return 0u;                      /* not present reads as 0 */
     }
 }

@@ -4,13 +4,28 @@ project(pic_programmer_debugger C ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+# The device table: data/pic_devices.csv -> pic_devices.c in the build directory.
+set(PIC_DEVICES_C ${CMAKE_BINARY_DIR}/pic_devices.c)
+add_custom_command(
+    OUTPUT ${PIC_DEVICES_C}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/gen_devices.py
+            ${CMAKE_SOURCE_DIR}/data/pic_devices.csv ${PIC_DEVICES_C}
+    DEPENDS ${CMAKE_SOURCE_DIR}/tools/gen_devices.py ${CMAKE_SOURCE_DIR}/data/pic_devices.csv
+    COMMENT "Generating the PIC device table"
+)
+
 add_executable(${PROJECT_NAME}
     src/startup_stm32g071rb.s
     src/main.c
     src/clock.c
     src/icsp.c
-    src/pic16f171.c
-    src/pic18q.c
+    src/pic.c
+    src/proto/icsp8.c
+    src/proto/p16_8bit.c
+    src/proto/p18_8bit.c
+    ${PIC_DEVICES_C}
     src/system_stm32g0xx.c
     src/platform.c
 )

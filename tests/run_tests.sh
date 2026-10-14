@@ -1,15 +1,19 @@
 #!/bin/sh
 # Build and run the host-side tests (PC compiler, not the ARM toolchain).
-# Each driver is tested against its own simulated device; the simulators both stand in
-# for icsp.c, so they are built into separate programs.
+# Each protocol is tested against its own simulated device; the simulators both stand in
+# for icsp.c, so they are built into separate programs. Each program runs its protocol
+# against every device table row that uses it.
 set -e
 cd "$(dirname "$0")/.."
 out=$(mktemp -d)
 trap 'rm -rf "$out"' EXIT
 flags="-std=c11 -Wall -Wextra -Werror -Wshadow -Wconversion -Iinclude -Itests"
 
-gcc $flags src/pic16f171.c tests/sim_pic16f171.c tests/test_pic16f171.c -o "$out/test_pic16f171"
-"$out/test_pic16f171"
+python3 tools/gen_devices.py data/pic_devices.csv "$out/pic_devices.c"
+core="src/pic.c src/proto/icsp8.c src/proto/p16_8bit.c src/proto/p18_8bit.c $out/pic_devices.c"
 
-gcc $flags src/pic18q.c tests/sim_pic18q.c tests/test_pic18q.c -o "$out/test_pic18q"
-"$out/test_pic18q"
+gcc $flags $core tests/sim_p16_8bit.c tests/test_p16_8bit.c -o "$out/test_p16_8bit"
+"$out/test_p16_8bit"
+
+gcc $flags $core tests/sim_p18_8bit.c tests/test_p18_8bit.c -o "$out/test_p18_8bit"
+"$out/test_p18_8bit"

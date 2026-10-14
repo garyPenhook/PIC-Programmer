@@ -1,0 +1,32 @@
+# Supported PIC devices. One row per part; tools/gen_devices.py turns this into C.
+# Every value must come from a Microchip document named in the source column.
+#
+# protocol:      p16_8bit or p18_8bit (see include/pic_proto.h)
+# device_id:     hex, as read from the device ID location
+# flash_words:   program flash in words
+# erase_words:   ERSIZ, words per row/page erase
+# latch_words:   WLSIZ, write latches per row (0 = word at a time)
+# userid_words:  User ID words
+# config_count:  Configuration Words (PIC16) or configuration bytes (PIC18)
+# eeprom_bytes:  data EEPROM bytes (0 = none)
+name,protocol,device_id,flash_words,erase_words,latch_words,userid_words,config_count,eeprom_bytes,source
+PIC16F17114,p16_8bit,0x30DB,4096,32,32,4,5,128,DS40002266B 2.5 2.6 Tables 2-1 2-3
+PIC16F17124,p16_8bit,0x30DC,4096,32,32,4,5,128,DS40002266B 2.5 2.6 Tables 2-1 2-3
+PIC16F17144,p16_8bit,0x30DD,4096,32,32,4,5,128,DS40002266B 2.5 2.6 Tables 2-1 2-3
+PIC16F17154,p16_8bit,0x3101,4096,32,32,4,5,128,DS40002266B 2.5 2.6 Tables 2-1 2-3
+PIC16F17174,p16_8bit,0x3102,4096,32,32,4,5,128,DS40002266B 2.5 2.6 Tables 2-1 2-3
+PIC16F17115,p16_8bit,0x30E2,8192,32,32,4,5,128,DS40002266B 2.5 2.6 Tables 2-1 2-3
+PIC16F17125,p16_8bit,0x30DE,8192,32,32,4,5,128,DS40002266B 2.5 2.6 Tables 2-1 2-3
+PIC16F17145,p16_8bit,0x30DF,8192,32,32,4,5,128,DS40002266B 2.5 2.6 Tables 2-1 2-3
+PIC16F17155,p16_8bit,0x3103,8192,32,32,4,5,128,DS40002266B 2.5 2.6 Tables 2-1 2-3
+PIC16F17175,p16_8bit,0x3104,8192,32,32,4,5,128,DS40002266B 2.5 2.6 Tables 2-1 2-3
+PIC16F17126,p16_8bit,0x30E0,16384,32,32,4,5,256,DS40002266B 2.5 2.6 Tables 2-1 2-3
+PIC16F17146,p16_8bit,0x30E1,16384,32,32,4,5,256,DS40002266B 2.5 2.6 Tables 2-1 2-3
+PIC16F17156,p16_8bit,0x3105,16384,32,32,4,5,256,DS40002266B 2.5 2.6 Tables 2-1 2-3
+PIC16F17176,p16_8bit,0x3106,16384,32,32,4,5,256,DS40002266B 2.5 2.6 Tables 2-1 2-3
+PIC18F04Q41,p18_8bit,0x7540,8192,128,0,32,10,512,DS40002214 8.3 8.7.1 9.3 Table 9-3 memory map
+PIC18F14Q41,p18_8bit,0x7520,8192,128,0,32,10,512,DS40002214 8.3 8.7.1 9.3 Table 9-3 memory map
+PIC18F05Q41,p18_8bit,0x7500,16384,128,0,32,10,512,DS40002214 8.3 8.7.1 9.3 Table 9-3 memory map
+PIC18F15Q41,p18_8bit,0x74E0,16384,128,0,32,10,512,DS40002214 8.3 8.7.1 9.3 Table 9-3 memory map
+PIC18F06Q41,p18_8bit,0x7580,32768,128,0,32,10,512,DS40002214 8.3 8.7.1 9.3 Table 9-3 memory map
+PIC18F16Q41,p18_8bit,0x7560,32768,128,0,32,10,512,DS40002214 8.3 8.7.1 9.3 Table 9-3 memory map

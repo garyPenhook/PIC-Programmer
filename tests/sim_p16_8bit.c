@@ -1,4 +1,4 @@
-#include "sim_pic16f171.h"
+#include "sim_p16_8bit.h"
 
 #include <string.h>
 
@@ -53,19 +53,28 @@ static struct {
 
 void sim_select_device(uint16_t device_id) { g_device_id = device_id; }
 
+/*
+ * Geometry by device ID, written out from the spec independently of the device table so
+ * the tests cross-check the table: Table 2-1 (flash) and Table 2-3 (URSIZ, EESIZ).
+ */
+static void geometry(uint32_t *user_rows, uint32_t *eeprom_bytes)
+{
+    switch (g_device_id) {
+    case 0x30DBu: case 0x30DCu: case 0x30DDu: case 0x3101u: case 0x3102u:   /* x14 x24 x44 x54 x74 */
+        *user_rows = 128u; *eeprom_bytes = 128u; break;
+    case 0x30E2u: case 0x30DEu: case 0x30DFu: case 0x3103u: case 0x3104u:   /* x15 x25 x45 x55 x75 */
+        *user_rows = 256u; *eeprom_bytes = 128u; break;
+    default:                                                                /* x26 x46 x56 x76 */
+        *user_rows = 512u; *eeprom_bytes = 256u; break;
+    }
+}
+
 void sim_reset(void)
 {
     memset(&s, 0, sizeof s);
     s.mclr = 1;
 
-    /* Sizes from the spec: Table 2-1 (flash) and Table 2-3 (URSIZ, EESIZ). */
-    if (g_device_id == 0x30DCu) {            /* PIC16F17124 */
-        s.user_rows = 128u;
-        s.eeprom_bytes = 128u;
-    } else {                                 /* PIC16F17146 */
-        s.user_rows = 512u;
-        s.eeprom_bytes = 256u;
-    }
+    geometry(&s.user_rows, &s.eeprom_bytes);
     s.flash_words = s.user_rows * ROW_WORDS;
 
     for (size_t i = 0; i < MAX_FLASH_WORDS; i++) s.flash[i] = BLANK;
