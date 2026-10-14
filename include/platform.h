@@ -1,13 +1,11 @@
 #ifndef PLATFORM_H
 #define PLATFORM_H
 
-#include <stdint.h>
-
+/* Board bring-up: system clock, LED pin and the TIM16 interrupt that blinks it. */
 void platform_init(void);
+
+/* Independent watchdog hooks. Stubs for now: enable and refresh the IWDG here. */
 void platform_watchdog_init(void);
 void platform_watchdog_kick(void);
-void platform_fault_lockdown(void);
-uint32_t platform_monotonic_version(void);
 
 #endif
-

@@ -1,23 +1,13 @@
-# NUCLEO-G071RB Security Template
+# NUCLEO-G071RB Bare-Metal Template
 
-Bare-metal STM32G071RB project skeleton for security-sensitive firmware.
+Bare-metal C project for the STM32G071RB (NUCLEO-G071RB board): no HAL, no RTOS. It runs the core at 1 MHz and blinks the user LED from a timer interrupt.
 
-## Goals
+## Memory
 
-- Signed firmware/update policy hooks.
-- Authenticated command parser.
-- Fail-closed boot decisions.
-- Watchdog and fault hooks.
-- No private signing key in firmware.
+- `0x08000000`: flash, 128 KiB (vector table first, then code)
+- `0x20000000`: SRAM, 36 KiB (STM32G071RB without RAM parity)
 
-## Memory Map
-
-- `0x08000000`: bootloader / first-stage app
-- `0x08010000`: application slot
-- metadata page: TBD (the old `0x0803F000` is outside the 128 KiB flash)
-- `0x08020000`: end of 128 KiB flash (STM32G071RB; 36 KiB SRAM)
-
-Adjust in `linker/STM32G071RB_FLASH.ld` before production.
+Sizes are set in `linker/STM32G071RB_FLASH.ld`.
 
 ## Build
 
@@ -33,11 +23,11 @@ cmake --preset Debug   && cmake --build --preset Debug
 cmake --preset Release && cmake --build --preset Release
 ```
 
-Each build writes `nucleo_g071rb_security` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 512 B / 128 KB`. RAM covers static data only (`.data` + `.bss`); the stack is not counted.
+Each build writes `nucleo_g071rb` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 512 B / 128 KB`. RAM covers static data only (`.data` + `.bss`); the stack is not counted.
 
 ## Clock and LED Blink
 
-`platform_init()` runs the core at **1 MHz** and toggles the on-board user LED (LD4, PA5 / Arduino D13, active high) from a timer interrupt every **1 s** (1 s on, 1 s off).
+`platform_init()` calls `clock_init()` (`src/clock.c`, `include/clock.h`) to run the core at **1 MHz** and toggles the on-board user LED (LD4, PA5 / Arduino D13, active high) from a timer interrupt every **1 s** (1 s on, 1 s off).
 
 - **SYSCLK**: HSISYS = HSI16 / 16 (`RCC_CR.HSIDIV = 100b`). HSI16 is already on and selected after reset, so no source switch is needed. HCLK and PCLK stay undivided at 1 MHz. `SystemCoreClock` is set to `1000000`.
 - **Why 1 MHz**: it is below the 2 MHz limit for Low-power run mode (RM0444 4.3.2), so `PWR_CR1.LPR` can be added later without changing the clock.
@@ -52,20 +42,5 @@ Verified on hardware by reading registers over SWD: `RCC_CR = 0x2500`, `TIM16_PS
 ### Flash
 
 ```sh
-STM32_Programmer_CLI -c port=SWD mode=UR -w build/Release/nucleo_g071rb_security.hex -v -rst
+STM32_Programmer_CLI -c port=SWD mode=UR -w build/Release/nucleo_g071rb.hex -v -rst
 ```
-
-## Production Checklist
-
-- Enable BOR and watchdog.
-- Set RDP Level 1 after provisioning.
-- Disable or gate debug command handlers.
-- Use signed updates only.
-- Add anti-rollback counter in protected flash/option bytes.
-- Replace `crypto_stub.c` with reviewed crypto backend.
-- Provision per-device identity/key material.
-
-## Debug Lock Warning
-
-RDP Level 2 is often irreversible. Use Level 1 for normal production unless you have a tested factory recovery plan.
-

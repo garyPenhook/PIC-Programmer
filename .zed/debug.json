@@ -3,7 +3,7 @@
     "label": "Debug G071RB (OpenOCD on :3333)",
     "adapter": "GDB",
     "request": "launch",
-    "program": "$ZED_WORKTREE_ROOT/build/Debug/nucleo_g071rb_security",
+    "program": "$ZED_WORKTREE_ROOT/build/Debug/nucleo_g071rb",
     "gdb_path": "/home/gary/.local/share/stm32cube/bundles/gnu-tools-for-stm32/14.3.1+st.2/bin/arm-none-eabi-gdb"
   }
 ]

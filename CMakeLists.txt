@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(nucleo_g071rb_security C ASM)
+project(nucleo_g071rb C ASM)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -7,10 +7,8 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 add_executable(${PROJECT_NAME}
     src/startup_stm32g071rb.s
     src/main.c
+    src/clock.c
     src/system_stm32g0xx.c
-    src/security.c
-    src/boot_policy.c
-    src/crypto_stub.c
     src/platform.c
 )
 
