@@ -4,7 +4,7 @@ Goal: the Nucleo-G071RB drives the ICSP pins of a target PIC so it can identify,
 erase, program and verify it.
 
 - **First and test targets: PIC16F17146 and PIC16F17124** (PIC16F171XX family).
-- **Scope: all PIC18 devices as well.**
+- **Scope: PIC10, PIC12 and all of PIC16 and PIC18.**
 
 Rule for this project: every PIC fact must come from a Microchip document (the Microchip
 MCP server, or a PDF on disk). Where no source can be found, the family stays unsupported
@@ -29,9 +29,12 @@ only in data: device ID, memory sizes, row size, number of Configuration Words. 
 - **API** = `include/pic.h`: (region, offset) addressing, range checks against the row's
   geometry, and `pic_probe()`.
 
-To add a part that speaks a known protocol: add its row and run `tests/run_tests.sh`. To
-add a protocol: write `src/proto/<name>.c`, list it in `protocols[]` in `src/pic.c` and in
-`PROTOCOLS` in the generator, and give it a simulator and a test program in `tests/`.
+To add a part that speaks a known protocol: add its row, add its geometry to that
+protocol's simulator, and run `tests/run_tests.sh` (README, "Adding a part"). To add a
+protocol: write `src/proto/<name>.c` with a `pic_proto_t`, list it in `protocols[]` in
+`src/pic.c` and in `PROTOCOLS` in the generator (with the most cells each region can hold
+in its address map), and give it a simulator, a test program, and a line in
+`tests/run_tests.sh`.
 
 | Protocol | Families | Spec | Status |
 |---|---|---|---|
@@ -109,20 +112,29 @@ PIC18-Q:
 9. Only the Q41 parts are in the device table, so the probe does not recognise another
    Q-series part.
 
+Both:
+
+10. The probe accepts a part only when its DCI matches the table row. If the DCI does not
+    read back as the spec describes, the probe reports no device; check the DCI read
+    first. When nothing matches, `g_pic_device_id` and `g_pic_revision_id` hold what
+    `p16_8bit` read (the first protocol tried), so on a PIC16 they are still its raw IDs.
+
 ## Milestones
 
 1. **M1 (code done, needs a target):** identify. Enter, read device and revision ID, read
-   the DCI, exit. Boot-time `pic_probe()` in `main()`: `p16_8bit` first, then `p18_8bit`.
+   the DCI, exit. Boot-time `pic_probe()` in `main()`: `p16_8bit` first, then `p18_8bit`,
+   accepting a part only when its ID and DCI both match a table row.
 2. **M2 (code done, needs a target):** read, erase, program and verify flash, User ID,
    Configuration Words and EEPROM.
 3. **M3 (next, needs hardware):** run M1 and M2 on a real PIC16F17146 and PIC16F17124 and
-   settle assumptions 1 to 5. Start read-only: identify, then read the DCI, then dump
+   settle assumptions 1 to 5 and 10. Start read-only: identify, then read the DCI, then dump
    flash, and only then erase and program. Use a scope or logic analyzer if the ID does not
    read back.
 4. **M4:** command interface over the ST-LINK virtual COM port (USART2 on PA2/PA3), so a
    PC tool can drive the programmer.
 5. **M5:** host tool (Python): parse Intel HEX, `id`, `read`, `erase`, `write`, `verify`.
    It reads the same `data/pic_devices.csv` for geometry and checks it against the DCI.
+   Reading the DIA (calibration data) needs a read-only region in `pic.h` first.
 6. **M6:** more rows for the existing protocols (PIC16F13145, 13276, 17576; PIC18-Q20,
    Q43; Q24 after the config address list), then new protocols for PIC10, PIC12, older
    PIC16 and older PIC18, once their programming specs are in the project.

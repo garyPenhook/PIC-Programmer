@@ -24,7 +24,7 @@ cmake --preset Debug   && cmake --build --preset Debug
 cmake --preset Release && cmake --build --preset Release
 ```
 
-Each build writes `pic_programmer_debugger` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 2772 B  128 KB  2.11%`. RAM covers static data only (`.data` + `.bss`); the stack is not counted.
+Each build writes `pic_programmer_debugger` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 3664 B  128 KB  2.80%` (Release). RAM covers static data only (`.data` + `.bss`); the stack is not counted.
 
 ## Clock and LED Blink
 
@@ -65,8 +65,12 @@ Supported parts are data, not code. Each one is a row in `data/pic_devices.csv`:
 device ID, the programming protocol it speaks, and its memory geometry, with the Microchip
 document every value came from. A protocol is one programming specification command set,
 shared by every family that uses it, so adding a part that speaks a known protocol is a
-new row and nothing else. The build turns the CSV into C (`tools/gen_devices.py`, which
-rejects duplicate IDs, a missing source or a geometry that does not divide into rows).
+new row and nothing else (see "Adding a part" below). The build turns the CSV into C with
+`tools/gen_devices.py`, which fails the build on a bad row: a duplicate ID or name, a
+missing source, sizes larger than the protocol's address map can hold (so a row cannot
+reach into another region), flash that does not divide into rows, write latches on a
+protocol that programs one word at a time (or none on one that needs them), and text
+that would break the generated C.
 
 Layers:
 
@@ -77,12 +81,13 @@ Layers:
   protocol until one returns a device ID that is in the table and the part's own DCI
   (row size, latches, flash and EEPROM size) agrees with that row. The ID alone is not
   enough: a part from another protocol answers the same read commands with whatever its
-  memory holds at that address.
+  memory holds at that address. Verify is built here from the protocol's read, for every
+  protocol.
 - `src/proto/`: one file per protocol, each a `pic_proto_t` (`include/pic_proto.h`).
   - `icsp8.c`: the framing shared by the 8-bit-command protocols: low-voltage key entry,
     8-bit commands, 24-clock payloads.
   - `p16_8bit.c`: the PIC16F171XX command set: identify, read, bulk and row erase, row
-    programming through the write latches, User ID, Configuration Words and EEPROM, verify.
+    programming through the write latches, User ID, Configuration Words and EEPROM.
   - `p18_8bit.c`: the PIC18-Q command set, which uses similar command bytes that mean
     different things, so it is a separate protocol.
 - `src/icsp.c`: pins and microsecond delays only, and the only hardware-specific file
@@ -103,12 +108,28 @@ Read the result over SWD: `g_pic_device` points at the matching table row (`prin
 `g_pic_revision_id` hold the IDs (addresses in the map file). A PIC16F17146 should read
 `0x30E1` and a PIC16F17124 `0x30DC`. With nothing attached, the IDs are 0.
 
+The API reads the device ID, revision ID and the five DCI values, but not the other
+read-only areas (the PIC16 DIA at 0x8100, for example); that would be a new read-only
+region.
+
 Only low-voltage entry is supported: a part whose LVP configuration bit is 0 cannot be
 reached without a high-voltage (7.9 to 9.0 V) MCLR supply.
 
 Not yet tested on real silicon. The PIC16F171XX payload layout comes from figures in the
 spec and the protocols share one reading of it with the simulators, so a first run on a real
 PIC16F17146 or PIC16F17124 is the real test. See `PLAN.md`.
+
+### Adding a part
+
+1. Find the part's programming specification and data sheet and check which protocol its
+   command set matches (`include/pic_proto.h` describes each one).
+2. Add a row to `data/pic_devices.csv` with the device ID, flash size in words, erase and
+   latch row sizes (the DCI table), User ID words, configuration count, EEPROM bytes, and
+   the document sections they came from in `source`.
+3. Add the part's geometry to that protocol's simulator in `tests/`, also from the
+   document, so the tests cross-check the row, then run `tests/run_tests.sh`.
+
+A part whose command set matches no protocol needs a new protocol; `PLAN.md` says how.
 
 ## Tests
 
