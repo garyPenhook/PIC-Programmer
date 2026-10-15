@@ -37,6 +37,11 @@
 #define STK_CSR_CLKSOURCE (1u << 2)      /* 1 = processor clock */
 #define STK_MASK          0x00FFFFFFu
 
+/* SysTick ticks per microsecond (= core clock in MHz), set by icsp_init(). Cached
+ * because the M0+ has no divide instruction: dividing in icsp_delay_us() would call
+ * the software divide on every ICSP clock edge. Starts at the 16 MHz reset value. */
+static uint32_t ticks_per_us = 16u;
+
 /* Replace the 2-bit field for `pin` in a MODER/OSPEEDR/PUPDR style register. */
 static void set_field(volatile uint32_t *reg, uint32_t pin, uint32_t value)
 {
@@ -77,6 +82,11 @@ void icsp_init(void)
     STK_RVR = STK_MASK;
     STK_CVR = 0u;
     STK_CSR = STK_CSR_CLKSOURCE | STK_CSR_ENABLE;
+
+    /* SystemCoreClock is the real clock (64 MHz normally, 16 MHz if the PLL failed).
+     * clock_init() runs before this and nothing changes the clock afterwards; if that
+     * ever changes, call icsp_init() again after the switch. */
+    ticks_per_us = SystemCoreClock / 1000000u;
 }
 
 void icsp_set_mclr(uint8_t level) { drive(PIN_MCLR, level); }
@@ -101,10 +111,6 @@ uint8_t icsp_get_dat(void)
 
 void icsp_delay_us(uint32_t us)
 {
-    /* SystemCoreClock is the real clock (64 MHz normally, 16 MHz if the PLL failed),
-     * so delays stay correct either way. Ticks per microsecond = clock in MHz. */
-    uint32_t ticks_per_us = SystemCoreClock / 1000000u;
-
     /* Work in chunks of at most 1 ms: that is 64000 ticks, well under the 24-bit
      * counter range, so one chunk can never wrap more than once. */
     while (us > 0u) {
