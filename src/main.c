@@ -6,18 +6,23 @@
  * Result of the boot-time probe of the target PIC, readable over SWD.
  *   g_pic_device: the matching device table row (print *g_pic_device in GDB for its name
  *                 and geometry), or NULL when nothing recognised
- * The IDs are 0 when nothing answers. A PIC16F17146 reads 0x30E1, a PIC16F17124 0x30DC.
+ * The IDs are 0 when nothing answers. g_pic_status says why nothing was recognised
+ * (PIC_ERR_NO_TARGET, PIC_ERR_UNSUPPORTED or PIC_ERR_PROTOCOL). A PIC16F17146 reads 0x30E1, a PIC16F17124 0x30DC.
  */
 volatile uint16_t g_pic_device_id;
 volatile uint16_t g_pic_revision_id;
 const pic_device_t *volatile g_pic_device;
+volatile int g_pic_status;        /* pic_status_t of the probe: 0 = found, else PIC_ERR_* */
 
 static void probe_target(void)
 {
     uint16_t id = 0u;
     uint16_t rev = 0u;
 
-    g_pic_device = pic_probe(&id, &rev);
+    const pic_device_t *dev = NULL;
+
+    g_pic_status = pic_probe(&dev, &id, &rev);
+    g_pic_device = dev;
     g_pic_device_id = id;
     g_pic_revision_id = rev;
 }

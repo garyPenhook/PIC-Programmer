@@ -60,7 +60,7 @@ void icsp8_payload(uint32_t value)
     icsp_delay_us(T_DLY_US);
 }
 
-uint32_t icsp8_read(uint8_t cmd)
+pic_status_t icsp8_read(uint8_t cmd, uint32_t *value)
 {
     uint32_t raw = 0u;
 
@@ -79,5 +79,11 @@ uint32_t icsp8_read(uint8_t cmd)
         icsp_delay_us(T_CK_US);
     }
     icsp_delay_us(T_DLY_US);
-    return raw >> 1;                       /* drop the stop bit */
+
+    /* Bit 23 is the start bit and bit 0 the stop bit; both are 0 in a well-formed payload. */
+    if ((raw & ((1u << (PAYLOAD_BITS - 1u)) | 1u)) != 0u) {
+        return PIC_ERR_PROTOCOL;
+    }
+    *value = raw >> 1;                     /* drop the stop bit (the start bit is 0) */
+    return PIC_OK;
 }

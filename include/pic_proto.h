@@ -7,11 +7,14 @@
  * A programming protocol: the code for one programming specification command set. Each
  * lives in src/proto/ and is selected by the device table, never by callers directly.
  *
- * src/pic.c checks every range against the device geometry before calling read, write or
- * row_erase (verify is built from read and cell_mask), so a protocol only sees offsets
- * inside the region and count > 0.
- * The protocol still checks rules of its own (row alignment, which regions it can erase
- * by row) and must send nothing on the wires when it rejects a call.
+ * src/pic.c checks pointers, regions and ranges against the device geometry before calling
+ * read, write or row_erase (verify is built from read and cell_mask), so a protocol only
+ * sees non-NULL buffers, offsets inside the region and count > 0. It also rejects bulk
+ * erase masks that name a region the device does not have.
+ * The protocol still checks rules of its own (row alignment: PIC_ERR_ALIGN; capabilities
+ * such as which regions it can erase by row: PIC_ERR_UNSUPPORTED) and must send nothing
+ * on the wires when it rejects a call. Reads return PIC_ERR_PROTOCOL if a payload has bad
+ * framing (see icsp8_read).
  *
  * The same command byte can mean different things in different protocols (0xC0 and 0xE0
  * are "Begin Programming" in p16_8bit but "Program Data" in p18_8bit), so never run one
@@ -21,9 +24,9 @@ struct pic_proto {
     const char *name;
     void (*enter)(void);
     void (*exit)(void);
-    uint16_t (*read_device_id)(void);
-    uint16_t (*read_revision_id)(void);
-    void (*read_dci)(pic_dci_t *dci);
+    pic_status_t (*read_device_id)(uint16_t *id);
+    pic_status_t (*read_revision_id)(uint16_t *id);
+    pic_status_t (*read_dci)(pic_dci_t *dci);
     uint16_t (*cell_mask)(pic_region_t region);   /* bits a cell of this region stores */
     pic_status_t (*read)(const pic_device_t *dev, pic_region_t region, uint32_t offset,
                          uint16_t *buf, size_t count);

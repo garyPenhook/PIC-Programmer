@@ -21,14 +21,38 @@
  * whether a family is word or byte addressed.
  *
  * Call order: pic_probe() (or pic_enter() for a known device), any number of operations,
- * pic_exit().
+ * pic_exit(). Every operation that can fail returns a pic_status_t. Writes and erases are
+ * open loop (the part is given its worst-case time, never polled), so use pic_verify()
+ * to learn whether they worked.
  */
+
+/*
+ * Result of an operation: PIC_OK (0) or a negative PIC_ERR_* code. Except for
+ * PIC_ERR_PROTOCOL, an argument or capability error is reported before anything is sent
+ * to the target.
+ */
+#if defined(__GNUC__)
+#define PIC_NODISCARD __attribute__((warn_unused_result))
+#else
+#define PIC_NODISCARD
+#endif
 
 typedef enum {
     PIC_OK = 0,
-    PIC_ERR_ARG = -1,      /* region, offset, size or alignment not allowed */
-    PIC_ERR_VERIFY = -2    /* data read back differs from what was written */
+    PIC_ERR_ARG = -1,         /* NULL pointer, unknown region, or bad erase mask */
+    PIC_ERR_RANGE = -2,       /* offset and count do not lie inside the region */
+    PIC_ERR_ALIGN = -3,       /* flash write does not start on a row boundary */
+    PIC_ERR_UNSUPPORTED = -4, /* this device or protocol cannot do that, or does not have
+                                 the region (also: a part answered that is not in the table) */
+    PIC_ERR_NO_TARGET = -5,   /* nothing answered: ID reads back 0 (no target, no power, or
+                                 the part does not have LVP enabled) */
+    PIC_ERR_MISMATCH = -6,    /* a different device answered than the one named */
+    PIC_ERR_PROTOCOL = -7,    /* a read payload had a bad start or stop bit */
+    PIC_ERR_VERIFY = -8       /* data read back differs from what was written */
 } pic_status_t;
+
+/* A short fixed string for a status ("ok" for PIC_OK, "unknown error" for any other value). */
+const char *pic_strerror(pic_status_t status);
 
 typedef enum {
     PIC_REGION_FLASH = 0,
@@ -76,41 +100,67 @@ const pic_device_t *pic_find_device(const pic_proto_t *proto, uint16_t device_id
 
 /*
  * Try each protocol with read-only commands until one returns a device ID in the table
- * and the part's DCI agrees with that row. Leaves the target out of programming mode. Returns the device or NULL. The IDs are
- * those of the matching protocol, or of the first protocol tried if nothing matched
- * (0 when nothing answers).
+ * and the part's DCI agrees with that row. Leaves the target out of programming mode.
+ * Returns PIC_OK and sets *dev to the row, or sets *dev to NULL and returns:
+ *   PIC_ERR_UNSUPPORTED  a part answered but is not in the table (or its DCI disagrees)
+ *   PIC_ERR_PROTOCOL     nothing sensible answered and a read had bad framing
+ *   PIC_ERR_NO_TARGET    every ID read back 0
+ * device_id and revision_id may be NULL. They get the IDs of the matching protocol, or of
+ * the first protocol tried if nothing matched (0 when nothing answers).
  */
-const pic_device_t *pic_probe(uint16_t *device_id, uint16_t *revision_id);
+pic_status_t pic_probe(const pic_device_t **dev, uint16_t *device_id, uint16_t *revision_id);
 
 /* Number of cells in a region of this device (0 if it has none). */
 uint32_t pic_region_size(const pic_device_t *dev, pic_region_t region);
 
-/* Enter Program/Verify mode with the low-voltage key. The target must have LVP = 1. */
-void pic_enter(const pic_device_t *dev);
+/*
+ * Enter Program/Verify mode with the low-voltage key. The target must have LVP = 1. Then
+ * read the device ID and compare it with dev, so a missing or different part is caught
+ * before any write: PIC_ERR_NO_TARGET (ID 0), PIC_ERR_MISMATCH (a different ID, or the
+ * part's DCI disagrees with the row) or PIC_ERR_PROTOCOL. On any error the target has
+ * been taken back out of programming mode, and the caller must not go on to write: the
+ * read, write and erase calls do not check that the target is in programming mode.
+ */
+PIC_NODISCARD pic_status_t pic_enter(const pic_device_t *dev);
 
 /* Leave Program/Verify mode and let the target run. */
 void pic_exit(const pic_device_t *dev);
 
-uint16_t pic_read_device_id(const pic_device_t *dev);
-uint16_t pic_read_revision_id(const pic_device_t *dev);
-void pic_read_dci(const pic_device_t *dev, pic_dci_t *dci);
+/* These can return PIC_ERR_PROTOCOL. The output is untouched on error. */
+pic_status_t pic_read_device_id(const pic_device_t *dev, uint16_t *id);
+pic_status_t pic_read_revision_id(const pic_device_t *dev, uint16_t *id);
+pic_status_t pic_read_dci(const pic_device_t *dev, pic_dci_t *dci);
 
 /*
  * Reads and writes. The whole range must lie inside the region. Programming can only
  * turn 1s into 0s, so erase first. Flash writes on a device with write latches must start
  * on a row boundary; a short final row is padded with blank cells, which leave the rest of
  * the row unchanged. Code protection makes protected memory read back as zeros.
+ *
+ * Errors: PIC_ERR_ARG (NULL dev or buf, unknown region), PIC_ERR_RANGE, PIC_ERR_ALIGN,
+ * PIC_ERR_UNSUPPORTED, PIC_ERR_PROTOCOL (reads). A count of 0 succeeds without checks
+ * beyond dev and region. After PIC_ERR_PROTOCOL from pic_read, buf is partly filled and
+ * must be discarded.
  */
 pic_status_t pic_read(const pic_device_t *dev, pic_region_t region, uint32_t offset,
                       uint16_t *buf, size_t count);
 pic_status_t pic_write(const pic_device_t *dev, pic_region_t region, uint32_t offset,
                        const uint16_t *buf, size_t count);
 
-/* Read back and compare. Return PIC_ERR_VERIFY on the first difference. */
+/*
+ * Read back and compare. Returns PIC_ERR_VERIFY on the first difference and, if mismatch
+ * is not NULL, stores its index in buf (the cell is offset + *mismatch). *mismatch is
+ * written only on PIC_ERR_VERIFY.
+ */
 pic_status_t pic_verify(const pic_device_t *dev, pic_region_t region, uint32_t offset,
-                        const uint16_t *buf, size_t count);
+                        const uint16_t *buf, size_t count, size_t *mismatch);
 
-/* Erase. Bulk takes PIC_ERASE_*; row erase works on flash and User ID only. */
+/*
+ * Erase. Bulk takes PIC_ERASE_*; PIC_ERR_UNSUPPORTED if it names a region the device does
+ * not have (for example EEPROM on a part with none). PIC_ERASE_ALL is the exception: it
+ * erases every region the device has. Row erase works on flash and User ID
+ * only (PIC_ERR_UNSUPPORTED for other regions).
+ */
 pic_status_t pic_bulk_erase(const pic_device_t *dev, uint8_t regions);
 pic_status_t pic_row_erase(const pic_device_t *dev, pic_region_t region, uint32_t offset);
 

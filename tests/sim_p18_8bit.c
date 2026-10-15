@@ -31,6 +31,7 @@
 /* LVP is on by default (the factory state). It lives outside the device state so that
  * sim_reset() does not change it. */
 static int g_lvp = 1;
+static int g_dat_high;          /* 1 = ICSPDAT reads high whatever the device sends (fault) */
 static uint16_t g_device_id = 0x7560u;
 
 typedef enum { ST_IDLE, ST_KEY, ST_CMD, ST_PAYLOAD_IN, ST_PAYLOAD_OUT } state_t;
@@ -75,6 +76,7 @@ void sim_reset(void)
 }
 
 void sim_set_lvp(int enabled) { g_lvp = enabled; }
+void sim_set_dat_stuck_high(int enabled) { g_dat_high = enabled; }
 int sim_in_program_mode(void) { return s.state >= ST_CMD; }
 uint32_t sim_violations(void) { return s.violations; }
 uint32_t sim_bad_commands(void) { return s.bad_commands; }
@@ -298,6 +300,7 @@ void icsp_release_dat(void) { s.dat_driven = 0; }
 
 uint8_t icsp_get_dat(void)
 {
+    if (g_dat_high) return 1u;
     /* During a read payload the device drives data after each rising edge. */
     if (s.state == ST_PAYLOAD_OUT && s.clk && s.out_clocks >= 1u && s.out_clocks <= 24u) {
         return (uint8_t)((s.out_raw >> (24u - s.out_clocks)) & 1u);

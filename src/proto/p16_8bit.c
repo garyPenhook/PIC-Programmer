@@ -73,10 +73,16 @@ static void load_data(uint16_t value, int inc)
     icsp8_payload(value);
 }
 
-/* Read the item at the PC. `inc` advances the PC by one afterwards. */
-static uint16_t read_item(int inc, uint16_t mask)
+/* Read the item at the PC into *out. `inc` advances the PC by one afterwards. */
+static pic_status_t read_item(int inc, uint16_t mask, uint16_t *out)
 {
-    return (uint16_t)(icsp8_read(inc ? CMD_READ_INC : CMD_READ) & mask);
+    uint32_t raw;
+    pic_status_t st = icsp8_read(inc ? CMD_READ_INC : CMD_READ, &raw);
+
+    if (st == PIC_OK) {
+        *out = (uint16_t)(raw & mask);
+    }
+    return st;
 }
 
 /* Commit the latched data at the PC and wait for the self-timed write to finish. */
@@ -105,27 +111,35 @@ static uint16_t mask_of(pic_region_t region)
 static void p16_enter(void) { icsp8_enter(T_ENTH_US); }
 static void p16_exit(void) { icsp8_exit(); }
 
-static uint16_t p16_read_device_id(void)
+static pic_status_t p16_read_device_id(uint16_t *id)
 {
     load_pc(ADDR_DEVID);
-    return read_item(0, WORD_MASK);
+    return read_item(0, WORD_MASK, id);
 }
 
-static uint16_t p16_read_revision_id(void)
+static pic_status_t p16_read_revision_id(uint16_t *id)
 {
     load_pc(ADDR_REVID);
-    return read_item(0, WORD_MASK);
+    return read_item(0, WORD_MASK, id);
 }
 
-static void p16_read_dci(pic_dci_t *dci)
+static pic_status_t p16_read_dci(pic_dci_t *dci)
 {
-    /* ERSIZ, WLSIZ, URSIZ, EESIZ, PCNT at 0x8200 to 0x8204 (spec Table 2-3). */
+    /* ERSIZ, WLSIZ, URSIZ, EESIZ, PCNT at 0x8200 to 0x8204 (spec Table 2-3). Fill a local
+     * copy so that a failed read leaves *dci untouched. */
+    pic_dci_t d;
+    pic_status_t st;
+
     load_pc(ADDR_DCI);
-    dci->erase_words  = read_item(1, WORD_MASK);
-    dci->latch_words  = read_item(1, WORD_MASK);
-    dci->user_rows    = read_item(1, WORD_MASK);
-    dci->eeprom_bytes = read_item(1, WORD_MASK);
-    dci->pin_count    = read_item(0, WORD_MASK);
+    if ((st = read_item(1, WORD_MASK, &d.erase_words)) != PIC_OK ||
+        (st = read_item(1, WORD_MASK, &d.latch_words)) != PIC_OK ||
+        (st = read_item(1, WORD_MASK, &d.user_rows)) != PIC_OK ||
+        (st = read_item(1, WORD_MASK, &d.eeprom_bytes)) != PIC_OK ||
+        (st = read_item(0, WORD_MASK, &d.pin_count)) != PIC_OK) {
+        return st;
+    }
+    *dci = d;
+    return PIC_OK;
 }
 
 static pic_status_t p16_read(const pic_device_t *dev, pic_region_t region, uint32_t offset,
@@ -135,7 +149,10 @@ static pic_status_t p16_read(const pic_device_t *dev, pic_region_t region, uint3
     (void)dev;
     load_pc((uint16_t)(base_of(region) + offset));
     for (size_t i = 0; i < count; i++) {
-        buf[i] = read_item(i + 1u < count, mask);   /* advance except after the last */
+        pic_status_t st = read_item(i + 1u < count, mask, &buf[i]);   /* advance except after the last */
+        if (st != PIC_OK) {
+            return st;
+        }
     }
     return PIC_OK;
 }
@@ -148,8 +165,11 @@ static pic_status_t p16_write(const pic_device_t *dev, pic_region_t region, uint
 
     if (region == PIC_REGION_FLASH) {
         uint32_t row = dev->latch_words;
-        if (row == 0u || (offset % row) != 0u) {
-            return PIC_ERR_ARG;
+        if (row == 0u) {
+            return PIC_ERR_UNSUPPORTED;
+        }
+        if ((offset % row) != 0u) {
+            return PIC_ERR_ALIGN;
         }
         /* One row per cycle (Figure 3-19): fill the latches, then commit. */
         for (size_t done = 0; done < count; done += row) {
@@ -200,7 +220,7 @@ static pic_status_t p16_row_erase(const pic_device_t *dev, pic_region_t region, 
     /* Flash rows, or the User IDs (spec 3.2.3: 0x8000 to 0x8004 erase only the User IDs
      * whatever CP says). Configuration Words and EEPROM need a bulk erase. */
     if (region != PIC_REGION_FLASH && region != PIC_REGION_USERID) {
-        return PIC_ERR_ARG;
+        return PIC_ERR_UNSUPPORTED;
     }
     load_pc((uint16_t)(base_of(region) + offset));   /* the low bits of the address are ignored */
     icsp8_command(CMD_ROW_ERASE);

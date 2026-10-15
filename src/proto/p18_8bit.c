@@ -92,27 +92,47 @@ static uint16_t mask_of(pic_region_t region)
 static void p18_enter(void) { icsp8_enter(T_ENTH_US); }
 static void p18_exit(void) { icsp8_exit(); }
 
-static uint16_t p18_read_device_id(void)
+/* Read one item into *out. `cmd` is CMD_READ or CMD_READ_INC. */
+static pic_status_t read_item(uint8_t cmd, uint16_t mask, uint16_t *out)
+{
+    uint32_t raw;
+    pic_status_t st = icsp8_read(cmd, &raw);
+
+    if (st == PIC_OK) {
+        *out = (uint16_t)(raw & mask);
+    }
+    return st;
+}
+
+static pic_status_t p18_read_device_id(uint16_t *id)
 {
     load_pc(ADDR_DEVID);
-    return (uint16_t)icsp8_read(CMD_READ);
+    return read_item(CMD_READ, 0xFFFFu, id);
 }
 
-static uint16_t p18_read_revision_id(void)
+static pic_status_t p18_read_revision_id(uint16_t *id)
 {
     load_pc(ADDR_REVID);
-    return (uint16_t)icsp8_read(CMD_READ);
+    return read_item(CMD_READ, 0xFFFFu, id);
 }
 
-static void p18_read_dci(pic_dci_t *dci)
+static pic_status_t p18_read_dci(pic_dci_t *dci)
 {
-    /* Five 16-bit values at 3C 0000h, 3C 0002h, ... (ERSIZ, WLSIZ, URSIZ, EESIZ, PCNT). */
+    /* Five 16-bit values at 3C 0000h, 3C 0002h, ... (ERSIZ, WLSIZ, URSIZ, EESIZ, PCNT).
+     * Fill a local copy so that a failed read leaves *dci untouched. */
+    pic_dci_t d;
+    pic_status_t st;
+
     load_pc(ADDR_DCI);
-    dci->erase_words  = (uint16_t)icsp8_read(CMD_READ_INC);
-    dci->latch_words  = (uint16_t)icsp8_read(CMD_READ_INC);
-    dci->user_rows    = (uint16_t)icsp8_read(CMD_READ_INC);
-    dci->eeprom_bytes = (uint16_t)icsp8_read(CMD_READ_INC);
-    dci->pin_count    = (uint16_t)icsp8_read(CMD_READ);
+    if ((st = read_item(CMD_READ_INC, 0xFFFFu, &d.erase_words)) != PIC_OK ||
+        (st = read_item(CMD_READ_INC, 0xFFFFu, &d.latch_words)) != PIC_OK ||
+        (st = read_item(CMD_READ_INC, 0xFFFFu, &d.user_rows)) != PIC_OK ||
+        (st = read_item(CMD_READ_INC, 0xFFFFu, &d.eeprom_bytes)) != PIC_OK ||
+        (st = read_item(CMD_READ, 0xFFFFu, &d.pin_count)) != PIC_OK) {
+        return st;
+    }
+    *dci = d;
+    return PIC_OK;
 }
 
 /* The PC advances by 2 after a word and by 1 after a byte (spec Table 3-1 note). */
@@ -123,7 +143,10 @@ static pic_status_t p18_read(const pic_device_t *dev, pic_region_t region, uint3
     (void)dev;
     load_pc(address_of(region, offset));
     for (size_t i = 0; i < count; i++) {
-        buf[i] = (uint16_t)(icsp8_read(i + 1u < count ? CMD_READ_INC : CMD_READ) & mask);
+        pic_status_t st = read_item(i + 1u < count ? CMD_READ_INC : CMD_READ, mask, &buf[i]);
+        if (st != PIC_OK) {
+            return st;
+        }
     }
     return PIC_OK;
 }
@@ -137,7 +160,7 @@ static pic_status_t p18_write(const pic_device_t *dev, pic_region_t region, uint
 
     /* Only word-at-a-time parts (WLSIZ = 0) are handled. */
     if (dev->latch_words != 0u) {
-        return PIC_ERR_ARG;
+        return PIC_ERR_UNSUPPORTED;
     }
     load_pc(address_of(region, offset));
     for (size_t i = 0; i < count; i++) {
@@ -159,7 +182,7 @@ static pic_status_t p18_row_erase(const pic_device_t *dev, pic_region_t region, 
 {
     (void)dev;
     if (!is_word_region(region)) {         /* spec 3.1.3.6: program memory and User ID only */
-        return PIC_ERR_ARG;
+        return PIC_ERR_UNSUPPORTED;
     }
     load_pc(address_of(region, offset));   /* the low bits of the address are ignored */
     icsp8_command(CMD_PAGE_ERASE);

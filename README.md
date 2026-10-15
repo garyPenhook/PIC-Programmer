@@ -83,6 +83,15 @@ Layers:
   enough: a part from another protocol answers the same read commands with whatever its
   memory holds at that address. Verify is built here from the protocol's read, for every
   protocol.
+
+  Every operation that can fail returns a `pic_status_t` (`pic_strerror()` gives text):
+  `PIC_ERR_ARG`, `_RANGE`, `_ALIGN` and `_UNSUPPORTED` are caught before anything is sent;
+  `PIC_ERR_NO_TARGET` and `_MISMATCH` come from `pic_enter()`, which reads the device ID
+  and compares it with the device you named; `PIC_ERR_PROTOCOL` means a read payload had a
+  bad start or stop bit (a data line stuck or pulled high; an absent target reads as
+  all zeros, which is well framed, so it is caught by the ID check instead); and
+  `PIC_ERR_VERIFY` reports where the first mismatch was. Writes and erases are open loop
+  (a fixed worst-case wait), so `pic_verify()` is how a failed write is found.
 - `src/proto/`: one file per protocol, each a `pic_proto_t` (`include/pic_proto.h`).
   - `icsp8.c`: the framing shared by the 8-bit-command protocols: low-voltage key entry,
     8-bit commands, 24-clock payloads.
@@ -103,7 +112,7 @@ Layers:
   CSV fails the tests. Run `tests/run_tests.sh`.
 
 At boot `main()` probes the target once, trying `p16_8bit` first and `p18_8bit` second.
-Read the result over SWD: `g_pic_device` points at the matching table row (`print
+Read the result over SWD: `g_pic_status` is 0 when a part was found, else the `PIC_ERR_*` code saying why not. `g_pic_device` points at the matching table row (`print
 *g_pic_device` in GDB shows its name and geometry) or is NULL, and `g_pic_device_id` and
 `g_pic_revision_id` hold the IDs (addresses in the map file). A PIC16F17146 should read
 `0x30E1` and a PIC16F17124 `0x30DC`. With nothing attached, the IDs are 0.
