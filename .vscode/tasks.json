@@ -1,0 +1,9 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "cmake: configure", "type": "shell", "command": "cmake --preset Debug" },
+    { "label": "cmake: build", "type": "shell", "command": "cmake --build --preset Debug -j", "group": "build" },
+    { "label": "host tests", "type": "shell", "command": "sh tests/run_tests.sh", "group": "test" },
+    { "label": "clang-tidy", "type": "shell", "command": "sh tools/lint.sh" }
+  ]
+}

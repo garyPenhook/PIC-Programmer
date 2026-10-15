@@ -1,0 +1,12 @@
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-signed-bitwise,
+  clang-analyzer-*,
+  misc-redundant-expression,
+  readability-misleading-indentation,
+  readability-non-const-parameter,
+  performance-no-int-to-ptr
+WarningsAsErrors: ''
+HeaderFilterRegex: '^.*/(include|src)/.*'

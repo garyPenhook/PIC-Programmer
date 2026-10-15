@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug G071RB (Cortex-Debug, OpenOCD)",
+      "type": "cortex-debug",
+      "request": "launch",
+      "servertype": "openocd",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/Debug/pic_programmer_debugger",
+      "configFiles": ["board/st_nucleo_g0.cfg"],
+      "gdbPath": "${env:HOME}/.local/share/stm32cube/bundles/gnu-tools-for-stm32/14.3.1+st.2/bin/arm-none-eabi-gdb",
+      "runToEntryPoint": "main",
+      "preLaunchTask": "cmake: build"
+    }
+  ]
+}
