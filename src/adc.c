@@ -87,7 +87,7 @@ void adc_init(void)
 
 uint16_t adc_read(uint32_t channel)
 {
-    if (!ready) {
+    if (!ready || channel > ADC_CHANNEL_MAX) {
         return 0u;
     }
     /* After writing CHSELR, wait for CCRDY before converting (15.12.9). */

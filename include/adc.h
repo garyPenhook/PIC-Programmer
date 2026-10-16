@@ -11,6 +11,7 @@
  * 50 kOhm, Table 59).
  */
 #define ADC_CHANNEL_VREFINT 13u /* RM0444 15.9 */
+#define ADC_CHANNEL_MAX     18u /* ADC_CHSELR.CHSEL[18:0], RM0444 15.12.9 */
 
 /* Enable the regulator, calibrate and switch the ADC on. Call after icsp_init() (the
  * regulator start-up wait uses icsp_delay_us()). */

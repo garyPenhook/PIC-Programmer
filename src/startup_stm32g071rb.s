@@ -51,13 +51,16 @@ g_pfnVectors:
      * Peripheral interrupts. IRQ 0..20 (0x40..0x90) are unused and trap in
      * Default_Handler. IRQ 21 (0x94) is "TIM16 / FDCAN_IT0".
      * To use another interrupt, add its handler at entry 16 + IRQ number.
-     * Note the table is only complete up to IRQ 21: enabling a higher IRQ without
-     * extending the table would fetch a vector from beyond it.
+     * IRQ 22..31 (0x98..0xBC) also trap in Default_Handler, so the table covers all
+     * 32 NVIC channels (RM0444 Table 61).
      */
     .rept 21
     .word Default_Handler
     .endr
     .word TIM16_IRQHandler
+    .rept 10
+    .word Default_Handler
+    .endr
 .size g_pfnVectors, .-g_pfnVectors
 
 /*

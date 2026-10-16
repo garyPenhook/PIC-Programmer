@@ -188,7 +188,10 @@ class Link:
             line = self._read_line()
             word, _, rest = line.partition(" ")
             if word not in ("NEXT", "RESEND"):
-                return self._check(line)
+                result = self._check(line)
+                if progress:
+                    progress(len(cells), len(cells))
+                return result
             at, n = rest.split()
             at, n = int(at, 16), int(n)
             if not (offset <= at and at + n <= offset + len(cells) and 0 < n <= DATA_LINE_CELLS):

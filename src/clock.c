@@ -39,7 +39,7 @@
 #define WAIT_LOOPS 100000u
 
 /* Poll (reg & mask) == value. Returns 1 if it happened, 0 if we gave up. */
-static int wait_for(volatile uint32_t *reg, uint32_t mask, uint32_t value)
+static int wait_for(const volatile uint32_t *reg, uint32_t mask, uint32_t value)
 {
     for (uint32_t i = 0; i < WAIT_LOOPS; i++) {
         if ((*reg & mask) == value) {
