@@ -46,7 +46,6 @@ int main(void)
 {
     platform_init(); /* clock, LED pin and the TIM16 interrupt that blinks it */
     g_clock_status = (int)clock_status();
-    platform_watchdog_init();
 
     /*
      * Look for a target PIC on the ICSP pins once at boot, so the result can be read over
@@ -63,6 +62,14 @@ int main(void)
     probe_target();
     ui_probe((pic_status_t)g_pic_status, g_pic_device, g_pic_device_id, g_pic_revision_id);
     cmd_set_device(g_pic_device);
+
+    /*
+     * Start the watchdog only now. Boot work above can wait on a missing or stuck OLED for
+     * a long time (each I2C wait is bounded, but there are many), and a watchdog that fired
+     * during it would reset the chip in a loop. From here on every path through the loop
+     * kicks it.
+     */
+    platform_watchdog_init();
 
     for (;;) {
         uint8_t byte;

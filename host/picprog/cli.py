@@ -130,9 +130,15 @@ def cmd_status(link, args):
     fell_back = status["clock"] != "pll"
     print(f"clock: {'64 MHz PLL' if not fell_back else '16 MHz fallback (PLL setup failed)'}")
     print(f"adc:   {status['adc']}")
+    hung = status.get("reset") == "watchdog"
+    if hung:
+        print("reset: the last reset was the watchdog's")
     if fell_back:
         raise LinkError("the programmer is running on its 16 MHz fallback clock: the serial "
                         "baud rate and all timing are off")
+    if hung:
+        raise LinkError("the programmer hung and was reset by its watchdog (a WRITE or ERASE "
+                        "in progress was lost); power-cycle it to clear this")
     if status["adc"] != "ok":
         raise LinkError("the ADC failed at start-up: VDD cannot be measured")
 

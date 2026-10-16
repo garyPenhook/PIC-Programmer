@@ -79,7 +79,9 @@
  *       runs at 16 MHz (the serial baud rate is then a few percent off, so this may only
  *       be readable at a slower host baud or over SWD: g_clock_status); adc=fail means
  *       the ADC never came up, so VDD and VDDA fail.
- *       OK clock=<pll|hsi16> adc=<ok|fail>
+ *       reset=watchdog means the last reset was the watchdog's: the programmer hung and
+ *       restarted (a WRITE or ERASE in progress was lost). It is cleared by a power-up.
+ *       OK clock=<pll|hsi16> adc=<ok|fail> reset=<normal|watchdog>
  *
  *   ERASE ALL
  *   ERASE <region>

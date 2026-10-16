@@ -681,10 +681,11 @@ static void test_power_and_vdd(void)
 static void test_status_reports_start_up_faults(void)
 {
     send_line("STATUS");
-    TEST_ASSERT_EQUAL_STRING("OK clock=pll adc=ok\n", stub_uart_output());
+    TEST_ASSERT_EQUAL_STRING("OK clock=pll adc=ok reset=normal\n", stub_uart_output());
     stub_board_set_faults(1, 1);
+    stub_board_set_watchdog_reset(1);
     send_line("STATUS");
-    TEST_ASSERT_EQUAL_STRING("OK clock=hsi16 adc=fail\n", stub_uart_output());
+    TEST_ASSERT_EQUAL_STRING("OK clock=hsi16 adc=fail reset=watchdog\n", stub_uart_output());
 }
 
 static void test_a_failed_adc_is_an_error_not_zero_millivolts(void)

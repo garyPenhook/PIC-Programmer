@@ -18,6 +18,7 @@ static int tx_blocked;
 static uint32_t baud;
 static int adc_failed;
 static int clock_fallback;
+static int watchdog_reset;
 
 void stub_board_reset(void)
 {
@@ -26,7 +27,7 @@ void stub_board_reset(void)
     rx_len = rx_pos = tx_len = 0u;
     tx_blocked = 0;
     baud = 0u;
-    adc_failed = clock_fallback = 0;
+    adc_failed = clock_fallback = watchdog_reset = 0;
 }
 
 void stub_board_set_vdd(uint32_t mv)
@@ -102,6 +103,16 @@ int adc_vdda_mv(uint32_t *mv)
 {
     *mv = 3300u;
     return !adc_failed;
+}
+
+int platform_watchdog_reset(void)
+{
+    return watchdog_reset;
+}
+
+void stub_board_set_watchdog_reset(int reset)
+{
+    watchdog_reset = reset;
 }
 
 clock_status_t clock_status(void)

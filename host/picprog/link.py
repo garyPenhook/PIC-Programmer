@@ -134,7 +134,8 @@ class Link:
         return state == "on", (vdd if vdd >= 0 else None)
 
     def status(self):
-        """Start-up faults the programmer found: {"clock": "pll" | "hsi16", "adc": "ok" | "fail"}."""
+        """Faults the programmer reports: {"clock": "pll" | "hsi16", "adc": "ok" | "fail",
+        "reset": "normal" | "watchdog"} (reset is missing from older firmware)."""
         text = self.command("STATUS")
         try:
             fields = dict(word.split("=", 1) for word in text.split())

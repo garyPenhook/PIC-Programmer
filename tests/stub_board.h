@@ -10,6 +10,7 @@
  */
 void stub_board_reset(void); /* power on, VDD 3300 mV, empty target UART */
 void stub_board_set_vdd(uint32_t mv);
+void stub_board_set_watchdog_reset(int reset); /* the last reset was the watchdog's */
 void stub_board_set_faults(int clock_fell_back, int adc_dead); /* start-up faults */
 void stub_target_uart_inject(const char *bytes, size_t n); /* bytes the target sends */
 void stub_target_uart_block_tx(int blocked);  /* 1 = the transmitter never takes a byte */

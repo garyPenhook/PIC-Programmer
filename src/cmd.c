@@ -576,7 +576,8 @@ static void do_vdd(void)
 static void do_status(void)
 {
     out_str(clock_status() == CLOCK_OK ? "OK clock=pll adc=" : "OK clock=hsi16 adc=");
-    out_str(adc_ready() ? "ok\n" : "fail\n");
+    out_str(adc_ready() ? "ok" : "fail");
+    out_str(platform_watchdog_reset() ? " reset=watchdog\n" : " reset=normal\n");
 }
 
 /*

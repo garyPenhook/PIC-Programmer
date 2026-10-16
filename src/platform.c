@@ -25,9 +25,32 @@
 #define TIM16_ARR   (*(volatile uint32_t *)0x4001442Cu) /* auto-reload (period) */
 #define NVIC_ISER   (*(volatile uint32_t *)0xE000E100u) /* interrupt set-enable */
 
+/*
+ * IWDG (base 0x40003000, RM0444 Table 6; registers in 28.4), the DBG freeze register, and
+ * the reset flags in RCC_CSR. RCC_APBENR1 (offset 0x3C) holds DBGEN, which must be set
+ * before DBG_APB_FZ1 can be written.
+ */
+#define IWDG_KR       (*(volatile uint32_t *)0x40003000u) /* key */
+#define IWDG_PR       (*(volatile uint32_t *)0x40003004u) /* prescaler */
+#define IWDG_RLR      (*(volatile uint32_t *)0x40003008u) /* reload value */
+#define IWDG_SR       (*(volatile uint32_t *)0x4000300Cu) /* PVU, RVU, WVU: update busy */
+#define RCC_APBENR1   (*(volatile uint32_t *)0x4002103Cu)
+#define RCC_CSR       (*(volatile uint32_t *)0x40021060u)
+#define DBG_APB_FZ1   (*(volatile uint32_t *)0x40015808u) /* DBG base 0x40015800 + 0x08 */
+
 /* Bit definitions. */
 #define RCC_IOPENR_GPIOAEN  (1u << 0)  /* enable the GPIOA peripheral clock */
 #define RCC_APBENR2_TIM16EN (1u << 17) /* enable the TIM16 peripheral clock */
+#define RCC_APBENR1_DBGEN   (1u << 27) /* debug support clock enable */
+#define RCC_CSR_IWDGRSTF    (1u << 29) /* reset flag: the last reset was the IWDG's */
+#define RCC_CSR_RMVF        (1u << 23) /* write 1 to clear the reset flags */
+#define DBG_APB_FZ1_IWDG_STOP (1u << 12) /* freeze the IWDG while the core is halted */
+
+#define IWDG_KEY_RELOAD 0xAAAAu /* reload the counter from IWDG_RLR */
+#define IWDG_KEY_ENABLE 0x5555u /* unlock PR, RLR and WINR */
+#define IWDG_KEY_START  0xCCCCu /* start the watchdog; it cannot be stopped again */
+#define IWDG_PR_DIV64   4u      /* PR = 100: LSI / 64 */
+#define IWDG_SR_UPDATING 0x7u   /* PVU | RVU | WVU */
 #define TIM_CR1_CEN         (1u << 0)  /* counter enable */
 #define TIM_DIER_UIE        (1u << 0)  /* update interrupt enable */
 #define TIM_SR_UIF          (1u << 0)  /* update interrupt flag */
@@ -137,12 +160,57 @@ void TIM16_IRQHandler(void)
     }
 }
 
+/*
+ * Independent watchdog: resets the chip if platform_watchdog_kick() is not called for about
+ * 2 seconds, so a hang (a stuck bus, a runaway loop) recovers by itself.
+ *
+ * The IWDG runs from the LSI, 32 kHz nominal but 29.5 to 34 kHz over voltage and
+ * temperature (DS12232 Table 42). /64 gives a 500 Hz count (2 ms per tick); 1000 ticks is
+ * 2.0 s nominal, 1.88 to 2.17 s across that spread. The longest stretch the firmware goes
+ * without a kick is about 0.1 s: one write flush (a PIC row, or 8 single cells at 6 to
+ * 12 ms each) or an OLED redraw on a stuck I2C bus.
+ * The window is left at its reset value, which disables it (28.3.2).
+ */
+#define IWDG_RELOAD 1000u
+
+/* Set when this boot followed an IWDG reset; readable over SWD. */
+volatile int g_watchdog_reset;
+
+int platform_watchdog_reset(void)
+{
+    return g_watchdog_reset;
+}
+
+/* Bound on the wait for the register update (a few LSI cycles). */
+#define IWDG_WAIT_LOOPS 1000000u
+
 void platform_watchdog_init(void)
 {
-    /* Enable IWDG in production. */
+    /* Only the IWDG flag is kept; RMVF clears all of the reset flags. */
+    g_watchdog_reset = (RCC_CSR & RCC_CSR_IWDGRSTF) != 0u;
+    RCC_CSR |= RCC_CSR_RMVF;
+
+    /* Freeze the counter while a debugger has the core halted, or every breakpoint would
+     * reset the chip two seconds later. Done before the IWDG starts. Not reset by a
+     * system reset (40.10.3). */
+    RCC_APBENR1 |= RCC_APBENR1_DBGEN;
+    (void)RCC_APBENR1;
+    DBG_APB_FZ1 |= DBG_APB_FZ1_IWDG_STOP;
+
+    /*
+     * Start it, unlock the registers, then set the prescaler and reload value (28.3.2,
+     * "window option disabled"). The IWDG requests the LSI itself (RCC_CSR.LSIRDY note).
+     */
+    IWDG_KR = IWDG_KEY_START;
+    IWDG_KR = IWDG_KEY_ENABLE;
+    IWDG_PR = IWDG_PR_DIV64;
+    IWDG_RLR = IWDG_RELOAD;
+    for (uint32_t i = 0; (IWDG_SR & IWDG_SR_UPDATING) != 0u && i < IWDG_WAIT_LOOPS; i++) {
+    }
+    IWDG_KR = IWDG_KEY_RELOAD; /* load the counter with the new reload value */
 }
 
 void platform_watchdog_kick(void)
 {
-    /* Refresh IWDG. */
+    IWDG_KR = IWDG_KEY_RELOAD;
 }

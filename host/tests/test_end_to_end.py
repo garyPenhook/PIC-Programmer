@@ -258,7 +258,7 @@ def test_command_line_ctrl_c_exits_130(target, monkeypatch, capsys):
 
 
 def test_status_and_vdd_on_a_healthy_programmer(target):
-    assert target.status() == {"clock": "pll", "adc": "ok"}
+    assert target.status() == {"clock": "pll", "adc": "ok", "reset": "normal"}
     assert target.vdd() == (3300, 3300)
 
 
@@ -280,3 +280,14 @@ def test_power_reports_an_unavailable_vdd(monkeypatch, capsys):
     monkeypatch.setattr(cli, "open_link", lambda args: Link(ScriptedStream(b"OK on -1\n")))
     assert cli.main(["power"]) == 0
     assert "unavailable" in capsys.readouterr().out
+
+
+def test_status_reports_a_watchdog_reset(monkeypatch, capsys):
+    from picprog import cli
+    from picprog.link import Link
+
+    monkeypatch.setattr(cli, "open_link", lambda args: Link(ScriptedStream(
+        b"OK clock=pll adc=ok reset=watchdog\n")))
+    assert cli.main(["status"]) == 1
+    captured = capsys.readouterr()
+    assert "watchdog" in captured.out and "hung" in captured.err
