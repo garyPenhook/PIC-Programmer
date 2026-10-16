@@ -132,7 +132,8 @@ Both:
    read back.
 4. **M4:** command interface over the ST-LINK virtual COM port (USART2 on PA2/PA3), so a
    PC tool can drive the programmer.
-5. **M5:** host tool (Python): parse Intel HEX, `id`, `read`, `erase`, `write`, `verify`.
+5. **M5:** host tool (Python): parse Intel HEX, `id`, `read`, `erase`, `write`, `verify`,
+   and `dump` (program extraction to an Intel HEX file, see "Program extraction").
    It reads the same `data/pic_devices.csv` for geometry and checks it against the DCI.
    Reading the DIA (calibration data) needs a read-only region in `pic.h` first.
 6. **M6:** more rows for the existing protocols (PIC16F13145, 13276, 17576; PIC18-Q20,
@@ -143,6 +144,51 @@ Both:
    the Intel HEX parser from M5.
 9. **M9:** act as a bootloader host and push application images over UART (see
    "Bootloaders"). Needs M4 and a second USART for the target.
+
+## Program extraction
+
+Read a target's memory back into an Intel HEX file: flash, User ID, Configuration Words
+and EEPROM, plus the device and revision IDs. It is for your own parts: backup before an
+erase or a bootloader seed, cloning a board, checking what a part holds.
+
+What already exists: `pic_read()` reads every region through the (region, offset)
+addressing, and both protocols implement it (`p16_read`, `p18_read`) with framing checks.
+Nothing is missing in the firmware's read path. What is missing is the way out: there is
+no command interface (M4) and no host tool (M5) to turn reads into a file.
+
+Design:
+
+1. **Firmware (M4):** a `read <region> <offset> <count>` command that returns the cells
+   in chunks, each with a length and a CRC so the host can detect corrupt transfers over
+   the virtual COM port. Chunking bounds the buffer, as `VERIFY_CHUNK` does for verify.
+   The ICSP link is the slow part: a read costs about 70 us per cell with the current
+   1 us clock phases (8 command clocks, 24 payload clocks, and the inter-item waits, from
+   `icsp8.c`), so about 14,000 cells a second and roughly a second for 16 KW. Not worth
+   optimising before M3 shows the real limits.
+2. **Host tool (M5):** `dump` walks the device's regions using geometry from the CSV and
+   the DCI, then writes Intel HEX. Addresses follow the existing hex rule (PLAN, PIC16F171XX
+   facts, 3.5): two bytes per PIC16 word, byte address 2 x word address, so Configuration
+   Words land at 0x1000E. PIC18 uses byte addresses directly (flash 0, User ID 0x200000,
+   config 0x300000, EEPROM 0x380000) and needs extended linear address records. Where the
+   PIC16 EEPROM and User ID land in the hex file is **to confirm** against spec 3.5.
+3. **Verify the dump:** read twice and compare before trusting a file, and offer
+   `verify <file>` afterwards (already `pic_verify()`).
+4. **Code protection:** a protected region reads back as zeros (`pic.h`). A dump of a
+   protected part is therefore not a copy, and an all-zero flash looks the same as a
+   blank-looking dump. The tool must say so rather than write a plausible-looking file:
+   decode the code-protect bits from the Configuration Words per part (the per-part bit
+   layout is **to confirm** from each data sheet, and fits the config-word editor in
+   IDEAS.md) and warn, and flag a flash that is all zeros. This project does not try to
+   defeat code protection.
+5. **Other areas:** the DIA (calibration data) needs the new read-only region already
+   noted in M5, and is worth including in a dump so a cloned board keeps its calibration.
+6. **Bootloaders:** the MDFU commands found in the specification (GetClientInfo,
+   StartTransfer, WriteChunk, GetImageState, EndTransfer) include no read, so extracting
+   an application from a target that has a bootloader goes through ICSP, not the
+   bootloader (to confirm against the full command list).
+7. **Tests:** the simulators already model memory, so add a round trip per table row:
+   write a pattern, `dump`, parse the hex, compare, and check the PIC16 and PIC18 address
+   mapping and the protected-region warning.
 
 ## Bootloaders
 
