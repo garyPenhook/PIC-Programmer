@@ -26,17 +26,18 @@
  * to learn whether they worked.
  */
 
-/*
- * Result of an operation: PIC_OK (0) or a negative PIC_ERR_* code. Except for
- * PIC_ERR_PROTOCOL, an argument or capability error is reported before anything is sent
- * to the target.
- */
+/* Makes the compiler warn when a caller ignores the returned status. */
 #if defined(__GNUC__)
 #define PIC_NODISCARD __attribute__((warn_unused_result))
 #else
 #define PIC_NODISCARD
 #endif
 
+/*
+ * Result of an operation: PIC_OK (0) or a negative PIC_ERR_* code. Except for
+ * PIC_ERR_PROTOCOL, an argument or capability error is reported before anything is sent
+ * to the target.
+ */
 typedef enum {
     PIC_OK = 0,
     PIC_ERR_ARG = -1,         /* NULL pointer, unknown region, or bad erase mask */
@@ -102,6 +103,7 @@ const pic_device_t *pic_find_device(const pic_proto_t *proto, uint16_t device_id
  * Try each protocol with read-only commands until one returns a device ID in the table
  * and the part's DCI agrees with that row. Leaves the target out of programming mode.
  * Returns PIC_OK and sets *dev to the row, or sets *dev to NULL and returns:
+ *   PIC_ERR_ARG          dev is NULL (nothing is sent)
  *   PIC_ERR_UNSUPPORTED  a part answered but is not in the table (or its DCI disagrees)
  *   PIC_ERR_PROTOCOL     nothing sensible answered and a read had bad framing
  *   PIC_ERR_NO_TARGET    every ID read back 0
@@ -117,7 +119,8 @@ uint32_t pic_region_size(const pic_device_t *dev, pic_region_t region);
  * Enter Program/Verify mode with the low-voltage key. The target must have LVP = 1. Then
  * read the device ID and compare it with dev, so a missing or different part is caught
  * before any write: PIC_ERR_NO_TARGET (ID 0), PIC_ERR_MISMATCH (a different ID, or the
- * part's DCI disagrees with the row) or PIC_ERR_PROTOCOL. On any error the target has
+ * part's DCI disagrees with the row) or PIC_ERR_PROTOCOL. A NULL or invalid dev returns
+ * PIC_ERR_ARG without touching the pins. On any error the target has
  * been taken back out of programming mode, and the caller must not go on to write: the
  * read, write and erase calls do not check that the target is in programming mode.
  */

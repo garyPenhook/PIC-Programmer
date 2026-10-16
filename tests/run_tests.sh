@@ -19,7 +19,8 @@ gcc $flags $core tests/sim_p18_8bit.c tests/test_p18_8bit.c -o "$out/test_p18_8b
 "$out/test_p18_8bit"
 
 # Unity-based tests (vendored in tests/vendor/unity). pic_find_device needs no ICSP, but
-# pic.c references the icsp_* pins elsewhere, so the p16 simulator stands in for icsp.c.
+# the protocol code in $core calls the icsp_* functions, so the p16 simulator stands in
+# for icsp.c.
 gcc $flags -Itests/vendor/unity $core tests/sim_p16_8bit.c tests/test_pic_find.c \
     tests/vendor/unity/unity.c -o "$out/test_pic_find"
 "$out/test_pic_find"

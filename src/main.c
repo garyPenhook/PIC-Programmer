@@ -7,7 +7,8 @@
  *   g_pic_device: the matching device table row (print *g_pic_device in GDB for its name
  *                 and geometry), or NULL when nothing recognised
  * The IDs are 0 when nothing answers. g_pic_status says why nothing was recognised
- * (PIC_ERR_NO_TARGET, PIC_ERR_UNSUPPORTED or PIC_ERR_PROTOCOL). A PIC16F17146 reads 0x30E1, a PIC16F17124 0x30DC.
+ * (PIC_ERR_NO_TARGET, PIC_ERR_UNSUPPORTED or PIC_ERR_PROTOCOL). A PIC16F17146 reads
+ * 0x30E1, a PIC16F17124 0x30DC.
  */
 volatile uint16_t g_pic_device_id;
 volatile uint16_t g_pic_revision_id;

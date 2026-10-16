@@ -49,11 +49,7 @@
 #define T_PROG_NVM_US   12000u
 #define T_ERASE_US      12000u
 
-/*
- * The 24-clock payload layout (value << 1) is taken from the PIC16F171XX programming spec
- * figures; the PIC18-Q figures are images that could not be read, so it is assumed here
- * and should be confirmed on real silicon.
- */
+/* Note: the payload layout used by icsp8_payload() is assumed for PIC18-Q (see icsp8.h). */
 static void load_pc(uint32_t addr)
 {
     icsp8_command(CMD_LOAD_PC);

@@ -85,7 +85,8 @@ void icsp_init(void)
 
     /* SystemCoreClock is the real clock (64 MHz normally, 16 MHz if the PLL failed).
      * clock_init() runs before this and nothing changes the clock afterwards; if that
-     * ever changes, call icsp_init() again after the switch. */
+     * ever changes, recompute ticks_per_us after the switch. Do not call icsp_init()
+     * again while a target is in programming mode: it drives MCLR high. */
     ticks_per_us = SystemCoreClock / 1000000u;
 }
 

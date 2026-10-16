@@ -2,7 +2,7 @@
 
 /*
  * Core clock in Hz. The reset value is 16 MHz because the chip starts on HSI16 with
- * the divider at /1. clock_init() overwrites it once the divider is changed.
+ * the divider at /1. clock_init() overwrites it once the new clock is running.
  */
 uint32_t SystemCoreClock = 16000000u;
 

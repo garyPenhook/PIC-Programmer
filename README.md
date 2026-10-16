@@ -24,7 +24,7 @@ cmake --preset Debug   && cmake --build --preset Debug
 cmake --preset Release && cmake --build --preset Release
 ```
 
-Each build writes `pic_programmer_debugger` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 3664 B  128 KB  2.80%` (Release). RAM covers static data only (`.data` + `.bss`); the stack is not counted.
+Each build writes `pic_programmer_debugger` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 4260 B  128 KB  3.25%` (Release). RAM covers static data only (`.data` + `.bss`); the stack is not counted.
 
 ## Clock and LED Blink
 

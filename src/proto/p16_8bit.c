@@ -149,7 +149,8 @@ static pic_status_t p16_read(const pic_device_t *dev, pic_region_t region, uint3
     (void)dev;
     load_pc((uint16_t)(base_of(region) + offset));
     for (size_t i = 0; i < count; i++) {
-        pic_status_t st = read_item(i + 1u < count, mask, &buf[i]);   /* advance except after the last */
+        /* Advance the PC except after the last item. */
+        pic_status_t st = read_item(i + 1u < count, mask, &buf[i]);
         if (st != PIC_OK) {
             return st;
         }

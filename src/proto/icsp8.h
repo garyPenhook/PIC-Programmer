@@ -6,11 +6,13 @@
 #include "pic.h"
 
 /*
- * Bit layer shared by the 8-bit-command protocols (p16_8bit, p18_8bit). Both
- * specifications describe the same framing; only the meaning of the commands differs.
+ * Bit layer shared by the 8-bit-command protocols (p16_8bit, p18_8bit). The framing is
+ * taken from the PIC16F171XX specification and assumed to hold for the PIC18-Q parts too,
+ * whose figures could not be read; only the meaning of the commands differs. Confirm the
+ * payload layout on real PIC18-Q silicon (PLAN.md, assumption 6).
  *
- *   - Low-voltage entry: MCLR low, then the 32-bit key 0x4D434850 ("MCHP"), MSb first.
- *     The last bit is a don't-care but its clock is required.
+ *   - Low-voltage entry: MCLR low, hold, then the 32-bit key 0x4D434850 ("MCHP"), MSb
+ *     first, then hold again. The last bit is a don't-care but its clock is required.
  *   - MSb first; data changes on the rising clock edge and is latched on the falling edge.
  *   - Commands are 8 bits. A payload is 24 clocks: start bit (0), pad zeros, data MSb
  *     first, stop bit (0), so the value sits shifted left by one. Reads use the same layout.
