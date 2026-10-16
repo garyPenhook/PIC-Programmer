@@ -1,4 +1,4 @@
-"""Command line: python3 -m picprog [--port PORT] <command> ..."""
+"""picprog [--port PORT] <command> ...: drive the PIC programmer over its serial port."""
 import argparse
 import sys
 

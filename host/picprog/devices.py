@@ -7,14 +7,24 @@ Configuration Words (PIC16) or configuration bytes (PIC18), EEPROM cells are byt
 import importlib.util
 import os
 
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-CSV_PATH = os.path.join(ROOT, "data", "pic_devices.csv")
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 REGIONS = ("flash", "userid", "config", "eeprom")
 
 
+def _shared_file(packaged, in_repo):
+    """An installed picprog carries copies of the shared files in picprog/data (see
+    pyproject.toml); a source checkout uses the ones at the repository root."""
+    path = os.path.join(HERE, "data", packaged)
+    return path if os.path.exists(path) else os.path.join(ROOT, *in_repo)
+
+
+CSV_PATH = _shared_file("pic_devices.csv", ("data", "pic_devices.csv"))
+GENERATOR_PATH = _shared_file("gen_devices.py", ("tools", "gen_devices.py"))
+
+
 def _load_generator():
-    spec = importlib.util.spec_from_file_location(
-        "gen_devices", os.path.join(ROOT, "tools", "gen_devices.py"))
+    spec = importlib.util.spec_from_file_location("gen_devices", GENERATOR_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

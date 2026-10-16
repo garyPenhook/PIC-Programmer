@@ -1,0 +1,32 @@
+[project]
+name = "picprog"
+version = "0.1.0"
+description = "Host tool for the NUCLEO-G071RB PIC ICSP programmer: probe, dump, erase, write and verify over the virtual COM port."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = [
+    "pyserial>=3.5",
+]
+
+[project.scripts]
+picprog = "picprog.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["picprog"]
+
+# The device table and its checker live at the repository root, shared with the firmware
+# build; hatch_build.py copies them into the package (see there).
+[tool.hatch.build.hooks.custom]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

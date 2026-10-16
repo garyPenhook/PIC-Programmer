@@ -266,19 +266,28 @@ A part whose command set matches no protocol needs a new protocol; `PLAN.md` say
 
 ## Host tool
 
-`host/picprog` is a Python 3 command-line tool that drives the programmer over the virtual
-COM port. It needs pyserial (`pip install -r host/requirements.txt`).
+`host/picprog` is a Python command-line tool that drives the programmer over the virtual
+COM port. It is a uv project (`host/pyproject.toml`, locked in `host/uv.lock`); install it
+as a command with:
 
 ```sh
-cd host
-python3 -m picprog probe                    # identify the target
-python3 -m picprog dump backup.hex          # read every region into an Intel HEX file
-python3 -m picprog write firmware.hex       # bulk erase, program and verify
-python3 -m picprog verify firmware.hex      # compare the target with a file
-python3 -m picprog erase all                # or: erase flash, erase flash --row 0x40
-python3 -m picprog read flash 0 32          # print cells
-python3 -m picprog dci                      # Device Configuration Information
+uv tool install ./host        # puts `picprog` on the PATH (~/.local/bin)
+uv tool install --reinstall ./host   # after changing the tool or data/pic_devices.csv
 ```
+
+```sh
+picprog probe                    # identify the target
+picprog dump backup.hex          # read every region into an Intel HEX file
+picprog write firmware.hex       # bulk erase, program and verify
+picprog verify firmware.hex      # compare the target with a file
+picprog erase all                # or: erase flash, erase flash --row 0x40
+picprog read flash 0 32          # print cells
+picprog dci                      # Device Configuration Information
+```
+
+Without installing, run it from the checkout with `uv run --project host picprog ...`.
+The installed tool carries its own copy of `data/pic_devices.csv`, taken at install time
+(`host/hatch_build.py`), so reinstall it after adding a part.
 
 `--port` selects the serial port (default `/dev/ttyACM0`). Every command probes the part
 first and checks its DCI against `data/pic_devices.csv`, the same table the firmware is
