@@ -121,3 +121,12 @@ void icsp_lines_idle(void)
     pull_up[ICSP_LINE_DAT] = 0;
     idle = 1;
 }
+
+void icsp_lines_release(void)
+{
+    for (unsigned i = 0; i < ICSP_LINES; i++) {
+        driven[i] = 0;
+        pull_up[i] = 0;
+    }
+    idle = 0;
+}

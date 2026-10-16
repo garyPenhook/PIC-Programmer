@@ -52,3 +52,29 @@ def test_image_to_cells_masks_values_and_reports_strays():
 def test_runs():
     assert devices.runs([5, 1, 2, 3, 9]) == [(1, 3), (5, 1), (9, 1)]
     assert devices.runs([]) == []
+
+
+class ScriptedStream:
+    """Replays a fixed reply and records what is written."""
+
+    def __init__(self, reply):
+        self.reply = reply
+        self.written = b""
+
+    def read(self, n):
+        data, self.reply = self.reply[:n], self.reply[n:]
+        return data
+
+    def write(self, data):
+        self.written += data
+
+
+def test_bridge_open_and_close_parse_the_replies():
+    from picprog.link import BRIDGE_EXIT, Link
+
+    stream = ScriptedStream(b"OK bridge\nlast words\r\nOK bridge closed 7\n")
+    link = Link(stream)
+    link.bridge_open(9600)
+    assert stream.written == b"BRIDGE 9600\n"
+    assert link.bridge_close() == (b"last words", 7)
+    assert stream.written.endswith(BRIDGE_EXIT)

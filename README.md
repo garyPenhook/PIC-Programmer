@@ -24,7 +24,7 @@ cmake --preset Debug   && cmake --build --preset Debug
 cmake --preset Release && cmake --build --preset Release
 ```
 
-Each build writes `pic_programmer_debugger` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 12676 B  128 KB  9.67%` (Release). RAM covers static data only (`.data` + `.bss`); the stack is not counted.
+Each build writes `pic_programmer_debugger` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 14416 B  128 KB  11.00%` (Release). RAM covers static data only (`.data` + `.bss`); the stack is not counted.
 
 ## Clock and LED Blink
 
@@ -137,6 +137,9 @@ cleanly at that rate). Commands are upper case, one per line. Every command ends
 | Command | Reply |
 |---|---|
 | `PROBE` | `OK <name> <device id> <revision id>`; remembers the device for later commands |
+| `POWER`, `POWER ON`, `POWER OFF` | `OK on/off <VDD mV>`; while off, target commands answer `ERR power-off` |
+| `VDD` | `OK <target VDD mV> <VDDA mV>` |
+| `BRIDGE <baud>` | `OK bridge`, then raw bytes to and from the target's serial port until the exit sequence, then `OK bridge closed <dropped>` |
 | `SELFTEST` | `LINE <line> <float/high/low>` per ICSP line, `SHORT <a> <b>` per short, then `OK` or `ERR wiring` (no PROBE needed) |
 | `ID` | `OK <device id> <revision id>` (ERR -6 if a different part now answers) |
 | `DCI` | `OK <ERSIZ> <WLSIZ> <URSIZ> <EESIZ> <PCNT>` in decimal |
@@ -289,6 +292,9 @@ picprog dci                      # Device Configuration Information
 picprog crc firmware.hex         # compare by CRC-32, without reading the data back
 picprog blank                    # check every region is erased (or: blank flash)
 picprog selftest                 # check the ICSP wiring for shorts and stuck lines
+picprog power off                # switch the target supply (needs the switch, docs/hookup.md)
+picprog vdd                      # target VDD and the programmer's VDDA
+picprog bridge 115200            # terminal to the target's serial port; Ctrl-] ends
 ```
 
 `crc` computes the CRC-32 of each region on the programmer and compares it with the same

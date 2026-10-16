@@ -2,8 +2,12 @@
 
 #include <stddef.h>
 
+#include "adc.h"
+#include "bridge.h"
 #include "platform.h"
 #include "selftest.h"
+#include "target_power.h"
+#include "target_uart.h"
 #include "uart.h"
 #include "ui.h"
 
@@ -201,6 +205,11 @@ static void do_probe(void)
     const pic_device_t *found = NULL;
     uint16_t id = 0u;
     uint16_t rev = 0u;
+
+    if (!target_power_on()) {
+        reply_error("power-off"); /* probing drives the ICSP lines */
+        return;
+    }
     pic_status_t st = pic_probe(&found, &id, &rev);
 
     device = found; /* NULL after a failed probe: forget the old device */
@@ -264,8 +273,20 @@ static void send_chunk_binary(uint32_t offset, const uint16_t *cells, size_t cou
 
 /* Common start of a command that acts on the target: a device, and a range inside the
  * region. Replies and returns 0 if either is missing. */
+static int need_power(void)
+{
+    if (!target_power_on()) {
+        reply_error("power-off"); /* the ICSP lines are released while the power is off */
+        return 0;
+    }
+    return 1;
+}
+
 static int need_device(void)
 {
+    if (!need_power()) {
+        return 0;
+    }
     if (device == NULL) {
         reply_error("no-device");
         return 0;
@@ -476,6 +497,9 @@ static void do_selftest(void)
 {
     selftest_result_t r;
 
+    if (!need_power()) {
+        return; /* it ends by driving the lines to idle, which an unpowered target must not see */
+    }
     selftest_run(&r);
     for (uint32_t i = 0; i < ICSP_LINES; i++) {
         out_str("LINE ");
@@ -497,6 +521,74 @@ static void do_selftest(void)
     }
     ui_note(r.fault ? "SELFTEST fault" : "SELFTEST ok", r.fault ? "check the wiring" : "");
     out_str(r.fault ? "ERR wiring\n" : "OK\n");
+}
+
+static void reply_power(void)
+{
+    out_str("OK ");
+    out_str(target_power_on() ? "on " : "off ");
+    out_int((int32_t)target_vdd_mv());
+    out_char('\n');
+}
+
+/*
+ * POWER | POWER ON | POWER OFF
+ * Report or switch the target supply (target_power.h); the reply gives the state and the
+ * target VDD in millivolts.
+ */
+static void do_power(int argc, char *argv[ARG_MAX])
+{
+    if (argc == 2 && streq(argv[1], "ON")) {
+        target_power_set(1);
+        device = NULL; /* a part that was off must be probed again */
+    } else if (argc == 2 && streq(argv[1], "OFF")) {
+        target_power_set(0);
+        device = NULL;
+    } else if (argc != 1) {
+        reply_error("bad-argument");
+        return;
+    }
+    ui_note(target_power_on() ? "POWER on" : "POWER off", "");
+    reply_power();
+}
+
+/* VDD: target VDD and the programmer's own VDDA, in millivolts. */
+static void do_vdd(void)
+{
+    uint32_t vdd = target_vdd_mv();
+
+    out_str("OK ");
+    out_int((int32_t)vdd);
+    out_char(' ');
+    out_int((int32_t)adc_vdda_mv());
+    out_char('\n');
+}
+
+/*
+ * BRIDGE <baud>
+ * Join the PC to the target's serial port (bridge.h) until the PC sends BRIDGE_EXIT.
+ *     OK bridge                    then raw bytes both ways
+ *     OK bridge closed <dropped>   after the exit sequence
+ */
+static void do_bridge(char *argv[ARG_MAX])
+{
+    uint32_t baud;
+
+    if (!need_power()) {
+        return; /* its TX line idles high, which would back-power an unpowered target */
+    }
+    if (!parse_number(argv[1], &baud) || !target_uart_open(baud)) {
+        reply_error("bad-argument");
+        return;
+    }
+    ui_note("BRIDGE open", argv[1]);
+    out_str("OK bridge\n");
+    uint32_t dropped = bridge_run();
+    target_uart_close();
+    ui_note("BRIDGE closed", "");
+    out_str("\r\nOK bridge closed ");
+    out_int((int32_t)dropped);
+    out_char('\n');
 }
 
 /*
@@ -801,6 +893,12 @@ static void execute(void)
         do_scan(argc, argv, 0);
     } else if (argc > 0 && streq(argv[0], "BLANK") && (argc == 2 || argc == 4)) {
         do_scan(argc, argv, 1);
+    } else if (argc > 0 && streq(argv[0], "POWER") && argc <= 2) {
+        do_power(argc, argv);
+    } else if (argc > 0 && streq(argv[0], "VDD") && argc == 1) {
+        do_vdd();
+    } else if (argc > 0 && streq(argv[0], "BRIDGE") && argc == 2) {
+        do_bridge(argv);
     } else if (argc > 0 && streq(argv[0], "SELFTEST") && argc == 1) {
         do_selftest();
     } else if (argc > 0 && streq(argv[0], "ID") && argc == 1) {

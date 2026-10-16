@@ -18,10 +18,31 @@ void uart_write_byte(uint8_t byte)
     }
 }
 
+static char input[8192];
+static unsigned input_len;
+static unsigned input_pos;
+
+void stub_uart_inject(const char *bytes, unsigned n)
+{
+    for (unsigned i = 0; i < n && input_len < sizeof input; i++) {
+        input[input_len++] = bytes[i];
+    }
+}
+
 int uart_read_byte(uint8_t *byte)
 {
-    (void)byte;
-    return 0;
+    if (input_pos == input_len) {
+        input_pos = input_len = 0;
+        return 0;
+    }
+    *byte = (uint8_t)input[input_pos++];
+    return 1;
+}
+
+int uart_try_write_byte(uint8_t byte)
+{
+    uart_write_byte(byte);
+    return 1;
 }
 
 void stub_uart_clear(void)

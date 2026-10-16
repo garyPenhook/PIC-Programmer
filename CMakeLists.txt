@@ -19,6 +19,8 @@ add_custom_command(
 add_executable(${PROJECT_NAME}
     src/startup_stm32g071rb.s
     src/main.c
+    src/adc.c
+    src/bridge.c
     src/clock.c
     src/cmd.c
     src/i2c.c
@@ -33,6 +35,8 @@ add_executable(${PROJECT_NAME}
     ${PIC_DEVICES_C}
     src/system_stm32g0xx.c
     src/platform.c
+    src/target_power.c
+    src/target_uart.c
     src/uart.c
     src/ui.c
 )

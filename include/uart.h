@@ -25,6 +25,9 @@ void uart_init(void);
 /* Send one byte, waiting until the transmitter can take it. */
 void uart_write_byte(uint8_t byte);
 
+/* Send one byte only if the transmitter can take it now. Returns 1 if sent. */
+int uart_try_write_byte(uint8_t byte);
+
 /*
  * Fetch a received byte without waiting. Returns 1 and stores it in *byte, 0 if nothing
  * has arrived, or -1 if the receiver reported an overrun, framing or noise error (the

@@ -6,6 +6,7 @@ PC build of the firmware used in the tests, both work.
 import struct
 
 FRAME_MARKER = 0x42
+BRIDGE_EXIT = b"\x1b[picprog-bridge-exit]"  # BRIDGE_EXIT in include/bridge.h
 DATA_LINE_CELLS = 8  # CMD_DATA_LINE_CELLS
 
 
@@ -107,6 +108,35 @@ class Link:
         """Number of cells checked; raises LinkError ("not-blank @<offset> <value>") if one
         is not erased."""
         return int(self._span("BLANK", region, offset, count))
+
+    def power(self, on=None):
+        """Switch the target supply (True/False) or just report it. Returns (on, VDD in mV)."""
+        verb = "POWER" if on is None else ("POWER ON" if on else "POWER OFF")
+        state, vdd = self.command(verb).split()
+        return state == "on", int(vdd)
+
+    def vdd(self):
+        """(target VDD, programmer VDDA) in millivolts."""
+        target, own = self.command("VDD").split()
+        return int(target), int(own)
+
+    def bridge_open(self, baud):
+        """Start BRIDGE: from here on, bytes written go to the target's serial port."""
+        reply = self.command(f"BRIDGE {baud}")
+        if reply != "bridge":
+            raise LinkError(f"unexpected reply to BRIDGE: {reply!r}")
+
+    def bridge_close(self):
+        """Send the exit sequence; returns (bytes the target sent meanwhile, bytes dropped)."""
+        self.stream.write(BRIDGE_EXIT)
+        if hasattr(self.stream, "flush"):
+            self.stream.flush()
+        tail = b""
+        marker = b"\r\nOK bridge closed "
+        while not (marker in tail and tail.endswith(b"\n")):
+            tail += self._read_exact(1)
+        before, _, after = tail.rpartition(marker)
+        return before, int(after.strip())
 
     def selftest(self):
         """Wiring check. Returns (states, shorts, ok): states maps "CLK", "DAT", "MCLR" to

@@ -166,3 +166,10 @@ void icsp_lines_idle(void)
     icsp_line_drive(ICSP_LINE_CLK, 0u);
     icsp_line_pull(ICSP_LINE_DAT, 0u);
 }
+
+void icsp_lines_release(void)
+{
+    icsp_line_pull(ICSP_LINE_MCLR, 0u);
+    icsp_line_pull(ICSP_LINE_CLK, 0u);
+    icsp_line_pull(ICSP_LINE_DAT, 0u);
+}

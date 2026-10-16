@@ -59,4 +59,7 @@ void icsp_line_drive(icsp_line_t line, uint8_t level); /* push-pull output */
 uint8_t icsp_line_read(icsp_line_t line);              /* the level on the pin */
 void icsp_lines_idle(void); /* back to the icsp_init() state: target running */
 
+/* Every line an input on its weak pull-down, so nothing drives an unpowered target. */
+void icsp_lines_release(void);
+
 #endif

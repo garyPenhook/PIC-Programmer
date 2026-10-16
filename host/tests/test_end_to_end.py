@@ -173,3 +173,13 @@ def test_command_line_crc_blank_and_selftest(target, tmp_path, monkeypatch, caps
     assert cli.main(["blank"]) == 0
     out = capsys.readouterr().out
     assert "DIFFERENT" in out and "flash: blank (16384 cells)" in out and "wiring ok" in out
+
+
+def test_power_and_vdd(target):
+    assert target.power() == (True, 3300)
+    assert target.vdd() == (3300, 3300)
+    assert target.power(False) == (False, 0)
+    with pytest.raises(LinkError, match="power-off"):
+        target.read("flash", 0, 1)
+    assert target.power(True) == (True, 3300)
+    assert programmer.connect(target).name == "PIC16F17146"  # probed again after power-up

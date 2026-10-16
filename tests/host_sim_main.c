@@ -22,6 +22,12 @@ void uart_write_byte(uint8_t byte)
     putchar(byte);
 }
 
+int uart_try_write_byte(uint8_t byte)
+{
+    putchar(byte);
+    return 1;
+}
+
 int uart_read_byte(uint8_t *byte)
 {
     (void)byte;

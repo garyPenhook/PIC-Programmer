@@ -119,6 +119,51 @@ def cmd_selftest(link, args):
     print("wiring ok (an open wire or swapped CLK/DAT cannot be detected this way)")
 
 
+def cmd_power(link, args):
+    on, vdd = link.power(None if args.state is None else args.state == "on")
+    print(f"target power {'on' if on else 'off'}, VDD {vdd} mV")
+
+
+def cmd_vdd(link, args):
+    target, own = link.vdd()
+    print(f"target VDD {target} mV, programmer VDDA {own} mV")
+
+
+def cmd_bridge(link, args):
+    """Interactive terminal to the target's serial port. Ctrl-] ends it."""
+    import os
+    import select
+    import termios
+    import tty
+
+    link.bridge_open(args.baud)
+    print(f"bridge to the target at {args.baud} baud; Ctrl-] to end", file=sys.stderr)
+    port = link.stream
+    stdin = sys.stdin.fileno()
+    saved = termios.tcgetattr(stdin) if os.isatty(stdin) else None
+    try:
+        if saved is not None:
+            tty.setraw(stdin)
+        while True:
+            ready, _, _ = select.select([stdin, port.fileno()], [], [])
+            if port.fileno() in ready:
+                data = port.read(port.in_waiting or 1)
+                sys.stdout.buffer.write(data)
+                sys.stdout.buffer.flush()
+            if stdin in ready:
+                data = os.read(stdin, 256)
+                if not data or b"\x1d" in data:  # Ctrl-]
+                    port.write(data.split(b"\x1d")[0])
+                    break
+                port.write(data)
+    finally:
+        if saved is not None:
+            termios.tcsetattr(stdin, termios.TCSADRAIN, saved)
+    rest, dropped = link.bridge_close()
+    sys.stdout.buffer.write(rest)
+    print(f"\nbridge closed ({dropped} bytes dropped)", file=sys.stderr)
+
+
 def cmd_verify(link, args):
     device = programmer.connect(link)
     with open(args.file) as f:
@@ -172,6 +217,16 @@ def main(argv=None):
     p = sub.add_parser("blank", help="check that regions are erased")
     p.add_argument("region", nargs="?", default="all", choices=("all",) + devices.REGIONS)
     p.set_defaults(run=cmd_blank)
+
+    p = sub.add_parser("power", help="report or switch the target supply")
+    p.add_argument("state", nargs="?", choices=("on", "off"))
+    p.set_defaults(run=cmd_power)
+
+    sub.add_parser("vdd", help="measure the target VDD").set_defaults(run=cmd_vdd)
+
+    p = sub.add_parser("bridge", help="terminal to the target's serial port (Ctrl-] ends)")
+    p.add_argument("baud", type=int)
+    p.set_defaults(run=cmd_bridge)
 
     sub.add_parser("selftest", help="check the ICSP wiring for shorts and stuck lines"
                    ).set_defaults(run=cmd_selftest)

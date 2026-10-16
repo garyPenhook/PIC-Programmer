@@ -1,8 +1,10 @@
+#include "adc.h"
 #include "cmd.h"
 #include "i2c.h"
 #include "icsp.h"
 #include "pic.h"
 #include "platform.h"
+#include "target_power.h"
 #include "uart.h"
 #include "ui.h"
 
@@ -48,6 +50,8 @@ int main(void)
      * independently.
      */
     icsp_init();
+    adc_init();
+    target_power_init(); /* switches the target on, then waits for VDD to settle */
     uart_init();
     i2c_init();
     ui_init(); /* optional OLED status screen; a no-op without one */

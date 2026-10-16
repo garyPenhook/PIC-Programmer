@@ -15,9 +15,9 @@ These five make the programmer safer and more useful day to day, and most are fi
 
 | Idea | What it does | Extra hardware |
 | --- | --- | --- |
-| UART bridge and logger | Bridges a spare USART to the host over the ST-LINK VCP, so target `printf` output shows on the PC, even while the programmer holds the part in reset or reflashes it. Optional baud autodetect. This is the debug-agent channel in `PLAN.md`. | None beyond two wires |
-| Target power control | A GPIO switches target VDD through a P-FET or load switch, so the host can power-cycle the target for a clean LVP entry. | P-FET or load switch |
-| VDD and current measurement | ADC reads target VDD before entering programming mode and warns or refuses if it is out of range; optional shunt amplifier reads target current to catch shorts and show sleep current. | Divider, optional shunt amplifier |
+| UART bridge and logger | **Done:** `BRIDGE` / `picprog bridge` joins the VCP to USART1 on D0/D1. Still to do: logging while programming, baud autodetect. | None beyond two wires |
+| Target power control | **Firmware done:** `POWER` / `picprog power` drives D2 to a high-side switch; the switch part is still to be chosen (docs/hookup.md). | P-FET or load switch |
+| VDD and current measurement | **VDD done:** `VDD` / `picprog vdd` reads target VDD on A0 through a divider, against the calibrated VDDA. Still to do: refuse to program when VDD is out of range, and target current through a shunt amplifier. | Divider, optional shunt amplifier |
 | High-voltage MCLR (M7) | Boost converter (about 8 to 9 V) and a switch recover parts with LVP off. An ADC check confirms the rail has settled before it touches MCLR. | Boost converter, switch |
 | Wiring diagnostic | **Done:** `SELFTEST` / `picprog selftest` reports shorts between ICSP lines and lines held high or low. Open wires and swapped CLK/DAT cannot be seen this way. | None |
 

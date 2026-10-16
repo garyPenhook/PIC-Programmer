@@ -8,7 +8,9 @@
 #include "cmd.h"
 #include "pic.h"
 #include "pic_proto.h"
+#include "bridge.h"
 #include "sim_p16_8bit.h"
+#include "stub_board.h"
 #include "stub_icsp_lines.h"
 #include "stub_uart.h"
 #include "unity.h"
@@ -93,6 +95,7 @@ static void assert_output(const uint8_t *expected, size_t length)
 void setUp(void)
 {
     stub_lines_reset();
+    stub_board_reset();
     sim_set_lvp(1);
     sim_set_dat_stuck_high(0);
     sim_select_device(DEVICE_ID);
@@ -665,6 +668,51 @@ static void test_selftest_reports_a_short(void)
         stub_uart_output());
 }
 
+static void test_power_and_vdd(void)
+{
+    send_line("POWER");
+    TEST_ASSERT_EQUAL_STRING("OK on 3300\n", stub_uart_output());
+    send_line("VDD");
+    TEST_ASSERT_EQUAL_STRING("OK 3300 3300\n", stub_uart_output());
+    send_line("POWER sideways");
+    TEST_ASSERT_EQUAL_STRING("ERR bad-argument\n", stub_uart_output());
+}
+
+static void test_power_off_refuses_target_commands_and_forgets_the_device(void)
+{
+    send_line("PROBE");
+    send_line("POWER OFF");
+    TEST_ASSERT_EQUAL_STRING("OK off 0\n", stub_uart_output());
+    const char *const commands[] = {"PROBE",     "READ flash 0 1",  "ID",
+                                    "ERASE ALL", "SELFTEST",        "BRIDGE 9600",
+                                    "CRC flash", "WRITE flash 0 1", "BLANK flash"};
+    for (size_t i = 0; i < sizeof commands / sizeof commands[0]; i++) {
+        send_line(commands[i]);
+        TEST_ASSERT_EQUAL_STRING("ERR power-off\n", stub_uart_output());
+    }
+    send_line("POWER ON");
+    TEST_ASSERT_EQUAL_STRING("OK on 3300\n", stub_uart_output());
+    send_line("READ flash 0 1"); /* a part that was off must be probed again */
+    TEST_ASSERT_EQUAL_STRING("ERR no-device\n", stub_uart_output());
+}
+
+static void test_bridge_opens_relays_and_closes(void)
+{
+    static const char exit_seq[] = BRIDGE_EXIT;
+    size_t n;
+
+    send_line("BRIDGE 300");
+    TEST_ASSERT_EQUAL_STRING("ERR bad-argument\n", stub_uart_output());
+    stub_target_uart_inject("hi", 2u);
+    stub_uart_inject("abc", 3u);
+    stub_uart_inject(exit_seq, (unsigned)strlen(exit_seq));
+    send_line("BRIDGE 115200");
+    TEST_ASSERT_EQUAL_STRING("OK bridge\nhi\r\nOK bridge closed 0\n", stub_uart_output());
+    TEST_ASSERT_EQUAL_MEMORY("abc", stub_target_uart_sent(&n), 3u);
+    TEST_ASSERT_EQUAL_UINT(3u, n);
+    TEST_ASSERT_EQUAL_UINT32(0u, stub_target_uart_baud()); /* closed again */
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -706,5 +754,8 @@ int main(void)
     RUN_TEST(test_blank_check);
     RUN_TEST(test_selftest_reports_each_line_then_ok);
     RUN_TEST(test_selftest_reports_a_short);
+    RUN_TEST(test_power_and_vdd);
+    RUN_TEST(test_power_off_refuses_target_commands_and_forgets_the_device);
+    RUN_TEST(test_bridge_opens_relays_and_closes);
     return UNITY_END();
 }

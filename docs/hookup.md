@@ -15,6 +15,10 @@ Every pin below is taken from a document; the source is given with each table.
 | PB8 | CN5-10 | D15 | I2C1_SCL to the OLED (open drain, AF6) | UM2324 Table 12, DS Table 14 |
 | PB9 | CN5-9 | D14 | I2C1_SDA to the OLED (open drain, AF6) | UM2324 Table 12, DS Table 14 |
 | PA8 | CN9-8 | D7 | OLED RES (output, pulsed low at boot) | UM2324 Table 12 |
+| PA10 | CN9-3 | D2 | Target power switch enable (output, high = on) | UM2324 Table 12 |
+| PA0 | CN8-1 | A0 | Target VDD sense, ADC_IN0, through a 2:1 divider | UM2324 Table 12 |
+| PC4 | CN9-2 | D1 | USART1_TX (AF1) to the target's RX, for `BRIDGE` | UM2324 Table 12, DS Table 15 |
+| PC5 | CN9-1 | D0 | USART1_RX (AF1) from the target's TX, for `BRIDGE` | UM2324 Table 12, DS Table 15 |
 | PA2 | - | - | USART2 TX to the ST-LINK virtual COM port | UM2324 6.9, Table 8 |
 | PA3 | - | - | USART2 RX from the ST-LINK virtual COM port | UM2324 6.9, Table 8 |
 | PA5 | - | D13 | On-board user LED LD4 | UM2324 6.10 |
@@ -81,6 +85,70 @@ so the module must generate that from its VCC pin.
 Without a display, leave these pins unconnected; the firmware finds no display and does
 not use the bus.
 
+## Target power switch and VDD sense (optional)
+
+With this fitted, the host can switch the target off and on (`POWER OFF` / `POWER ON`,
+`picprog power off`) and read its supply (`VDD`, `picprog vdd`). Without it the target stays
+on the 3V3 pin as before; D2 then drives nothing and `VDD` readings mean nothing.
+
+```
+                     ┌──────────────┐
+ Nucleo 3V3 ─────────┤ IN       OUT ├───────┬───────────── target VDD
+                     │  high-side   │       │
+ D2 (PA10) ────┬─────┤ EN  switch   │      R3 10k
+               │     └──────────────┘       │
+              R5 100k                       ├───────┬───── A0 (PA0, ADC_IN0)
+               │                            │       │
+              GND                          R4 10k  C1 100 nF
+                                            │       │
+                                           GND     GND
+```
+
+- **The switch** is not chosen yet (see "Open items"). It needs an enable input that turns
+  it on with a 3.3 V logic high, an input range that includes 3.3 V, enough current for
+  the target, and a turn-on time well under the 5 ms the firmware waits
+  (`T_SETTLE_US` in `src/target_power.c`). For an active-low enable, build with
+  `TARGET_POWER_ON_LEVEL=0`.
+- **R5** holds the enable off while the STM32 is in reset and D2 is not yet driven. The
+  firmware switches the target on early in boot, so the default behaviour (target powered)
+  is unchanged.
+- **R3, R4, C1** divide the target VDD by 2 (`TARGET_VDD_DIVIDER`), so even a 5.5 V target
+  stays inside the ADC's 0 to VDDA range, and filter it. The ADC samples for 160.5 cycles
+  (about 5 us), which allows up to 50 kOhm source impedance (DS12232 Table 59); the
+  divider is 5 kOhm. VDD is computed against VDDA measured from the factory VREFINT
+  calibration (RM0444 15.9), so it does not depend on the Nucleo's 3.3 V being exact.
+
+Simulated with ngspice (`docs/sim/vdd_sense.cir`):
+
+| Check | Result |
+|---|---|
+| Sense node within 0.1 % of final after power-on | 3.44 ms (time constant 0.5 ms), inside the 5 ms wait |
+| Reading disturbed by the ADC's 5 pF sample capacitor (DS12232 Table 58) charging from empty | 0.005 % |
+
+While the power is off, the firmware releases ICSPCLK, ICSPDAT and MCLR to inputs with
+the weak pull-downs, so no pin can feed current into the unpowered target through its
+protection diodes, and every command that would drive them (`PROBE`, `READ`, `WRITE`,
+`SELFTEST`, `BRIDGE` and the rest) answers `ERR power-off`. After `POWER ON` the part must
+be probed again.
+
+## Target serial bridge (optional)
+
+`BRIDGE <baud>` (or `picprog bridge 115200`) joins the PC to the target's serial port, so
+its `printf` output shows on the PC and keys typed go to it. `picprog bridge` ends with
+Ctrl-]. Only three wires:
+
+| Nucleo | Target |
+|---|---|
+| D1 (PC4, USART1_TX) | the target's RX pin |
+| D0 (PC5, USART1_RX) | the target's TX pin |
+| GND | GND |
+
+UM2324 notes that D0 and D1 are connected to USART1 by default. 8 data bits, no parity, one
+stop bit; 1200 to 1,000,000 baud. Bytes from the PC wait in a 2 KB buffer for the slower
+target port; anything beyond that is dropped and the count is reported when the bridge
+closes. The target must run from 3.3 V (as it does when powered by the Nucleo): the bridge
+pins are not specified here for a 5 V target.
+
 ## Parts list
 
 Prices and stock from Mouser, looked up on 2026-10-16 (single-unit price).
@@ -95,6 +163,11 @@ Prices and stock from Mouser, looked up on 2026-10-16 (single-unit price).
 | 1 | Solderless breadboard, 830 tie points | PRT-12615 (SparkFun) | 474-PRT-12615 | $7.75 | Holds the target PIC and the pull-ups |
 | 1 | Male/male jumper wires, 20 x 150 mm | 1957 (Adafruit) | 485-1957 | $1.95 | Nucleo header sockets to the breadboard |
 | 1 | Female/male jumper wires, 10 x 300 mm | 5018 (Adafruit) | 485-5018 | $1.95 | OLED module header pins to the Nucleo |
+| 2 | Resistor 10 kOhm 5 % 1/4 W, through hole | CFR-25JB-52-10K (YAGEO) | 603-CFR-25JB-52-10K | $0.10 | VDD sense divider R3, R4 |
+| 1 | Capacitor 100 nF 50 V X7R, radial 2.54 mm | C315C104K5R5TA7301 (KEMET) | 80-C315C104K5R5TATU | $0.60 | VDD sense filter C1 |
+| 1 | P-channel MOSFET, high-side switch | to be chosen (see "Open items") | - | - | Target power switching |
+| 1 | 2N7000 N-channel MOSFET, TO-92 | 2N7000 (onsemi), on hand | 512-2N7000 | $1.23 | Gate driver for the P-channel switch |
+| 2 | Resistor 100 kOhm | - | - | - | R5, R6 (gate pull-down and pull-up) |
 | 1 | 2.42" SSD1309 128 x 64 OLED module, 7-pin, SPI/I2C | HiLetgo 2.42" SSD1309 (Amazon, not stocked by Mouser) | - | about $17 | Optional status display |
 
 The OLED, its pull-ups and the female/male wires are only needed for the status display.
@@ -169,6 +242,46 @@ How to read it:
 
 Re-run with `tools/sim_i2c_pullup.py docs/sim/i2c_pullup_results.md` after changing the
 netlist or the values swept.
+
+## Open items
+
+- **Target power switch: a P-channel MOSFET is still to be found.** Planned circuit: a
+  P-channel MOSFET as the high-side switch, with a 2N7000 (on hand) driving its gate:
+
+  ```
+   3V3 ──────┬──────────── S ┌────────┐ D ──── target VDD (and the R3/R4/C1 sense divider)
+             │               │ P-FET  │
+            R6 100k     ┌─── G └────────┘
+             │          │
+             └──────────┤ D
+                         2N7000
+   D2 (PA10) ──┬──────── G
+               │         S
+              R5 100k    │
+               │         │
+   GND ────────┴─────────┘
+  ```
+
+  D2 high turns the 2N7000 on, which pulls the P-FET's gate low and switches the target on,
+  so the firmware's active-high setting stays as it is. R5 keeps the 2N7000 off while D2
+  floats during reset, and R6 then holds the P-FET off, so the target is off until the
+  firmware switches it on early in boot.
+
+  The 2N7000 cannot be the switch itself. Its gate threshold is 0.8 to 3.0 V and its
+  on-resistance is only specified at VGS = 4.5 V (5.3 Ohm max) and 10 V (onsemi NDS7002A/D
+  Rev. 11), so 3.3 V of gate drive is not enough to rely on. It cannot switch the high
+  side from a 3.3 V gate at all, and switching the target's ground would offset every
+  ICSP signal. As the gate driver it only sinks the 33 uA through R6.
+
+  The P-channel MOSFET needs: drain-source rating of 20 V or more; on-resistance
+  specified at a gate-source voltage of -2.5 V or less negative (its gate only gets
+  3.3 V below its source); current rating well above the target's supply current; and a
+  breadboard-friendly package (TO-92, or SOT-23 on an adapter). Once it is chosen: check
+  it against its datasheet, simulate the switch-on in ngspice against the 5 ms settle
+  wait, and add it to the parts list.
+
+  The 2N7000's datasheet shows two pin orders (1 S, 2 G, 3 D and 1 G, 2 S, 3 D); check
+  the part in hand before wiring.
 
 ## Before powering up
 

@@ -88,6 +88,15 @@ void uart_write_byte(uint8_t byte)
     USART2_TDR = byte;
 }
 
+int uart_try_write_byte(uint8_t byte)
+{
+    if ((USART2_ISR & USART_ISR_TXE) == 0u) {
+        return 0;
+    }
+    USART2_TDR = byte;
+    return 1;
+}
+
 int uart_read_byte(uint8_t *byte)
 {
     uint32_t isr = USART2_ISR;

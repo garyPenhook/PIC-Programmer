@@ -264,10 +264,12 @@ Seeding (M8), and what it needs from this codebase:
 Hosting (M9), and what it needs:
 
 1. A UART transport on the STM32 for the target, separate from USART2 on PA2/PA3 (ST-LINK
-   VCP, used by M4). Pin and USART choice is open (see IDEAS.md, open questions).
+   VCP, used by M4): done, USART1 on D1 (PC4, TX) and D0 (PC5, RX).
 2. An MDFU host state machine on the STM32, or the PC running `pymdfu` with the Nucleo
-   only as a UART bridge (the IDEAS.md "UART bridge"). The bridge is far cheaper and
-   should come first; the embedded host is for standalone use.
+   only as a UART bridge. The bridge now exists (`BRIDGE <baud>`, USART1 on D0/D1,
+   docs/hookup.md); whether `pymdfu` can run through it (it would need to open the
+   bridge first and send the exit sequence after) is still to try. The embedded host is
+   for standalone use.
 3. Entering the bootloader: the client enters its update cycle when the application is
    invalid or on a signal such as a GPIO level or UART traffic, depending on how it was
    generated. A reset line (MCLR on PB5 already exists) lets the host force a restart.
