@@ -27,6 +27,15 @@
  *       A failure partway through sends ERR instead of OK, and the data lines already sent
  *       must be discarded.
  *
+ *   READB <region> <offset> <count>
+ *       Same as READ, but each chunk is a binary frame instead of a text line, which
+ *       takes 2 bytes per cell instead of 5 characters. All fields are little endian:
+ *           0x42 ('B')  offset (4 bytes)  n (1 byte, 1 to CMD_CHUNK_CELLS)
+ *           n cells (2 bytes each)  crc (2 bytes)
+ *       The crc is the same CRC-16/CCITT-FALSE, over every frame byte from the 0x42 up to
+ *       and including the last cell. The final OK or ERR is still a text line. A host tells
+ *       them apart by the first byte: 0x42 starts a frame, 'O' or 'E' a text line.
+ *
  * Errors: "ERR <pic_status_t value> <text>" for a failure reported by pic.h (for example
  * "ERR -2 range outside region"), or "ERR <word>" for a problem with the command itself:
  * bad-command, bad-argument, no-device, line-too-long, rx-error.
@@ -34,7 +43,8 @@
  * The serial port is polled and has no receive buffer, so the host must wait for the final
  * OK or ERR line before it sends the next command.
  */
-#define CMD_CHUNK_CELLS 16u
+#define CMD_CHUNK_CELLS  16u
+#define CMD_FRAME_MARKER 0x42u /* first byte of a READB data frame ('B') */
 
 /* Set the device later commands act on (NULL for none). PROBE also sets it. */
 void cmd_set_device(const pic_device_t *dev);

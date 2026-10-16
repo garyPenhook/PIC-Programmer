@@ -71,9 +71,11 @@ void uart_init(void)
     /*
      * USART2 runs from PCLK (the RCC_CCIPR USART2SEL reset value, 5.4.21), and PCLK equals
      * SystemCoreClock because clock_init() leaves the APB prescaler at /1. With
-     * oversampling by 16, BRR is the divisor fck / baud itself; round to nearest
-     * (64 MHz / 115200 = 555.6 gives 556, an error of 0.08 percent). BRR can only be
-     * written while UE = 0, which it is after reset.
+     * oversampling by 16, baud = fck / USARTDIV (33.5.7) and BRR holds USARTDIV itself;
+     * round to nearest. At 921600 baud: 64 MHz / 921600 = 69.4 gives 69, which runs
+     * 0.6 percent fast. On the 16 MHz fallback it gives 17, 2.1 percent fast, which may be
+     * too far off for the receiver at the other end. BRR can only be written while
+     * UE = 0, which it is after reset.
      */
     USART2_BRR = (SystemCoreClock + UART_BAUD / 2u) / UART_BAUD;
     USART2_CR1 = USART_CR1_UE | USART_CR1_TE | USART_CR1_RE;

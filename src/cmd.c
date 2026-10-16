@@ -206,7 +206,34 @@ static void send_chunk(uint32_t offset, const uint16_t *cells, size_t count)
     out_char('\n');
 }
 
-static void do_read(char *argv[ARG_MAX])
+static void out_byte(uint8_t byte)
+{
+    out_char((char)byte);
+}
+
+static void out_le16(uint16_t value)
+{
+    out_byte((uint8_t)(value & 0xFFu));
+    out_byte((uint8_t)(value >> 8));
+}
+
+/* Binary data frame for READB (layout in cmd.h). */
+static void send_chunk_binary(uint32_t offset, const uint16_t *cells, size_t count)
+{
+    crc = 0xFFFFu;
+    crc_on = 1;
+    out_byte(CMD_FRAME_MARKER);
+    out_le16((uint16_t)(offset & 0xFFFFu));
+    out_le16((uint16_t)(offset >> 16));
+    out_byte((uint8_t)count);
+    for (size_t i = 0; i < count; i++) {
+        out_le16(cells[i]);
+    }
+    crc_on = 0;
+    out_le16(crc);
+}
+
+static void do_read(char *argv[ARG_MAX], int binary)
 {
     pic_region_t region;
     uint32_t offset;
@@ -241,7 +268,7 @@ static void do_read(char *argv[ARG_MAX])
     for (uint32_t done = 0; done < count;) {
         uint32_t n = count - done < CMD_CHUNK_CELLS ? count - done : CMD_CHUNK_CELLS;
 
-        /* A long read outlasts any watchdog timeout (115200 baud is about 11 KB/s). */
+        /* A long read can outlast a watchdog timeout, so kick it once per chunk. */
         platform_watchdog_kick();
         st = pic_read(device, region, offset + done, cells, n);
         if (st != PIC_OK) {
@@ -249,7 +276,11 @@ static void do_read(char *argv[ARG_MAX])
             reply_status(st);
             return;
         }
-        send_chunk(offset + done, cells, n);
+        if (binary) {
+            send_chunk_binary(offset + done, cells, n);
+        } else {
+            send_chunk(offset + done, cells, n);
+        }
         done += n;
     }
     pic_exit(device);
@@ -269,7 +300,9 @@ static void execute(void)
     if (argc > 0 && streq(argv[0], "PROBE") && argc == 1) {
         do_probe();
     } else if (argc > 0 && streq(argv[0], "READ") && argc == 4) {
-        do_read(argv);
+        do_read(argv, 0);
+    } else if (argc > 0 && streq(argv[0], "READB") && argc == 4) {
+        do_read(argv, 1);
     } else {
         reply_error("bad-command");
     }

@@ -4,12 +4,16 @@
 #include <stdint.h>
 
 /*
- * Polled USART2 on PA2 (TX) and PA3 (RX), 115200 baud, 8 data bits, no parity, 1 stop bit.
+ * Polled USART2 on PA2 (TX) and PA3 (RX), 921600 baud, 8 data bits, no parity, 1 stop bit.
  * On the Nucleo-G071RB these pins go to the ST-LINK virtual COM port, so the PC sees it as
  * a serial port. No interrupts and no buffering: a received byte must be read before the
  * next one arrives, so the host must not send while a command is running.
+ *
+ * The highest rate the ST-LINK virtual COM port accepts is not documented on disk (UM2324
+ * is missing). If 921600 does not run cleanly on the board, lower UART_BAUD (460800,
+ * 230400 or 115200) and set the PC side to match.
  */
-#define UART_BAUD 115200u
+#define UART_BAUD 921600u
 
 /*
  * Configure the pins and the USART. Call after clock_init(): the baud rate divisor is

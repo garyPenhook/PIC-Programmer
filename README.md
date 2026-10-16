@@ -24,7 +24,7 @@ cmake --preset Debug   && cmake --build --preset Debug
 cmake --preset Release && cmake --build --preset Release
 ```
 
-Each build writes `pic_programmer_debugger` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 6356 B  128 KB  4.85%` (Release). RAM covers static data only (`.data` + `.bss`); the stack is not counted.
+Each build writes `pic_programmer_debugger` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 6500 B  128 KB  4.96%` (Release). RAM covers static data only (`.data` + `.bss`); the stack is not counted.
 
 ## Clock and LED Blink
 
@@ -123,7 +123,8 @@ Read the result over SWD: `g_pic_status` is 0 when a part was found, else the `P
 ### Serial commands
 
 The programmer takes line commands over the ST-LINK virtual COM port (USART2 on PA2/PA3,
-115200 baud, 8N1). Commands are upper case, one per line. Every command ends with one
+921600 baud, 8N1; lower `UART_BAUD` in `include/uart.h` if the board does not run
+cleanly at that rate). Commands are upper case, one per line. Every command ends with one
 `OK ...` or `ERR ...` line, and the host must wait for it before sending the next command
 (the port has no receive buffer). The full format is in `include/cmd.h`.
 
@@ -131,6 +132,7 @@ The programmer takes line commands over the ST-LINK virtual COM port (USART2 on 
 |---|---|
 | `PROBE` | `OK <name> <device id> <revision id>`; remembers the device for later commands |
 | `READ <region> <offset> <count>` | `D <offset> <cells...> *<crc>` lines, then `OK <count>` |
+| `READB <region> <offset> <count>` | binary frames (2 bytes per cell), then `OK <count>` |
 
 `region` is `flash`, `userid`, `config` or `eeprom`; numbers are decimal or `0x` hex. Each
 `D` line carries up to 16 cells, with a CRC-16/CCITT-FALSE over the text before ` *`, so
@@ -148,8 +150,16 @@ are from the PC simulator, not a real part):
 < OK 4
 ```
 
-Reading is slow because of the serial link, not the ICSP side: about 5 characters per
-cell at 115200 baud is roughly 2,300 cells a second, so a 16 KW part takes about 7 s.
+`READ` is for typing at a terminal; `READB` is for a host tool. Its frames are
+`0x42`, a 4-byte offset, a 1-byte cell count, the cells (2 bytes each) and a CRC, all little
+endian (full layout in `include/cmd.h`), so a host tells a frame (`0x42`) from the final
+text line (`O` or `E`) by its first byte.
+
+Estimated time for a 16 KW part, from the per-cell costs (ICSP about 70 us per cell from
+`icsp8.c`; the two do not overlap yet): `READ` about 2.3 s (5 characters per cell plus the line overhead),
+`READB` about 1.6 s (2.5 bytes per cell with the frame overhead). These are
+calculations, not measurements; the ST-LINK virtual COM port has not been tested at
+921600 yet.
 Writes, erase and verify are not on the serial interface yet.
 
 The API reads the device ID, revision ID and the five DCI values, but not the other

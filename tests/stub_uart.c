@@ -35,6 +35,11 @@ const char *stub_uart_output(void)
     return output;
 }
 
+unsigned stub_uart_length(void)
+{
+    return length;
+}
+
 /* The command layer kicks the watchdog during long reads; there is none on the PC. */
 void platform_watchdog_kick(void)
 {

@@ -55,6 +55,40 @@ static void expected_chunk(char *out, size_t size, uint32_t offset, const uint16
     snprintf(out + used, size - used, "%s *%04X\n", body, (unsigned)reference_crc(body, (size_t)n));
 }
 
+/* Append the expected READB frame for cells[0..count) at offset to buf; returns new length. */
+static size_t expected_frame(uint8_t *buf, size_t used, uint32_t offset, const uint16_t *cells,
+                             size_t count)
+{
+    size_t start = used;
+
+    buf[used++] = 0x42u;
+    for (unsigned i = 0; i < 4u; i++) {
+        buf[used++] = (uint8_t)(offset >> (8u * i));
+    }
+    buf[used++] = (uint8_t)count;
+    for (size_t i = 0; i < count; i++) {
+        buf[used++] = (uint8_t)(cells[i] & 0xFFu);
+        buf[used++] = (uint8_t)(cells[i] >> 8);
+    }
+    uint16_t crc = reference_crc((const char *)buf + start, used - start);
+    buf[used++] = (uint8_t)(crc & 0xFFu);
+    buf[used++] = (uint8_t)(crc >> 8);
+    return used;
+}
+
+static size_t append_text(uint8_t *buf, size_t used, const char *text)
+{
+    size_t n = strlen(text);
+    memcpy(buf + used, text, n);
+    return used + n;
+}
+
+static void assert_output(const uint8_t *expected, size_t length)
+{
+    TEST_ASSERT_EQUAL_UINT(length, stub_uart_length());
+    TEST_ASSERT_EQUAL_MEMORY(expected, stub_uart_output(), length);
+}
+
 void setUp(void)
 {
     sim_set_lvp(1);
@@ -238,6 +272,59 @@ static void test_wrong_device_on_the_wires_is_reported_and_leaves_programming_mo
     TEST_ASSERT_EQUAL_INT(0, sim_in_program_mode());
 }
 
+static void test_readb_sends_binary_frame_then_text_ok(void)
+{
+    uint8_t expected[64];
+    size_t n = 0;
+
+    send_line("PROBE");
+    send_line("READB flash 0 4");
+    n = expected_frame(expected, n, 0u, pattern, 4u);
+    n = append_text(expected, n, "OK 4\n");
+    assert_output(expected, n);
+    TEST_ASSERT_EQUAL_INT(0, sim_in_program_mode());
+    TEST_ASSERT_EQUAL_UINT32(0u, sim_violations());
+}
+
+static void test_readb_splits_into_chunks_and_encodes_offset_little_endian(void)
+{
+    uint8_t expected[256];
+    size_t n = 0;
+
+    send_line("PROBE");
+    send_line("READB flash 0x14 40");
+    n = expected_frame(expected, n, 0x14u, pattern + 0x14, 16u);
+    n = expected_frame(expected, n, 0x24u, pattern + 0x24, 16u);
+    n = expected_frame(expected, n, 0x34u, pattern + 0x34, 8u);
+    n = append_text(expected, n, "OK 40\n");
+    assert_output(expected, n);
+}
+
+static void test_readb_frame_with_high_offset_bytes(void)
+{
+    /* An offset above 0xFF exercises every byte of the little-endian field. */
+    uint16_t blank[2] = {0x3FFFu, 0x3FFFu};
+    uint8_t expected[64];
+    size_t n = 0;
+
+    send_line("PROBE");
+    send_line("READB flash 0x1234 2");
+    n = expected_frame(expected, n, 0x1234u, blank, 2u);
+    n = append_text(expected, n, "OK 2\n");
+    assert_output(expected, n);
+}
+
+static void test_readb_errors_are_text(void)
+{
+    send_line("READB flash 0 1");
+    TEST_ASSERT_EQUAL_STRING("ERR no-device\n", stub_uart_output());
+    send_line("PROBE");
+    send_line("READB flash 0x4000 1");
+    TEST_ASSERT_EQUAL_STRING("ERR -2 range outside region\n", stub_uart_output());
+    send_line("READB flash 0");
+    TEST_ASSERT_EQUAL_STRING("ERR bad-command\n", stub_uart_output());
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -255,5 +342,9 @@ int main(void)
     RUN_TEST(test_overlong_line_is_rejected_and_the_next_one_still_works);
     RUN_TEST(test_receiver_error_rejects_the_line);
     RUN_TEST(test_wrong_device_on_the_wires_is_reported_and_leaves_programming_mode);
+    RUN_TEST(test_readb_sends_binary_frame_then_text_ok);
+    RUN_TEST(test_readb_splits_into_chunks_and_encodes_offset_little_endian);
+    RUN_TEST(test_readb_frame_with_high_offset_bytes);
+    RUN_TEST(test_readb_errors_are_text);
     return UNITY_END();
 }

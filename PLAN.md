@@ -131,8 +131,10 @@ Both:
    flash, and only then erase and program. Use a scope or logic analyzer if the ID does not
    read back.
 4. **M4 (in progress):** command interface over the ST-LINK virtual COM port (USART2 on
-   PA2/PA3), so a PC tool can drive the programmer. Done: polled UART, line parser, `PROBE`
-   and `READ` with per-line CRC (README, "Serial commands"). To do: `ERASE`, `WRITE`,
+   PA2/PA3), so a PC tool can drive the programmer. Done: polled UART at 921600 baud, line parser,
+   `PROBE`, `READ` (text, per-line CRC) and `READB` (binary frames) (README, "Serial
+   commands"). Later: DMA transmit so ICSP reads overlap the serial link, and skipping
+   erased runs. To do: `ERASE`, `WRITE`,
    `VERIFY`, and `DCI`/ID reads; check on hardware that PA2/PA3 reach the virtual COM port
    (UM2324 is not on disk).
 5. **M5:** host tool (Python): parse Intel HEX, `id`, `read`, `erase`, `write`, `verify`,
