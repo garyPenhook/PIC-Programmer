@@ -127,15 +127,16 @@ static pic_status_t p18_read_dci(pic_dci_t *dci)
     /* Five 16-bit values at 3C 0000h, 3C 0002h, ... (ERSIZ, WLSIZ, URSIZ, EESIZ, PCNT).
      * Fill a local copy so that a failed read leaves *dci untouched. */
     pic_dci_t d;
-    pic_status_t st;
+    uint16_t *const fields[] = {&d.erase_words, &d.latch_words, &d.user_rows, &d.eeprom_bytes,
+                                &d.pin_count};
+    const size_t n = sizeof fields / sizeof fields[0];
 
     load_pc(ADDR_DCI);
-    if ((st = read_item(CMD_READ_INC, 0xFFFFu, &d.erase_words)) != PIC_OK ||
-        (st = read_item(CMD_READ_INC, 0xFFFFu, &d.latch_words)) != PIC_OK ||
-        (st = read_item(CMD_READ_INC, 0xFFFFu, &d.user_rows)) != PIC_OK ||
-        (st = read_item(CMD_READ_INC, 0xFFFFu, &d.eeprom_bytes)) != PIC_OK ||
-        (st = read_item(CMD_READ, 0xFFFFu, &d.pin_count)) != PIC_OK) {
-        return st;
+    for (size_t i = 0; i < n; i++) {
+        pic_status_t st = read_item(i + 1u < n ? CMD_READ_INC : CMD_READ, 0xFFFFu, fields[i]);
+        if (st != PIC_OK) {
+            return st;
+        }
     }
     *dci = d;
     return PIC_OK;
