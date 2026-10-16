@@ -14,6 +14,16 @@
  *       Identify the target and remember the device for later commands.
  *       OK <name> <device id, 4 hex digits> <revision id, 4 hex digits>
  *
+ *   ID
+ *       Read the device ID and revision ID of the probed device. The ID is checked against
+ *       the device first, so a different part gives ERR -6.
+ *       OK <device id, 4 hex digits> <revision id, 4 hex digits>
+ *
+ *   DCI
+ *       Read the Device Configuration Information of the probed device, in decimal:
+ *       OK <ERSIZ erase row words> <WLSIZ write latches> <URSIZ user rows> <EESIZ EEPROM
+ *          bytes> <PCNT pin count>
+ *
  *   READ <region> <offset> <count>
  *       Read count cells of region (flash, userid, config or eeprom) starting at offset.
  *       Numbers are decimal or 0x hex. Needs a successful PROBE first. The target is put

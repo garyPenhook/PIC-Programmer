@@ -24,7 +24,7 @@ cmake --preset Debug   && cmake --build --preset Debug
 cmake --preset Release && cmake --build --preset Release
 ```
 
-Each build writes `pic_programmer_debugger` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 10708 B  128 KB  8.17%` (Release). RAM covers static data only (`.data` + `.bss`); the stack is not counted.
+Each build writes `pic_programmer_debugger` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 11076 B  128 KB  8.45%` (Release). RAM covers static data only (`.data` + `.bss`); the stack is not counted.
 
 ## Clock and LED Blink
 
@@ -137,6 +137,8 @@ cleanly at that rate). Commands are upper case, one per line. Every command ends
 | Command | Reply |
 |---|---|
 | `PROBE` | `OK <name> <device id> <revision id>`; remembers the device for later commands |
+| `ID` | `OK <device id> <revision id>` (ERR -6 if a different part now answers) |
+| `DCI` | `OK <ERSIZ> <WLSIZ> <URSIZ> <EESIZ> <PCNT>` in decimal |
 | `READ <region> <offset> <count>` | `D <offset> <cells...> *<crc>` lines, then `OK <count>` |
 | `READB <region> <offset> <count>` | binary frames (2 bytes per cell), then `OK <count>` |
 | `ERASE ALL`, `ERASE <region>`, `ERASE ROW <region> <offset>` | `OK` |

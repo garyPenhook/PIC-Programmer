@@ -130,11 +130,11 @@ Both:
    settle assumptions 1 to 5 and 10. Start read-only: identify, then read the DCI, then dump
    flash, and only then erase and program. Use a scope or logic analyzer if the ID does not
    read back.
-4. **M4 (in progress):** command interface over the ST-LINK virtual COM port (USART2 on
+4. **M4 (done, needs a target):** command interface over the ST-LINK virtual COM port (USART2 on
    PA2/PA3), so a PC tool can drive the programmer. Done: polled UART at 921600 baud, line
-   parser, `PROBE`, `READ` (text, per-line CRC), `READB` (binary frames), `ERASE`, and
-   `WRITE` / `VERIFY` with lock-step NEXT/RESEND data upload (README, "Serial commands").
-   To do: `DCI`/ID reads. Later: DMA transmit so ICSP reads overlap the serial link, and
+   parser, `PROBE`, `ID`, `DCI`, `READ` (text, per-line CRC), `READB` (binary frames),
+   `ERASE`, and `WRITE` / `VERIFY` with lock-step NEXT/RESEND data upload (README, "Serial
+   commands"). Later: DMA transmit so ICSP reads overlap the serial link, and
    skipping erased runs. PA2/PA3 reach the virtual COM port by default (UM2324 Table 8);
    the highest baud rate the ST-LINK accepts still has to be tried on the board. Optional
    SSD1309 OLED status screen on I2C1 (README, "OLED status display").

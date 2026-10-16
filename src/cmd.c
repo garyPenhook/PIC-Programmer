@@ -373,6 +373,53 @@ static int parse_hex_digits(const char *s, uint32_t digits, uint32_t *value)
 }
 
 /*
+ * ID | DCI
+ * Read the device and revision IDs, or the Device Configuration Information, from the
+ * probed device. pic_enter() checks the ID first, so a different part answers ERR -6.
+ */
+static void do_info(int dci)
+{
+    const char *name = dci ? "DCI" : "ID";
+    uint16_t id = 0u;
+    uint16_t rev = 0u;
+    pic_dci_t info;
+
+    if (!need_device()) {
+        return;
+    }
+    pic_status_t st = pic_enter(device);
+    if (st == PIC_OK) {
+        st = dci ? pic_read_dci(device, &info) : pic_read_device_id(device, &id);
+        if (st == PIC_OK && !dci) {
+            st = pic_read_revision_id(device, &rev);
+        }
+        pic_exit(device);
+    }
+    ui_result(name, st, 0u);
+    if (st != PIC_OK) {
+        reply_status(st);
+        return;
+    }
+    out_str("OK ");
+    if (dci) {
+        /* ERSIZ WLSIZ URSIZ EESIZ PCNT, in decimal, in the order the part stores them */
+        const uint16_t fields[] = {info.erase_words, info.latch_words, info.user_rows,
+                                   info.eeprom_bytes, info.pin_count};
+        for (size_t i = 0; i < sizeof fields / sizeof fields[0]; i++) {
+            if (i != 0u) {
+                out_char(' ');
+            }
+            out_int(fields[i]);
+        }
+    } else {
+        out_hex(id, 4u);
+        out_char(' ');
+        out_hex(rev, 4u);
+    }
+    out_char('\n');
+}
+
+/*
  * ERASE ALL | ERASE <region> | ERASE ROW <region> <offset>
  * Bulk erase of every region the device has, bulk erase of one region, or erase of the
  * row (page on PIC18) holding offset.
@@ -623,6 +670,10 @@ static void execute(void)
         do_read(argv, 0);
     } else if (argc > 0 && streq(argv[0], "READB") && argc == 4) {
         do_read(argv, 1);
+    } else if (argc > 0 && streq(argv[0], "ID") && argc == 1) {
+        do_info(0);
+    } else if (argc > 0 && streq(argv[0], "DCI") && argc == 1) {
+        do_info(1);
     } else if (argc > 0 && streq(argv[0], "ERASE") && (argc == 2 || argc == 4)) {
         do_erase(argc, argv);
     } else if (argc > 0 && streq(argv[0], "WRITE") && argc == 4) {

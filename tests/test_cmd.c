@@ -545,6 +545,41 @@ static void test_write_then_read_back(void)
     TEST_ASSERT_EQUAL_HEX16(0x0003, sim_userid_word(2));
 }
 
+static void test_id_reads_device_and_revision(void)
+{
+    send_line("ID");
+    TEST_ASSERT_EQUAL_STRING("ERR no-device\n", stub_uart_output());
+    send_line("PROBE");
+    send_line("ID");
+    TEST_ASSERT_EQUAL_STRING("OK 30E1 2000\n", stub_uart_output());
+    TEST_ASSERT_EQUAL_INT(0, sim_in_program_mode());
+    send_line("ID now");
+    TEST_ASSERT_EQUAL_STRING("ERR bad-command\n", stub_uart_output());
+}
+
+static void test_dci_reads_the_five_fields(void)
+{
+    send_line("PROBE");
+    send_line("DCI");
+    /* PIC16F17146: 32-word rows and latches, 512 rows (16 KW), 256 EEPROM bytes; the
+     * simulator reports 20 pins. */
+    TEST_ASSERT_EQUAL_STRING("OK 32 32 512 256 20\n", stub_uart_output());
+    TEST_ASSERT_EQUAL_INT(0, sim_in_program_mode());
+    TEST_ASSERT_EQUAL_UINT32(0u, sim_violations());
+}
+
+static void test_id_and_dci_refuse_a_different_part(void)
+{
+    send_line("PROBE");
+    sim_select_device(0x30DCu); /* a PIC16F17124 is now on the wires */
+    sim_reset();
+    send_line("ID");
+    TEST_ASSERT_EQUAL_STRING("ERR -6 a different device answered\n", stub_uart_output());
+    send_line("DCI");
+    TEST_ASSERT_EQUAL_STRING("ERR -6 a different device answered\n", stub_uart_output());
+    TEST_ASSERT_EQUAL_INT(0, sim_in_program_mode());
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -577,5 +612,8 @@ int main(void)
     RUN_TEST(test_any_other_line_aborts_and_releases_the_target);
     RUN_TEST(test_verify_matches_and_reports_the_first_difference);
     RUN_TEST(test_write_then_read_back);
+    RUN_TEST(test_id_reads_device_and_revision);
+    RUN_TEST(test_dci_reads_the_five_fields);
+    RUN_TEST(test_id_and_dci_refuse_a_different_part);
     return UNITY_END();
 }
