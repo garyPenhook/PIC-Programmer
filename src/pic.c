@@ -44,8 +44,8 @@ static pic_status_t dci_matches(const pic_device_t *dev)
 
 pic_status_t pic_probe(const pic_device_t **dev_out, uint16_t *device_id, uint16_t *revision_id)
 {
-    int unknown = 0;      /* a part answered that is not in the table, or disagrees with its row */
-    int bad_framing = 0;  /* some read had a bad start or stop bit */
+    int unknown = 0;     /* a part answered that is not in the table, or disagrees with its row */
+    int bad_framing = 0; /* some read had a bad start or stop bit */
 
     if (dev_out == NULL) {
         return PIC_ERR_ARG;
@@ -76,8 +76,8 @@ pic_status_t pic_probe(const pic_device_t **dev_out, uint16_t *device_id, uint16
             }
             /* An ID that is not in the table, or whose DCI disagrees, is an unknown part;
              * a framing error while checking is a bad read, not an unknown part. */
-            unknown |= (dev == NULL && st != PIC_ERR_PROTOCOL && id != 0u) ||
-                       st == PIC_ERR_UNSUPPORTED;
+            unknown |=
+                (dev == NULL && st != PIC_ERR_PROTOCOL && id != 0u) || st == PIC_ERR_UNSUPPORTED;
         } else {
             id = 0u;
         }
@@ -108,11 +108,16 @@ pic_status_t pic_probe(const pic_device_t **dev_out, uint16_t *device_id, uint16
 uint32_t pic_region_size(const pic_device_t *dev, pic_region_t region)
 {
     switch (region) {
-    case PIC_REGION_FLASH:  return dev->flash_words;
-    case PIC_REGION_USERID: return dev->userid_words;
-    case PIC_REGION_CONFIG: return dev->config_count;
-    case PIC_REGION_EEPROM: return dev->eeprom_bytes;
-    default:                return 0u;
+    case PIC_REGION_FLASH:
+        return dev->flash_words;
+    case PIC_REGION_USERID:
+        return dev->userid_words;
+    case PIC_REGION_CONFIG:
+        return dev->config_count;
+    case PIC_REGION_EEPROM:
+        return dev->eeprom_bytes;
+    default:
+        return 0u;
     }
 }
 
@@ -122,7 +127,10 @@ static int region_valid(pic_region_t region)
            region == PIC_REGION_CONFIG || region == PIC_REGION_EEPROM;
 }
 
-static int dev_ok(const pic_device_t *dev) { return dev != NULL && dev->proto != NULL; }
+static int dev_ok(const pic_device_t *dev)
+{
+    return dev != NULL && dev->proto != NULL;
+}
 
 /* The whole range must lie inside the region; written so that it cannot overflow. */
 static int range_ok(const pic_device_t *dev, pic_region_t region, uint32_t offset, size_t count)
@@ -152,16 +160,26 @@ static pic_status_t check_transfer(const pic_device_t *dev, pic_region_t region,
 const char *pic_strerror(pic_status_t status)
 {
     switch (status) {
-    case PIC_OK:              return "ok";
-    case PIC_ERR_ARG:         return "bad argument";
-    case PIC_ERR_RANGE:       return "range outside region";
-    case PIC_ERR_ALIGN:       return "flash write not on a row boundary";
-    case PIC_ERR_UNSUPPORTED: return "not supported by this device";
-    case PIC_ERR_NO_TARGET:   return "no target answered";
-    case PIC_ERR_MISMATCH:    return "a different device answered";
-    case PIC_ERR_PROTOCOL:    return "bad framing on a read";
-    case PIC_ERR_VERIFY:      return "verify mismatch";
-    default:                  return "unknown error";
+    case PIC_OK:
+        return "ok";
+    case PIC_ERR_ARG:
+        return "bad argument";
+    case PIC_ERR_RANGE:
+        return "range outside region";
+    case PIC_ERR_ALIGN:
+        return "flash write not on a row boundary";
+    case PIC_ERR_UNSUPPORTED:
+        return "not supported by this device";
+    case PIC_ERR_NO_TARGET:
+        return "no target answered";
+    case PIC_ERR_MISMATCH:
+        return "a different device answered";
+    case PIC_ERR_PROTOCOL:
+        return "bad framing on a read";
+    case PIC_ERR_VERIFY:
+        return "verify mismatch";
+    default:
+        return "unknown error";
     }
 }
 
@@ -212,8 +230,8 @@ pic_status_t pic_read_dci(const pic_device_t *dev, pic_dci_t *dci)
     return dev_ok(dev) && dci != NULL ? dev->proto->read_dci(dci) : PIC_ERR_ARG;
 }
 
-pic_status_t pic_read(const pic_device_t *dev, pic_region_t region, uint32_t offset,
-                      uint16_t *buf, size_t count)
+pic_status_t pic_read(const pic_device_t *dev, pic_region_t region, uint32_t offset, uint16_t *buf,
+                      size_t count)
 {
     int nothing;
     pic_status_t st = check_transfer(dev, region, offset, buf, count, &nothing);
@@ -239,7 +257,7 @@ pic_status_t pic_verify(const pic_device_t *dev, pic_region_t region, uint32_t o
     if (st != PIC_OK || nothing) {
         return st;
     }
-    uint16_t mask = dev->proto->cell_mask(region);   /* compare only the bits the part stores */
+    uint16_t mask = dev->proto->cell_mask(region); /* compare only the bits the part stores */
     uint16_t back[VERIFY_CHUNK];
     for (size_t done = 0; done < count; done += VERIFY_CHUNK) {
         size_t n = count - done < VERIFY_CHUNK ? count - done : VERIFY_CHUNK;
@@ -264,7 +282,7 @@ pic_status_t pic_bulk_erase(const pic_device_t *dev, uint8_t regions)
     if (!dev_ok(dev) || regions == 0u || (regions & ~PIC_ERASE_ALL) != 0u) {
         return PIC_ERR_ARG;
     }
-    if (regions == PIC_ERASE_ALL) {   /* "everything" means everything this device has */
+    if (regions == PIC_ERASE_ALL) { /* "everything" means everything this device has */
         regions = 0u;
         regions |= dev->eeprom_bytes != 0u ? PIC_ERASE_EEPROM : 0u;
         regions |= dev->flash_words != 0u ? PIC_ERASE_FLASH : 0u;

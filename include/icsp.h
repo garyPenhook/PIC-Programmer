@@ -37,11 +37,11 @@
  */
 void icsp_init(void);
 
-void icsp_set_mclr(uint8_t level);   /* drive MCLR (push-pull) */
-void icsp_set_clk(uint8_t level);    /* drive ICSPCLK */
-void icsp_set_dat(uint8_t level);    /* drive ICSPDAT as an output at this level */
-void icsp_release_dat(void);         /* make ICSPDAT an input (target may drive it) */
-uint8_t icsp_get_dat(void);          /* read ICSPDAT */
+void icsp_set_mclr(uint8_t level); /* drive MCLR (push-pull) */
+void icsp_set_clk(uint8_t level);  /* drive ICSPCLK */
+void icsp_set_dat(uint8_t level);  /* drive ICSPDAT as an output at this level */
+void icsp_release_dat(void);       /* make ICSPDAT an input (target may drive it) */
+uint8_t icsp_get_dat(void);        /* read ICSPDAT */
 
 /* Busy-wait for at least this many microseconds. */
 void icsp_delay_us(uint32_t us);

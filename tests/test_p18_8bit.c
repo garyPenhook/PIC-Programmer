@@ -17,12 +17,12 @@
 static int failures;
 static const pic_device_t *dev;
 
-#define CHECK(cond)                                                                   \
-    do {                                                                              \
-        if (!(cond)) {                                                                \
-            printf("  FAIL [%s] %s:%d: %s\n", dev->name, __FILE__, __LINE__, #cond);   \
-            failures++;                                                               \
-        }                                                                             \
+#define CHECK(cond)                                                                                \
+    do {                                                                                           \
+        if (!(cond)) {                                                                             \
+            printf("  FAIL [%s] %s:%d: %s\n", dev->name, __FILE__, __LINE__, #cond);               \
+            failures++;                                                                            \
+        }                                                                                          \
     } while (0)
 
 static uint16_t read_id(void)
@@ -51,7 +51,7 @@ static void test_checker_catches_short_waits(void)
     /* Prove the timing checker works, so "0 violations" elsewhere means something. */
     fresh();
     icsp_set_mclr(0u);
-    icsp_set_clk(1u);               /* clock immediately after MCLR falls: far too soon */
+    icsp_set_clk(1u); /* clock immediately after MCLR falls: far too soon */
     CHECK(sim_violations() >= 1u);
 }
 
@@ -124,8 +124,8 @@ static void test_lvp_disabled_target_is_not_reachable(void)
 
     fresh();
     sim_set_lvp(0);
-    CHECK(pic_enter(dev) == PIC_ERR_NO_TARGET);     /* nothing answers; ID reads 0 */
-    CHECK(!sim_in_program_mode());                  /* and enter backed out */
+    CHECK(pic_enter(dev) == PIC_ERR_NO_TARGET); /* nothing answers; ID reads 0 */
+    CHECK(!sim_in_program_mode());              /* and enter backed out */
     CHECK(pic_probe(&found, &id, &rev) == PIC_ERR_NO_TARGET);
     CHECK(found == NULL);
     CHECK(id == 0u && rev == 0u);
@@ -180,7 +180,7 @@ static void test_wrong_device_is_rejected(void)
 
 static void test_null_arguments_are_rejected(void)
 {
-    uint16_t w[2] = { 0 };
+    uint16_t w[2] = {0};
     uint16_t id;
     pic_dci_t dci;
     const pic_device_t *found;
@@ -194,7 +194,7 @@ static void test_null_arguments_are_rejected(void)
     CHECK(pic_read(dev, PIC_REGION_FLASH, 0u, NULL, 1u) == PIC_ERR_ARG);
     CHECK(pic_write(dev, PIC_REGION_FLASH, 0u, NULL, 1u) == PIC_ERR_ARG);
     CHECK(pic_verify(dev, PIC_REGION_FLASH, 0u, NULL, 1u, NULL) == PIC_ERR_ARG);
-    CHECK(pic_read(dev, PIC_REGION_FLASH, 0u, NULL, 0u) == PIC_OK);        /* nothing to do */
+    CHECK(pic_read(dev, PIC_REGION_FLASH, 0u, NULL, 0u) == PIC_OK); /* nothing to do */
     CHECK(pic_read_device_id(dev, NULL) == PIC_ERR_ARG);
     CHECK(pic_read_revision_id(NULL, &id) == PIC_ERR_ARG);
     CHECK(pic_read_dci(dev, NULL) == PIC_ERR_ARG);
@@ -202,17 +202,17 @@ static void test_null_arguments_are_rejected(void)
     CHECK(pic_bulk_erase(NULL, PIC_ERASE_FLASH) == PIC_ERR_ARG);
     CHECK(pic_row_erase(NULL, PIC_REGION_FLASH, 0u) == PIC_ERR_ARG);
     CHECK(pic_probe(NULL, &id, &id) == PIC_ERR_ARG);
-    CHECK(sim_time_us() == t0);                  /* none of that touched the wires */
-    pic_exit(NULL);                              /* must not crash */
+    CHECK(sim_time_us() == t0); /* none of that touched the wires */
+    pic_exit(NULL);             /* must not crash */
     pic_exit(dev);
 
-    CHECK(pic_probe(&found, NULL, NULL) == PIC_OK);   /* the ID outputs are optional */
+    CHECK(pic_probe(&found, NULL, NULL) == PIC_OK); /* the ID outputs are optional */
     CHECK(found == dev);
 }
 
 static void test_verify_reports_the_mismatch_index(void)
 {
-    uint16_t data[3] = { 0x0001u, 0x0002u, 0x0003u };
+    uint16_t data[3] = {0x0001u, 0x0002u, 0x0003u};
     size_t where = 99u;
 
     fresh();
@@ -220,7 +220,7 @@ static void test_verify_reports_the_mismatch_index(void)
     CHECK(pic_bulk_erase(dev, PIC_ERASE_EEPROM) == PIC_OK);
     CHECK(pic_write(dev, PIC_REGION_EEPROM, 0u, data, 3u) == PIC_OK);
     CHECK(pic_verify(dev, PIC_REGION_EEPROM, 0u, data, 3u, &where) == PIC_OK);
-    CHECK(where == 99u);                         /* untouched on success */
+    CHECK(where == 99u); /* untouched on success */
     data[2] = 0x00FFu;
     CHECK(pic_verify(dev, PIC_REGION_EEPROM, 0u, data, 3u, &where) == PIC_ERR_VERIFY);
     CHECK(where == 2u);
@@ -242,8 +242,9 @@ static void test_erase_all_erases_everything_the_device_has(void)
 static void test_strerror_covers_every_status(void)
 {
     static const pic_status_t all[] = {
-        PIC_OK, PIC_ERR_ARG, PIC_ERR_RANGE, PIC_ERR_ALIGN, PIC_ERR_UNSUPPORTED,
-        PIC_ERR_NO_TARGET, PIC_ERR_MISMATCH, PIC_ERR_PROTOCOL, PIC_ERR_VERIFY,
+        PIC_OK,           PIC_ERR_ARG,         PIC_ERR_RANGE,
+        PIC_ERR_ALIGN,    PIC_ERR_UNSUPPORTED, PIC_ERR_NO_TARGET,
+        PIC_ERR_MISMATCH, PIC_ERR_PROTOCOL,    PIC_ERR_VERIFY,
     };
     for (size_t i = 0; i < sizeof all / sizeof all[0]; i++) {
         CHECK(strcmp(pic_strerror(all[i]), "unknown error") != 0);
@@ -259,7 +260,7 @@ static void test_erase_write_verify_flash(void)
     fresh();
     for (uint32_t i = 0; i < 40u; i++) {
         data[i] = (uint16_t)(0x1000u + 7u * i);
-        sim_set_flash_word(128u + i, 0x5A5Au);   /* old, non-blank contents */
+        sim_set_flash_word(128u + i, 0x5A5Au); /* old, non-blank contents */
     }
 
     CHECK(pic_enter(dev) == PIC_OK);
@@ -273,7 +274,7 @@ static void test_erase_write_verify_flash(void)
     for (uint32_t i = 0; i < 40u; i++) {
         CHECK(sim_flash_word(128u + i) == data[i]);
     }
-    CHECK(sim_flash_word(127) == 0xFFFFu);       /* neighbours untouched */
+    CHECK(sim_flash_word(127) == 0xFFFFu); /* neighbours untouched */
     CHECK(sim_flash_word(168) == 0xFFFFu);
     pic_exit(dev);
 
@@ -300,8 +301,8 @@ static void test_programming_only_clears_bits(void)
     fresh();
     CHECK(pic_enter(dev) == PIC_OK);
     CHECK(pic_write(dev, PIC_REGION_FLASH, 0u, &first, 1u) == PIC_OK);
-    CHECK(pic_write(dev, PIC_REGION_FLASH, 0u, &second, 1u) == PIC_OK);   /* no erase in between */
-    CHECK(sim_flash_word(0) == 0x0000u);                                  /* old AND new */
+    CHECK(pic_write(dev, PIC_REGION_FLASH, 0u, &second, 1u) == PIC_OK); /* no erase in between */
+    CHECK(sim_flash_word(0) == 0x0000u);                                /* old AND new */
     CHECK(pic_verify(dev, PIC_REGION_FLASH, 0u, &second, 1u, NULL) == PIC_ERR_VERIFY);
     pic_exit(dev);
 }
@@ -312,23 +313,23 @@ static void test_page_erase_only_affects_one_page(void)
 
     fresh();
     CHECK(pic_enter(dev) == PIC_OK);
-    CHECK(pic_write(dev, PIC_REGION_FLASH, 0u, &v, 1u) == PIC_OK);     /* page 0 */
-    CHECK(pic_write(dev, PIC_REGION_FLASH, 127u, &v, 1u) == PIC_OK);   /* last word of page 0 */
-    CHECK(pic_write(dev, PIC_REGION_FLASH, 128u, &v, 1u) == PIC_OK);   /* page 1 */
-    CHECK(pic_row_erase(dev, PIC_REGION_FLASH, 8u) == PIC_OK);         /* any word inside page 0 */
+    CHECK(pic_write(dev, PIC_REGION_FLASH, 0u, &v, 1u) == PIC_OK);   /* page 0 */
+    CHECK(pic_write(dev, PIC_REGION_FLASH, 127u, &v, 1u) == PIC_OK); /* last word of page 0 */
+    CHECK(pic_write(dev, PIC_REGION_FLASH, 128u, &v, 1u) == PIC_OK); /* page 1 */
+    CHECK(pic_row_erase(dev, PIC_REGION_FLASH, 8u) == PIC_OK);       /* any word inside page 0 */
     CHECK(sim_flash_word(0) == 0xFFFFu);
     CHECK(sim_flash_word(127) == 0xFFFFu);
-    CHECK(sim_flash_word(128) == 0x1234u);                             /* page 1 survives */
+    CHECK(sim_flash_word(128) == 0x1234u); /* page 1 survives */
     pic_exit(dev);
     CHECK(sim_violations() == 0u);
 }
 
 static void test_eeprom_config_and_userid(void)
 {
-    uint16_t ee[5] = { 0x11, 0x22, 0x33, 0x44, 0x55 };
+    uint16_t ee[5] = {0x11, 0x22, 0x33, 0x44, 0x55};
     uint16_t ee_back[5];
     uint16_t cfg = 0xA7u;
-    uint16_t id[4] = { 0xBEEFu, 0xCAFEu, 0x0123u, 0x4567u };
+    uint16_t id[4] = {0xBEEFu, 0xCAFEu, 0x0123u, 0x4567u};
 
     fresh();
     CHECK(pic_enter(dev) == PIC_OK);
@@ -360,24 +361,28 @@ static void test_eeprom_config_and_userid(void)
 
 static void test_bad_arguments_send_nothing(void)
 {
-    uint16_t many[33] = { 0 };
+    uint16_t many[33] = {0};
     uint64_t t0;
 
     fresh();
     CHECK(pic_enter(dev) == PIC_OK);
     t0 = sim_time_us();
 
-    CHECK(pic_write(dev, PIC_REGION_FLASH, dev->flash_words, many, 1u) == PIC_ERR_RANGE);   /* past this device's flash */
-    CHECK(pic_write(dev, PIC_REGION_USERID, 0u, many, 33u) == PIC_ERR_RANGE);               /* runs past User ID */
-    CHECK(pic_write(dev, PIC_REGION_CONFIG, dev->config_count, many, 1u) == PIC_ERR_RANGE); /* past the config bytes */
+    CHECK(pic_write(dev, PIC_REGION_FLASH, dev->flash_words, many, 1u) ==
+          PIC_ERR_RANGE); /* past this device's flash */
+    CHECK(pic_write(dev, PIC_REGION_USERID, 0u, many, 33u) ==
+          PIC_ERR_RANGE); /* runs past User ID */
+    CHECK(pic_write(dev, PIC_REGION_CONFIG, dev->config_count, many, 1u) ==
+          PIC_ERR_RANGE); /* past the config bytes */
     CHECK(pic_write(dev, PIC_REGION_EEPROM, dev->eeprom_bytes - 1u, many, 2u) == PIC_ERR_RANGE);
     CHECK(pic_read(dev, PIC_REGION_FLASH, dev->flash_words - 1u, many, 2u) == PIC_ERR_RANGE);
-    CHECK(pic_row_erase(dev, PIC_REGION_EEPROM, 0u) == PIC_ERR_UNSUPPORTED);                      /* page erase: flash/ID only */
+    CHECK(pic_row_erase(dev, PIC_REGION_EEPROM, 0u) ==
+          PIC_ERR_UNSUPPORTED); /* page erase: flash/ID only */
     CHECK(pic_row_erase(dev, PIC_REGION_CONFIG, 0u) == PIC_ERR_UNSUPPORTED);
     CHECK(pic_bulk_erase(dev, 0u) == PIC_ERR_ARG);
-    CHECK(pic_bulk_erase(dev, 0x10u) == PIC_ERR_ARG);                                     /* unknown region bit */
+    CHECK(pic_bulk_erase(dev, 0x10u) == PIC_ERR_ARG); /* unknown region bit */
 
-    CHECK(sim_time_us() == t0);                  /* none of that touched the wires */
+    CHECK(sim_time_us() == t0); /* none of that touched the wires */
     pic_exit(dev);
 }
 
@@ -387,7 +392,7 @@ static void test_exit_releases_target(void)
     CHECK(pic_enter(dev) == PIC_OK);
     pic_exit(dev);
     CHECK(!sim_in_program_mode());
-    CHECK(pic_enter(dev) == PIC_OK);                              /* can be entered again */
+    CHECK(pic_enter(dev) == PIC_OK); /* can be entered again */
     CHECK(read_id() == dev->device_id);
     pic_exit(dev);
 }

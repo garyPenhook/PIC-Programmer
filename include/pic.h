@@ -76,21 +76,21 @@ typedef struct {
     const char *name;
     const pic_proto_t *proto;
     uint16_t device_id;
-    uint16_t erase_words;     /* ERSIZ: flash words per row or page erase */
-    uint16_t latch_words;     /* WLSIZ: write latches per row; 0 = one word at a time */
+    uint16_t erase_words; /* ERSIZ: flash words per row or page erase */
+    uint16_t latch_words; /* WLSIZ: write latches per row; 0 = one word at a time */
     uint16_t userid_words;
-    uint16_t config_count;    /* Configuration Words (PIC16) or bytes (PIC18) */
-    uint16_t eeprom_bytes;    /* 0 = no EEPROM */
+    uint16_t config_count; /* Configuration Words (PIC16) or bytes (PIC18) */
+    uint16_t eeprom_bytes; /* 0 = no EEPROM */
     uint32_t flash_words;
 } pic_device_t;
 
 /* Device Configuration Information, as read from the part itself. */
 typedef struct {
-    uint16_t erase_words;     /* ERSIZ */
-    uint16_t latch_words;     /* WLSIZ */
-    uint16_t user_rows;       /* URSIZ: flash = user_rows * erase_words */
-    uint16_t eeprom_bytes;    /* EESIZ */
-    uint16_t pin_count;       /* PCNT */
+    uint16_t erase_words;  /* ERSIZ */
+    uint16_t latch_words;  /* WLSIZ */
+    uint16_t user_rows;    /* URSIZ: flash = user_rows * erase_words */
+    uint16_t eeprom_bytes; /* EESIZ */
+    uint16_t pin_count;    /* PCNT */
 } pic_dci_t;
 
 extern const pic_device_t pic_devices[];
@@ -145,8 +145,8 @@ pic_status_t pic_read_dci(const pic_device_t *dev, pic_dci_t *dci);
  * beyond dev and region. After PIC_ERR_PROTOCOL from pic_read, buf is partly filled and
  * must be discarded.
  */
-pic_status_t pic_read(const pic_device_t *dev, pic_region_t region, uint32_t offset,
-                      uint16_t *buf, size_t count);
+pic_status_t pic_read(const pic_device_t *dev, pic_region_t region, uint32_t offset, uint16_t *buf,
+                      size_t count);
 pic_status_t pic_write(const pic_device_t *dev, pic_region_t region, uint32_t offset,
                        const uint16_t *buf, size_t count);
 

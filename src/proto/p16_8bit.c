@@ -21,11 +21,11 @@
 #define CMD_LOAD_PC        0x80u
 #define CMD_BULK_ERASE     0x18u
 #define CMD_ROW_ERASE      0xF0u
-#define CMD_LOAD_DATA      0x00u    /* PC unchanged */
-#define CMD_LOAD_DATA_INC  0x02u    /* PC advances */
-#define CMD_READ           0xFCu    /* PC unchanged */
-#define CMD_READ_INC       0xFEu    /* PC advances */
-#define CMD_BEGIN_INTERNAL 0xE0u    /* commit the latched data, self-timed */
+#define CMD_LOAD_DATA      0x00u /* PC unchanged */
+#define CMD_LOAD_DATA_INC  0x02u /* PC advances */
+#define CMD_READ           0xFCu /* PC unchanged */
+#define CMD_READ_INC       0xFEu /* PC advances */
+#define CMD_BEGIN_INTERNAL 0xE0u /* commit the latched data, self-timed */
 
 /* Word addresses (spec Table 2-1). */
 #define ADDR_FLASH  0x0000u
@@ -56,8 +56,8 @@
 #define T_PROG_OTHER_US 6000u
 #define T_BULK_ERASE_US 9000u
 
-#define WORD_MASK   0x3FFFu
-#define BLANK_WORD  0x3FFFu         /* an erased 14-bit word */
+#define WORD_MASK  0x3FFFu
+#define BLANK_WORD 0x3FFFu /* an erased 14-bit word */
 
 /* Payload data fields: 16 bits for Load PC (Figure 3-6), 14 for Load Data to flash,
  * config and User ID (Figure 3-9), 8 for EEPROM (Figure 3-10), 4 for Bulk Erase (3-7). */
@@ -95,10 +95,14 @@ static void begin_program(uint32_t wait_us)
 static uint16_t base_of(pic_region_t region)
 {
     switch (region) {
-    case PIC_REGION_USERID: return ADDR_USERID;
-    case PIC_REGION_CONFIG: return ADDR_CONFIG;
-    case PIC_REGION_EEPROM: return ADDR_EEPROM;
-    default:                return ADDR_FLASH;
+    case PIC_REGION_USERID:
+        return ADDR_USERID;
+    case PIC_REGION_CONFIG:
+        return ADDR_CONFIG;
+    case PIC_REGION_EEPROM:
+        return ADDR_EEPROM;
+    default:
+        return ADDR_FLASH;
     }
 }
 
@@ -108,8 +112,14 @@ static uint16_t mask_of(pic_region_t region)
     return region == PIC_REGION_EEPROM ? 0xFFu : WORD_MASK;
 }
 
-static void p16_enter(void) { icsp8_enter(T_ENTH_US); }
-static void p16_exit(void) { icsp8_exit(); }
+static void p16_enter(void)
+{
+    icsp8_enter(T_ENTH_US);
+}
+static void p16_exit(void)
+{
+    icsp8_exit();
+}
 
 static pic_status_t p16_read_device_id(uint16_t *id)
 {
@@ -177,8 +187,8 @@ static pic_status_t p16_write(const pic_device_t *dev, pic_region_t region, uint
             load_pc((uint16_t)(offset + done));
             for (uint32_t i = 0; i < row; i++) {
                 /* Past the end of the data, load a blank word: programming 1s changes nothing. */
-                uint16_t w = (done + i < count) ? (uint16_t)(buf[done + i] & WORD_MASK)
-                                                : BLANK_WORD;
+                uint16_t w =
+                    (done + i < count) ? (uint16_t)(buf[done + i] & WORD_MASK) : BLANK_WORD;
                 /* Advance the PC after every latch EXCEPT the last, so that it still points
                  * inside this row when the commit command arrives (the row is chosen by the
                  * PC at that moment). */
@@ -223,7 +233,7 @@ static pic_status_t p16_row_erase(const pic_device_t *dev, pic_region_t region, 
     if (region != PIC_REGION_FLASH && region != PIC_REGION_USERID) {
         return PIC_ERR_UNSUPPORTED;
     }
-    load_pc((uint16_t)(base_of(region) + offset));   /* the low bits of the address are ignored */
+    load_pc((uint16_t)(base_of(region) + offset)); /* the low bits of the address are ignored */
     icsp8_command(CMD_ROW_ERASE);
     icsp_delay_us(T_ROW_ERASE_US);
     return PIC_OK;

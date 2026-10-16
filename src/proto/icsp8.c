@@ -36,7 +36,7 @@ void icsp8_enter(uint32_t hold_us)
     icsp_set_mclr(0u);
     icsp_delay_us(hold_us);
 
-    send_bits(LVP_KEY, 32u);               /* MSb first */
+    send_bits(LVP_KEY, 32u); /* MSb first */
     icsp_delay_us(hold_us);
 }
 
@@ -44,7 +44,7 @@ void icsp8_exit(void)
 {
     icsp_set_clk(0u);
     icsp_release_dat();
-    icsp_set_mclr(1u);                     /* raise MCLR: the target leaves programming mode */
+    icsp_set_mclr(1u); /* raise MCLR: the target leaves programming mode */
     icsp_delay_us(T_EXIT_US);
 }
 
@@ -56,7 +56,7 @@ void icsp8_command(uint8_t cmd)
 
 void icsp8_payload(uint32_t value)
 {
-    send_bits(value << 1, PAYLOAD_BITS);   /* value sits between the start and stop bit */
+    send_bits(value << 1, PAYLOAD_BITS); /* value sits between the start and stop bit */
     icsp_delay_us(T_DLY_US);
 }
 
@@ -84,6 +84,6 @@ pic_status_t icsp8_read(uint8_t cmd, uint32_t *value)
     if ((raw & ((1u << (PAYLOAD_BITS - 1u)) | 1u)) != 0u) {
         return PIC_ERR_PROTOCOL;
     }
-    *value = raw >> 1;                     /* drop the stop bit (the start bit is 0) */
+    *value = raw >> 1; /* drop the stop bit (the start bit is 0) */
     return PIC_OK;
 }

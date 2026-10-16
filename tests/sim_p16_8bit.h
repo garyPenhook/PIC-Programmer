@@ -20,12 +20,13 @@
 
 void sim_select_device(uint16_t device_id);
 void sim_reset(void);
-void sim_set_lvp(int enabled);              /* 0 = device ignores the low-voltage key */
-void sim_set_dat_stuck_high(int enabled);   /* 1 = released ICSPDAT reads high, whatever the device sends */
+void sim_set_lvp(int enabled); /* 0 = device ignores the low-voltage key */
+void sim_set_dat_stuck_high(
+    int enabled); /* 1 = released ICSPDAT reads high, whatever the device sends */
 
 int sim_in_program_mode(void);
-uint32_t sim_violations(void);              /* waits that were too short, or bus contention */
-uint32_t sim_bad_commands(void);            /* command bytes the model does not know */
+uint32_t sim_violations(void);   /* waits that were too short, or bus contention */
+uint32_t sim_bad_commands(void); /* command bytes the model does not know */
 uint64_t sim_time_us(void);
 
 uint16_t sim_flash_word(uint32_t index);

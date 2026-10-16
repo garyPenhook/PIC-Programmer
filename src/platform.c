@@ -10,38 +10,38 @@
  */
 
 /* RCC (base 0x40021000) and GPIOA (base 0x50000000). */
-#define RCC_IOPENR  (*(volatile uint32_t *)0x40021034u)  /* I/O port clock enable */
-#define GPIOA_MODER (*(volatile uint32_t *)0x50000000u)  /* pin mode, 2 bits per pin */
-#define GPIOA_ODR   (*(volatile uint32_t *)0x50000014u)  /* output data, 1 bit per pin */
-#define GPIOA_BSRR  (*(volatile uint32_t *)0x50000018u)  /* atomic set (15:0) / reset (31:16) */
+#define RCC_IOPENR  (*(volatile uint32_t *)0x40021034u) /* I/O port clock enable */
+#define GPIOA_MODER (*(volatile uint32_t *)0x50000000u) /* pin mode, 2 bits per pin */
+#define GPIOA_ODR   (*(volatile uint32_t *)0x50000014u) /* output data, 1 bit per pin */
+#define GPIOA_BSRR  (*(volatile uint32_t *)0x50000018u) /* atomic set (15:0) / reset (31:16) */
 
 /* TIM16 (base 0x40014400), its clock enable in RCC, and the NVIC enable register. */
-#define RCC_APBENR2     (*(volatile uint32_t *)0x40021040u)  /* APB peripheral clock enable 2 */
-#define TIM16_CR1       (*(volatile uint32_t *)0x40014400u)  /* control 1: counter enable */
-#define TIM16_DIER      (*(volatile uint32_t *)0x4001440Cu)  /* interrupt enable */
-#define TIM16_SR        (*(volatile uint32_t *)0x40014410u)  /* status / interrupt flags */
-#define TIM16_EGR       (*(volatile uint32_t *)0x40014414u)  /* event generation */
-#define TIM16_PSC       (*(volatile uint32_t *)0x40014428u)  /* prescaler */
-#define TIM16_ARR       (*(volatile uint32_t *)0x4001442Cu)  /* auto-reload (period) */
-#define NVIC_ISER       (*(volatile uint32_t *)0xE000E100u)  /* interrupt set-enable */
+#define RCC_APBENR2 (*(volatile uint32_t *)0x40021040u) /* APB peripheral clock enable 2 */
+#define TIM16_CR1   (*(volatile uint32_t *)0x40014400u) /* control 1: counter enable */
+#define TIM16_DIER  (*(volatile uint32_t *)0x4001440Cu) /* interrupt enable */
+#define TIM16_SR    (*(volatile uint32_t *)0x40014410u) /* status / interrupt flags */
+#define TIM16_EGR   (*(volatile uint32_t *)0x40014414u) /* event generation */
+#define TIM16_PSC   (*(volatile uint32_t *)0x40014428u) /* prescaler */
+#define TIM16_ARR   (*(volatile uint32_t *)0x4001442Cu) /* auto-reload (period) */
+#define NVIC_ISER   (*(volatile uint32_t *)0xE000E100u) /* interrupt set-enable */
 
 /* Bit definitions. */
-#define RCC_IOPENR_GPIOAEN  (1u << 0)    /* enable the GPIOA peripheral clock */
-#define RCC_APBENR2_TIM16EN (1u << 17)   /* enable the TIM16 peripheral clock */
-#define TIM_CR1_CEN         (1u << 0)    /* counter enable */
-#define TIM_DIER_UIE        (1u << 0)    /* update interrupt enable */
-#define TIM_SR_UIF          (1u << 0)    /* update interrupt flag */
-#define TIM_EGR_UG          (1u << 0)    /* update generation: force an update event */
+#define RCC_IOPENR_GPIOAEN  (1u << 0)  /* enable the GPIOA peripheral clock */
+#define RCC_APBENR2_TIM16EN (1u << 17) /* enable the TIM16 peripheral clock */
+#define TIM_CR1_CEN         (1u << 0)  /* counter enable */
+#define TIM_DIER_UIE        (1u << 0)  /* update interrupt enable */
+#define TIM_SR_UIF          (1u << 0)  /* update interrupt flag */
+#define TIM_EGR_UG          (1u << 0)  /* update generation: force an update event */
 
 /*
  * TIM16 shares one interrupt line with FDCAN_IT0: IRQ position 21, vector table
  * address 0x94. NVIC_ISER bit n enables IRQ n. FDCAN is not used here, so the
  * handler only has to deal with the timer.
  */
-#define TIM16_IRQ           21u
+#define TIM16_IRQ 21u
 
-#define LED_PIN 5u                       /* LD4 user LED on PA5 (Arduino D13), active high */
-#define LED_TOGGLE_MS 1000u              /* the LED changes state every 1 s */
+#define LED_PIN       5u    /* LD4 user LED on PA5 (Arduino D13), active high */
+#define LED_TOGGLE_MS 1000u /* the LED changes state every 1 s */
 
 /*
  * Bring up the board: clock, LED pin, and the timer interrupt that drives the LED.

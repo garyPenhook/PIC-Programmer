@@ -18,13 +18,13 @@
 
 /* Command bytes (spec Table 3-1). Both bit 1 (reads) and bit 5 (programs) are the "J"
  * flag: 1 means the program counter advances after the operation. */
-#define CMD_LOAD_PC      0x80u
-#define CMD_BULK_ERASE   0x18u
-#define CMD_PAGE_ERASE   0xF0u
-#define CMD_READ         0xFCu    /* PC unchanged */
-#define CMD_READ_INC     0xFEu    /* PC advances */
-#define CMD_PROGRAM      0xC0u    /* PC unchanged */
-#define CMD_PROGRAM_INC  0xE0u    /* PC advances */
+#define CMD_LOAD_PC     0x80u
+#define CMD_BULK_ERASE  0x18u
+#define CMD_PAGE_ERASE  0xF0u
+#define CMD_READ        0xFCu /* PC unchanged */
+#define CMD_READ_INC    0xFEu /* PC advances */
+#define CMD_PROGRAM     0xC0u /* PC unchanged */
+#define CMD_PROGRAM_INC 0xE0u /* PC advances */
 
 /* Byte addresses (Q41 data sheet memory map). */
 #define ADDR_FLASH  0x000000u
@@ -53,7 +53,7 @@
 static void load_pc(uint32_t addr)
 {
     icsp8_command(CMD_LOAD_PC);
-    icsp8_payload(addr & 0x3FFFFFu);       /* addresses are 22 bits */
+    icsp8_payload(addr & 0x3FFFFFu); /* addresses are 22 bits */
 }
 
 /* Program one item at the current PC, then wait for the write to finish. */
@@ -73,10 +73,14 @@ static int is_word_region(pic_region_t region)
 static uint32_t address_of(pic_region_t region, uint32_t offset)
 {
     switch (region) {
-    case PIC_REGION_USERID: return ADDR_USERID + 2u * offset;
-    case PIC_REGION_CONFIG: return ADDR_CONFIG + offset;
-    case PIC_REGION_EEPROM: return ADDR_EEPROM + offset;
-    default:                return ADDR_FLASH + 2u * offset;
+    case PIC_REGION_USERID:
+        return ADDR_USERID + 2u * offset;
+    case PIC_REGION_CONFIG:
+        return ADDR_CONFIG + offset;
+    case PIC_REGION_EEPROM:
+        return ADDR_EEPROM + offset;
+    default:
+        return ADDR_FLASH + 2u * offset;
     }
 }
 
@@ -85,8 +89,14 @@ static uint16_t mask_of(pic_region_t region)
     return is_word_region(region) ? 0xFFFFu : 0xFFu;
 }
 
-static void p18_enter(void) { icsp8_enter(T_ENTH_US); }
-static void p18_exit(void) { icsp8_exit(); }
+static void p18_enter(void)
+{
+    icsp8_enter(T_ENTH_US);
+}
+static void p18_exit(void)
+{
+    icsp8_exit();
+}
 
 /* Read one item into *out. `cmd` is CMD_READ or CMD_READ_INC. */
 static pic_status_t read_item(uint8_t cmd, uint16_t mask, uint16_t *out)
@@ -177,10 +187,10 @@ static pic_status_t p18_bulk_erase(const pic_device_t *dev, uint8_t regions)
 static pic_status_t p18_row_erase(const pic_device_t *dev, pic_region_t region, uint32_t offset)
 {
     (void)dev;
-    if (!is_word_region(region)) {         /* spec 3.1.3.6: program memory and User ID only */
+    if (!is_word_region(region)) { /* spec 3.1.3.6: program memory and User ID only */
         return PIC_ERR_UNSUPPORTED;
     }
-    load_pc(address_of(region, offset));   /* the low bits of the address are ignored */
+    load_pc(address_of(region, offset)); /* the low bits of the address are ignored */
     icsp8_command(CMD_PAGE_ERASE);
     icsp_delay_us(T_ERASE_US);
     return PIC_OK;

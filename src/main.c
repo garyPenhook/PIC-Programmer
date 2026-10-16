@@ -13,7 +13,7 @@
 volatile uint16_t g_pic_device_id;
 volatile uint16_t g_pic_revision_id;
 const pic_device_t *volatile g_pic_device;
-volatile int g_pic_status;        /* pic_status_t of the probe: 0 = found, else PIC_ERR_* */
+volatile int g_pic_status; /* pic_status_t of the probe: 0 = found, else PIC_ERR_* */
 
 static void probe_target(void)
 {
@@ -34,7 +34,7 @@ static void probe_target(void)
  */
 int main(void)
 {
-    platform_init();          /* clock, LED pin and the TIM16 interrupt that blinks it */
+    platform_init(); /* clock, LED pin and the TIM16 interrupt that blinks it */
     platform_watchdog_init();
 
     /*

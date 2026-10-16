@@ -4,31 +4,31 @@
  * Register addresses (RM0444). RCC base is 0x40021000, FLASH interface base is
  * 0x40022000.
  */
-#define RCC_CR       (*(volatile uint32_t *)0x40021000u)  /* clock control */
-#define RCC_CFGR     (*(volatile uint32_t *)0x40021008u)  /* clock configuration */
-#define RCC_PLLCFGR  (*(volatile uint32_t *)0x4002100Cu)  /* PLL configuration */
-#define FLASH_ACR    (*(volatile uint32_t *)0x40022000u)  /* flash access control */
+#define RCC_CR      (*(volatile uint32_t *)0x40021000u) /* clock control */
+#define RCC_CFGR    (*(volatile uint32_t *)0x40021008u) /* clock configuration */
+#define RCC_PLLCFGR (*(volatile uint32_t *)0x4002100Cu) /* PLL configuration */
+#define FLASH_ACR   (*(volatile uint32_t *)0x40022000u) /* flash access control */
 
 /* RCC_CR: HSIDIV divides HSI16 to make HSISYS (000 = /1). PLLON starts the PLL. */
-#define RCC_CR_HSIDIV_MASK  (7u << 11)
-#define RCC_CR_PLLON        (1u << 24)   /* PLL enable */
-#define RCC_CR_PLLRDY       (1u << 25)   /* PLL locked (set by hardware) */
+#define RCC_CR_HSIDIV_MASK (7u << 11)
+#define RCC_CR_PLLON       (1u << 24) /* PLL enable */
+#define RCC_CR_PLLRDY      (1u << 25) /* PLL locked (set by hardware) */
 
 /*
  * RCC_PLLCFGR. Output frequencies: fVCO = fIN x N / M, fPLLR = fVCO / R.
  * Fields can only be written while the PLL is off (it is off after reset).
  */
-#define PLLCFGR_PLLSRC_HSI16 (2u << 0)   /* PLLSRC 10 = HSI16 as the PLL input */
-#define PLLCFGR_PLLM_DIV1    (0u << 4)   /* PLLM 000 = /1 */
-#define PLLCFGR_PLLN_8       (8u << 8)   /* PLLN = 8: VCO = 16 MHz x 8 = 128 MHz */
-#define PLLCFGR_PLLREN       (1u << 28)  /* enable the PLLRCLK output */
-#define PLLCFGR_PLLR_DIV2    (1u << 29)  /* PLLR 001 = /2: 128 MHz / 2 = 64 MHz */
+#define PLLCFGR_PLLSRC_HSI16 (2u << 0)  /* PLLSRC 10 = HSI16 as the PLL input */
+#define PLLCFGR_PLLM_DIV1    (0u << 4)  /* PLLM 000 = /1 */
+#define PLLCFGR_PLLN_8       (8u << 8)  /* PLLN = 8: VCO = 16 MHz x 8 = 128 MHz */
+#define PLLCFGR_PLLREN       (1u << 28) /* enable the PLLRCLK output */
+#define PLLCFGR_PLLR_DIV2    (1u << 29) /* PLLR 001 = /2: 128 MHz / 2 = 64 MHz */
 
 /* RCC_CFGR: SW selects the system clock source, SWS reports the one in use. */
 #define RCC_CFGR_SW_MASK     (7u << 0)
-#define RCC_CFGR_SW_PLLRCLK  (2u << 0)   /* SW 010 = PLLRCLK */
+#define RCC_CFGR_SW_PLLRCLK  (2u << 0) /* SW 010 = PLLRCLK */
 #define RCC_CFGR_SWS_MASK    (7u << 3)
-#define RCC_CFGR_SWS_PLLRCLK (2u << 3)   /* SWS 010 = PLLRCLK is the system clock */
+#define RCC_CFGR_SWS_PLLRCLK (2u << 3) /* SWS 010 = PLLRCLK is the system clock */
 
 /* FLASH_ACR: LATENCY is the number of flash wait states; PRFTEN enables prefetch. */
 #define FLASH_ACR_LATENCY_MASK (7u << 0)
@@ -75,8 +75,8 @@ void clock_init(void)
      * PLLCFGR is written whole: source HSI16, /1, x8, R = /2 enabled. The PLL is off
      * here, so the fields are writable.
      */
-    RCC_PLLCFGR = PLLCFGR_PLLSRC_HSI16 | PLLCFGR_PLLM_DIV1 | PLLCFGR_PLLN_8 |
-                  PLLCFGR_PLLREN | PLLCFGR_PLLR_DIV2;
+    RCC_PLLCFGR = PLLCFGR_PLLSRC_HSI16 | PLLCFGR_PLLM_DIV1 | PLLCFGR_PLLN_8 | PLLCFGR_PLLREN |
+                  PLLCFGR_PLLR_DIV2;
     RCC_CR |= RCC_CR_PLLON;
     if (!wait_for(&RCC_CR, RCC_CR_PLLRDY, RCC_CR_PLLRDY)) {
         /* PLL did not lock: stay on HSI16 (16 MHz) so the rest of the code still works. */

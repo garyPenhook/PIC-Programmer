@@ -8,7 +8,7 @@
 #define MAX_EEPROM      256u
 #define ROW_WORDS       32u
 #define BLANK           0x3FFFu
-#define REVISION_ID     0x2000u        /* reserved bits 13:12 = 10, revision fields 0 */
+#define REVISION_ID     0x2000u /* reserved bits 13:12 = 10, revision fields 0 */
 
 #define KEY 0x4D434850u
 
@@ -24,7 +24,7 @@
 /* LVP is on by default (the factory state). It lives outside the device state so that
  * sim_reset() does not change it. */
 static int g_lvp = 1;
-static int g_dat_high;          /* 1 = ICSPDAT reads high whatever the device sends (fault) */
+static int g_dat_high; /* 1 = ICSPDAT reads high whatever the device sends (fault) */
 static uint16_t g_device_id = 0x30E1u;
 
 typedef enum { ST_IDLE, ST_KEY, ST_CMD, ST_PAYLOAD_IN, ST_PAYLOAD_OUT } state_t;
@@ -52,7 +52,10 @@ static struct {
     uint16_t latch[ROW_WORDS];
 } s;
 
-void sim_select_device(uint16_t device_id) { g_device_id = device_id; }
+void sim_select_device(uint16_t device_id)
+{
+    g_device_id = device_id;
+}
 
 /*
  * Geometry by device ID, written out from the spec independently of the device table so
@@ -61,12 +64,26 @@ void sim_select_device(uint16_t device_id) { g_device_id = device_id; }
 static void geometry(uint32_t *user_rows, uint32_t *eeprom_bytes)
 {
     switch (g_device_id) {
-    case 0x30DBu: case 0x30DCu: case 0x30DDu: case 0x3101u: case 0x3102u:   /* x14 x24 x44 x54 x74 */
-        *user_rows = 128u; *eeprom_bytes = 128u; break;
-    case 0x30E2u: case 0x30DEu: case 0x30DFu: case 0x3103u: case 0x3104u:   /* x15 x25 x45 x55 x75 */
-        *user_rows = 256u; *eeprom_bytes = 128u; break;
-    default:                                                                /* x26 x46 x56 x76 */
-        *user_rows = 512u; *eeprom_bytes = 256u; break;
+    case 0x30DBu:
+    case 0x30DCu:
+    case 0x30DDu:
+    case 0x3101u:
+    case 0x3102u: /* x14 x24 x44 x54 x74 */
+        *user_rows = 128u;
+        *eeprom_bytes = 128u;
+        break;
+    case 0x30E2u:
+    case 0x30DEu:
+    case 0x30DFu:
+    case 0x3103u:
+    case 0x3104u: /* x15 x25 x45 x55 x75 */
+        *user_rows = 256u;
+        *eeprom_bytes = 128u;
+        break;
+    default: /* x26 x46 x56 x76 */
+        *user_rows = 512u;
+        *eeprom_bytes = 256u;
+        break;
     }
 }
 
@@ -78,24 +95,61 @@ void sim_reset(void)
     geometry(&s.user_rows, &s.eeprom_bytes);
     s.flash_words = s.user_rows * ROW_WORDS;
 
-    for (size_t i = 0; i < MAX_FLASH_WORDS; i++) s.flash[i] = BLANK;
-    for (size_t i = 0; i < 4; i++) s.userid[i] = BLANK;
-    for (size_t i = 0; i < 5; i++) s.config[i] = BLANK;
+    for (size_t i = 0; i < MAX_FLASH_WORDS; i++)
+        s.flash[i] = BLANK;
+    for (size_t i = 0; i < 4; i++)
+        s.userid[i] = BLANK;
+    for (size_t i = 0; i < 5; i++)
+        s.config[i] = BLANK;
     memset(s.eeprom, 0xFF, sizeof s.eeprom);
-    for (size_t i = 0; i < ROW_WORDS; i++) s.latch[i] = BLANK;
+    for (size_t i = 0; i < ROW_WORDS; i++)
+        s.latch[i] = BLANK;
 }
 
-void sim_set_lvp(int enabled) { g_lvp = enabled; }
-void sim_set_dat_stuck_high(int enabled) { g_dat_high = enabled; }
-int sim_in_program_mode(void) { return s.state >= ST_CMD; }
-uint32_t sim_violations(void) { return s.violations; }
-uint32_t sim_bad_commands(void) { return s.bad_commands; }
-uint64_t sim_time_us(void) { return s.now; }
-uint16_t sim_flash_word(uint32_t i) { return s.flash[i]; }
-void sim_set_flash_word(uint32_t i, uint16_t v) { s.flash[i] = v; }
-uint16_t sim_userid_word(uint32_t i) { return s.userid[i]; }
-uint16_t sim_config_word(uint32_t i) { return s.config[i]; }
-uint8_t sim_eeprom_byte(uint32_t i) { return s.eeprom[i]; }
+void sim_set_lvp(int enabled)
+{
+    g_lvp = enabled;
+}
+void sim_set_dat_stuck_high(int enabled)
+{
+    g_dat_high = enabled;
+}
+int sim_in_program_mode(void)
+{
+    return s.state >= ST_CMD;
+}
+uint32_t sim_violations(void)
+{
+    return s.violations;
+}
+uint32_t sim_bad_commands(void)
+{
+    return s.bad_commands;
+}
+uint64_t sim_time_us(void)
+{
+    return s.now;
+}
+uint16_t sim_flash_word(uint32_t i)
+{
+    return s.flash[i];
+}
+void sim_set_flash_word(uint32_t i, uint16_t v)
+{
+    s.flash[i] = v;
+}
+uint16_t sim_userid_word(uint32_t i)
+{
+    return s.userid[i];
+}
+uint16_t sim_config_word(uint32_t i)
+{
+    return s.config[i];
+}
+uint8_t sim_eeprom_byte(uint32_t i)
+{
+    return s.eeprom[i];
+}
 
 static void require_wait(uint32_t us)
 {
@@ -107,19 +161,31 @@ static void require_wait(uint32_t us)
 
 static uint32_t mem_read(uint32_t pc)
 {
-    if (pc < s.flash_words) return s.flash[pc];
-    if (pc >= 0x8000u && pc < 0x8004u) return s.userid[pc - 0x8000u];
-    if (pc == 0x8005u) return REVISION_ID;
-    if (pc == 0x8006u) return g_device_id;
-    if (pc >= 0x8007u && pc < 0x800Cu) return s.config[pc - 0x8007u];
-    if (pc >= 0xF000u && pc < 0xF000u + s.eeprom_bytes) return s.eeprom[pc - 0xF000u];
-    switch (pc) {                                   /* Device Configuration Information */
-    case 0x8200u: return ROW_WORDS;                 /* ERSIZ */
-    case 0x8201u: return ROW_WORDS;                 /* WLSIZ */
-    case 0x8202u: return s.user_rows;               /* URSIZ */
-    case 0x8203u: return s.eeprom_bytes;            /* EESIZ */
-    case 0x8204u: return 20u;                       /* PCNT */
-    default:      return 0u;                        /* not present reads as 0 */
+    if (pc < s.flash_words)
+        return s.flash[pc];
+    if (pc >= 0x8000u && pc < 0x8004u)
+        return s.userid[pc - 0x8000u];
+    if (pc == 0x8005u)
+        return REVISION_ID;
+    if (pc == 0x8006u)
+        return g_device_id;
+    if (pc >= 0x8007u && pc < 0x800Cu)
+        return s.config[pc - 0x8007u];
+    if (pc >= 0xF000u && pc < 0xF000u + s.eeprom_bytes)
+        return s.eeprom[pc - 0xF000u];
+    switch (pc) { /* Device Configuration Information */
+    case 0x8200u:
+        return ROW_WORDS; /* ERSIZ */
+    case 0x8201u:
+        return ROW_WORDS; /* WLSIZ */
+    case 0x8202u:
+        return s.user_rows; /* URSIZ */
+    case 0x8203u:
+        return s.eeprom_bytes; /* EESIZ */
+    case 0x8204u:
+        return 20u; /* PCNT */
+    default:
+        return 0u; /* not present reads as 0 */
     }
 }
 
@@ -131,7 +197,8 @@ static void do_begin_program(void)
 
     if (pc < s.flash_words) {
         uint32_t row = pc & ~(ROW_WORDS - 1u);
-        for (uint32_t i = 0; i < ROW_WORDS; i++) s.flash[row + i] &= s.latch[i];
+        for (uint32_t i = 0; i < ROW_WORDS; i++)
+            s.flash[row + i] &= s.latch[i];
     } else if (pc >= 0x8000u && pc < 0x8004u) {
         s.userid[pc - 0x8000u] &= s.latch[pc & (ROW_WORDS - 1u)];
     } else if (pc >= 0x8007u && pc < 0x800Cu) {
@@ -140,25 +207,35 @@ static void do_begin_program(void)
     } else if (pc >= 0xF000u && pc < 0xF000u + s.eeprom_bytes) {
         s.eeprom[pc - 0xF000u] &= (uint8_t)s.latch[pc & (ROW_WORDS - 1u)];
     }
-    for (uint32_t i = 0; i < ROW_WORDS; i++) s.latch[i] = BLANK;   /* latches reset to 1s */
+    for (uint32_t i = 0; i < ROW_WORDS; i++)
+        s.latch[i] = BLANK; /* latches reset to 1s */
     require_wait(wait);
 }
 
 static void do_bulk_erase(uint32_t regions)
 {
-    if (regions & 1u) memset(s.eeprom, 0xFF, sizeof s.eeprom);
-    if (regions & 2u) for (size_t i = 0; i < MAX_FLASH_WORDS; i++) s.flash[i] = BLANK;
-    if (regions & 4u) for (size_t i = 0; i < 4; i++) s.userid[i] = BLANK;
-    if (regions & 8u) for (size_t i = 0; i < 5; i++) s.config[i] = BLANK;
+    if (regions & 1u)
+        memset(s.eeprom, 0xFF, sizeof s.eeprom);
+    if (regions & 2u)
+        for (size_t i = 0; i < MAX_FLASH_WORDS; i++)
+            s.flash[i] = BLANK;
+    if (regions & 4u)
+        for (size_t i = 0; i < 4; i++)
+            s.userid[i] = BLANK;
+    if (regions & 8u)
+        for (size_t i = 0; i < 5; i++)
+            s.config[i] = BLANK;
 }
 
 static void do_row_erase(uint32_t pc)
 {
-    if (pc >= 0x8000u && pc <= 0x8004u) {            /* spec 3.2.3: only the User IDs */
-        for (size_t i = 0; i < 4; i++) s.userid[i] = BLANK;
+    if (pc >= 0x8000u && pc <= 0x8004u) { /* spec 3.2.3: only the User IDs */
+        for (size_t i = 0; i < 4; i++)
+            s.userid[i] = BLANK;
     } else if (pc < s.flash_words) {
         uint32_t row = pc & ~(ROW_WORDS - 1u);
-        for (uint32_t i = 0; i < ROW_WORDS; i++) s.flash[row + i] = BLANK;
+        for (uint32_t i = 0; i < ROW_WORDS; i++)
+            s.flash[row + i] = BLANK;
     }
 }
 
@@ -168,16 +245,19 @@ static void finish_payload_in(void)
 {
     switch (s.op) {
     case OP_LOAD_PC:
-        s.pc = (s.payload >> 1) & 0xFFFFu;           /* 16-bit address between start and stop */
+        s.pc = (s.payload >> 1) & 0xFFFFu; /* 16-bit address between start and stop */
         break;
     case OP_BULK:
         do_bulk_erase((s.payload >> 1) & 0xFu);
         require_wait(W_BULK);
-        s.state = ST_CMD; s.bit_count = 0; s.cmd = 0;
+        s.state = ST_CMD;
+        s.bit_count = 0;
+        s.cmd = 0;
         return;
     case OP_LOAD_DATA:
         s.latch[s.pc & (ROW_WORDS - 1u)] = (uint16_t)((s.payload >> 1) & BLANK);
-        if (s.op_inc) s.pc++;
+        if (s.op_inc)
+            s.pc++;
         break;
     default:
         break;
@@ -192,17 +272,39 @@ static void decode_command(void)
 {
     s.bit_count = 0;
     switch (s.cmd) {
-    case 0x80: s.op = OP_LOAD_PC; s.state = ST_PAYLOAD_IN; require_wait(W_DLY); break;
-    case 0x18: s.op = OP_BULK;    s.state = ST_PAYLOAD_IN; require_wait(W_DLY); break;
-    case 0x00: case 0x02:
-        s.op = OP_LOAD_DATA; s.op_inc = (s.cmd & 0x02u) != 0u;
-        s.state = ST_PAYLOAD_IN; require_wait(W_DLY);
+    case 0x80:
+        s.op = OP_LOAD_PC;
+        s.state = ST_PAYLOAD_IN;
+        require_wait(W_DLY);
         break;
-    case 0xF0: do_row_erase(s.pc); require_wait(W_ROW_ERASE); s.state = ST_CMD; s.cmd = 0; break;
-    case 0xE0: do_begin_program(); s.state = ST_CMD; s.cmd = 0; break;
-    case 0xFC: case 0xFE:
-        s.out_raw = mem_read(s.pc) << 1;             /* data between start and stop bits */
-        if (s.cmd == 0xFEu) s.pc++;
+    case 0x18:
+        s.op = OP_BULK;
+        s.state = ST_PAYLOAD_IN;
+        require_wait(W_DLY);
+        break;
+    case 0x00:
+    case 0x02:
+        s.op = OP_LOAD_DATA;
+        s.op_inc = (s.cmd & 0x02u) != 0u;
+        s.state = ST_PAYLOAD_IN;
+        require_wait(W_DLY);
+        break;
+    case 0xF0:
+        do_row_erase(s.pc);
+        require_wait(W_ROW_ERASE);
+        s.state = ST_CMD;
+        s.cmd = 0;
+        break;
+    case 0xE0:
+        do_begin_program();
+        s.state = ST_CMD;
+        s.cmd = 0;
+        break;
+    case 0xFC:
+    case 0xFE:
+        s.out_raw = mem_read(s.pc) << 1; /* data between start and stop bits */
+        if (s.cmd == 0xFEu)
+            s.pc++;
         s.out_clocks = 0;
         s.state = ST_PAYLOAD_OUT;
         require_wait(W_DLY);
@@ -237,11 +339,13 @@ static void falling_edge(void)
         break;
     case ST_CMD:
         s.cmd = (s.cmd << 1) | (uint32_t)bit;
-        if (++s.bit_count == 8u) decode_command();
+        if (++s.bit_count == 8u)
+            decode_command();
         break;
     case ST_PAYLOAD_IN:
         s.payload = (s.payload << 1) | (uint32_t)bit;
-        if (++s.bit_count == 24u) finish_payload_in();
+        if (++s.bit_count == 24u)
+            finish_payload_in();
         break;
     case ST_PAYLOAD_OUT:
         if (s.out_clocks == 24u) {
@@ -260,20 +364,25 @@ static void rising_edge(void)
 {
     /* Any clock activity before the required wait has elapsed is a driver bug. */
     if (s.state != ST_IDLE && s.wait_us != 0u) {
-        if (s.now - s.wait_start < s.wait_us) s.violations++;
+        if (s.now - s.wait_start < s.wait_us)
+            s.violations++;
         s.wait_us = 0u;
     }
     if (s.state == ST_PAYLOAD_OUT) {
         s.out_clocks++;
         /* The device drives ICSPDAT for the whole read payload. If the host is still
          * driving it too, the two outputs fight on a real board. */
-        if (s.dat_driven) s.violations++;
+        if (s.dat_driven)
+            s.violations++;
     }
 }
 
 /* ---- the icsp.h API, as seen by the driver ---- */
 
-void icsp_init(void) { sim_reset(); }
+void icsp_init(void)
+{
+    sim_reset();
+}
 
 void icsp_set_mclr(uint8_t level)
 {
@@ -281,7 +390,7 @@ void icsp_set_mclr(uint8_t level)
         s.state = ST_KEY;
         s.bit_count = 0;
         s.key = 0;
-        require_wait(W_ENTER);          /* entry hold time before the first key clock */
+        require_wait(W_ENTER); /* entry hold time before the first key clock */
     } else if (level && !s.mclr) {
         s.state = ST_IDLE;
         s.wait_us = 0;
@@ -300,12 +409,20 @@ void icsp_set_clk(uint8_t level)
     }
 }
 
-void icsp_set_dat(uint8_t level) { s.dat_driven = 1; s.dat_level = level; }
-void icsp_release_dat(void) { s.dat_driven = 0; }
+void icsp_set_dat(uint8_t level)
+{
+    s.dat_driven = 1;
+    s.dat_level = level;
+}
+void icsp_release_dat(void)
+{
+    s.dat_driven = 0;
+}
 
 uint8_t icsp_get_dat(void)
 {
-    if (g_dat_high) return 1u;
+    if (g_dat_high)
+        return 1u;
     /* During a read payload the device drives data after each rising edge. */
     if (s.state == ST_PAYLOAD_OUT && s.clk && s.out_clocks >= 1u && s.out_clocks <= 24u) {
         return (uint8_t)((s.out_raw >> (24u - s.out_clocks)) & 1u);
@@ -313,4 +430,7 @@ uint8_t icsp_get_dat(void)
     return 0u;
 }
 
-void icsp_delay_us(uint32_t us) { s.now += us; }
+void icsp_delay_us(uint32_t us)
+{
+    s.now += us;
+}

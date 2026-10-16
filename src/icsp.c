@@ -16,9 +16,9 @@
 
 #define RCC_IOPENR_GPIOBEN (1u << 1)
 
-#define PIN_CLK  3u   /* PB3 = ICSPCLK, Arduino D3 */
-#define PIN_DAT  4u   /* PB4 = ICSPDAT, Arduino D5 */
-#define PIN_MCLR 5u   /* PB5 = MCLR,    Arduino D4 */
+#define PIN_CLK  3u /* PB3 = ICSPCLK, Arduino D3 */
+#define PIN_DAT  4u /* PB4 = ICSPDAT, Arduino D5 */
+#define PIN_MCLR 5u /* PB5 = MCLR,    Arduino D4 */
 
 /* MODER holds 2 bits per pin: 00 input, 01 general-purpose output. */
 #define MODE_INPUT  0u
@@ -26,15 +26,15 @@
 
 /* OSPEEDR: 2 bits per pin, 01 = low speed (RM0444 7.5.3). PUPDR: 2 bits per pin,
  * 10 = pull-down. */
-#define SPEED_LOW      1u
-#define PULL_DOWN      2u
+#define SPEED_LOW 1u
+#define PULL_DOWN 2u
 
 /* SysTick (PM0223): free-running 24-bit down-counter on the processor clock. */
-#define STK_CSR (*(volatile uint32_t *)0xE000E010u)
-#define STK_RVR (*(volatile uint32_t *)0xE000E014u)
-#define STK_CVR (*(volatile uint32_t *)0xE000E018u)
+#define STK_CSR           (*(volatile uint32_t *)0xE000E010u)
+#define STK_RVR           (*(volatile uint32_t *)0xE000E014u)
+#define STK_CVR           (*(volatile uint32_t *)0xE000E018u)
 #define STK_CSR_ENABLE    (1u << 0)
-#define STK_CSR_CLKSOURCE (1u << 2)      /* 1 = processor clock */
+#define STK_CSR_CLKSOURCE (1u << 2) /* 1 = processor clock */
 #define STK_MASK          0x00FFFFFFu
 
 /* SysTick ticks per microsecond (= core clock in MHz), set by icsp_init(). Cached
@@ -90,8 +90,14 @@ void icsp_init(void)
     ticks_per_us = SystemCoreClock / 1000000u;
 }
 
-void icsp_set_mclr(uint8_t level) { drive(PIN_MCLR, level); }
-void icsp_set_clk(uint8_t level)  { drive(PIN_CLK, level); }
+void icsp_set_mclr(uint8_t level)
+{
+    drive(PIN_MCLR, level);
+}
+void icsp_set_clk(uint8_t level)
+{
+    drive(PIN_CLK, level);
+}
 
 void icsp_set_dat(uint8_t level)
 {

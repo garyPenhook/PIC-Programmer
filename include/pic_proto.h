@@ -27,7 +27,7 @@ struct pic_proto {
     pic_status_t (*read_device_id)(uint16_t *id);
     pic_status_t (*read_revision_id)(uint16_t *id);
     pic_status_t (*read_dci)(pic_dci_t *dci);
-    uint16_t (*cell_mask)(pic_region_t region);   /* bits a cell of this region stores */
+    uint16_t (*cell_mask)(pic_region_t region); /* bits a cell of this region stores */
     pic_status_t (*read)(const pic_device_t *dev, pic_region_t region, uint32_t offset,
                          uint16_t *buf, size_t count);
     pic_status_t (*write)(const pic_device_t *dev, pic_region_t region, uint32_t offset,
