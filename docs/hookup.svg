@@ -65,7 +65,7 @@
   <circle cx="390" cy="510" r="4" fill="#24292f"/>
 
   <!-- optional pull-ups -->
-  <text font-size="12" fill="#57606a" x="420" y="576">Optional: 4.7 kOhm from SCL and SDA to 3V3 if the module has no pull-ups</text>
+  <text font-size="12" fill="#57606a" x="420" y="576">R1, R2: 4.7 kOhm (or 2.2 kOhm) from SCL and SDA to 3V3 if the module has no pull-ups</text>
 
   <!-- legend -->
   <text font-size="12" fill="#57606a" x="30" y="28">Blue: ICSP   Green: I2C   Purple: OLED reset   Red: 3.3 V   Black: ground</text>
