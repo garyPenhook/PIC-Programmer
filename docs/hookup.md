@@ -149,6 +149,32 @@ target port; anything beyond that is dropped and the count is reported when the 
 closes. The target must run from 3.3 V (as it does when powered by the Nucleo): the bridge
 pins are not specified here for a 5 V target.
 
+### PIC16F17146 as the target
+
+Use RB7 for TX and RB5 for RX, not the ICSP pins (RA0, RA1, RA3), so the UART never fights
+the programmer. Pin numbers are for the 20-pin PDIP/SOIC/SSOP package (DS40002343F
+Table 18-1, pin table); check them against your package.
+
+| Nucleo | PIC16F17146 |
+|---|---|
+| D0 (PC5, USART1_RX) | RB7 (pin 10), TX1 |
+| D1 (PC4, USART1_TX) | RB5 (pin 12), RX1 |
+| GND | GND |
+
+Settings, from DS40002343F:
+
+- `RB7PPS = 0x13` selects TX1/CK1 (Table 18-2). `RX1PPS = 0x0D` selects RB5, which is also
+  the power-on default (Table 18-1). `PPSLOCKED` is clear after reset, so no unlock sequence
+  is needed (18.5).
+- RB5 and RB7 are shared with analog inputs, so clear `ANSELB.5` and `ANSELB.7`.
+- 8N1 at 115200 with Fosc = 32 MHz: `SYNC = 0`, `BRGH = 1`, `BRG16 = 1`, `SP1BRG = 68`. Baud
+  is Fosc / (4 (n + 1)) = 115.9 kBd, +0.64 % error (Table 32-2, Table 32-3).
+- Set `TXEN`, `CREN`, then `SPEN` last, after the pins are mapped.
+- Do not print from an interrupt handler: set a flag there and print from the main loop.
+
+Example XC8 and CC5X sources are in the `16F17146_practice` project (`xc8/uart_debug.h`,
+`src/uart_debug.h`). They have been compiled (XC8 only) but not yet run on a part.
+
 ## Parts list
 
 Prices and stock from Mouser, looked up on 2026-10-16 (single-unit price).

@@ -287,3 +287,9 @@ says on-chip debug (halt, step, breakpoints) uses a debug executive in program m
 special debug registers, which these documents do not describe. Debug support would be a
 UART-based firmware agent on the target, as in `~/apps/Python_PIC_Debugger`, not hardware
 ICD.
+
+The first step is already usable: `BRIDGE` gives the target `printf`-style output over its
+UART. `docs/hookup.md` ("PIC16F17146 as the target") has the pins and register settings. For
+the PIC16F17146, use RB7 (TX) and RB5 (RX) so the UART does not share ICSPCLK/ICSPDAT, which
+settles the pin conflict noted above for that part. Not yet tried on hardware: no target was
+connected when this was written.
