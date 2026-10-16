@@ -48,6 +48,8 @@ The Nucleo acts as an ICSP programmer. **First targets: PIC16F17146 and PIC16F17
 table, and the plan covers PIC10, PIC12 and all of PIC16 and PIC18. `PLAN.md` has the
 scope, sources, assumptions and milestones.
 
+Full wiring, with a schematic, is in [`docs/hookup.md`](docs/hookup.md).
+
 Wiring (Arduino header, UM2324 Table 12; target pin numbers from the PIC16F171XX
 programming spec Table 6-1, where MCLR = RA3, ICSPCLK = RA1, ICSPDAT = RA0):
 

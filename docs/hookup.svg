@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="600" viewBox="0 0 920 600" font-family="Helvetica, Arial, sans-serif" font-size="13">
+  <rect width="920" height="600" fill="#ffffff"/>
+
+  <!-- Nucleo -->
+  <rect fill="#f6f8fa" stroke="#24292f" stroke-width="2" x="30" y="40" width="300" height="470" rx="8"/>
+  <text font-size="15" font-weight="bold" fill="#24292f" x="50" y="68">NUCLEO-G071RB</text>
+  <text font-size="12" fill="#57606a" x="50" y="86">header pin / Arduino name / MCU pin</text>
+
+  <text fill="#24292f" x="50" y="124">CN9-4  D3   PB3</text>
+  <text fill="#24292f" x="50" y="154">CN9-6  D5   PB4</text>
+  <text fill="#24292f" x="50" y="184">CN9-5  D4   PB5</text>
+  <text fill="#24292f" x="50" y="214">CN6-4  3V3</text>
+  <text fill="#24292f" x="50" y="244">CN6-6  GND</text>
+
+  <text fill="#24292f" x="50" y="324">CN5-10 D15  PB8  I2C1_SCL</text>
+  <text fill="#24292f" x="50" y="354">CN5-9  D14  PB9  I2C1_SDA</text>
+  <text fill="#24292f" x="50" y="384">CN9-8  D7   PA8</text>
+  <text fill="#24292f" x="50" y="414">CN6-4  3V3</text>
+  <text fill="#24292f" x="50" y="444">CN6-7  GND</text>
+
+  <text font-size="12" fill="#57606a" x="50" y="482">ST-LINK USB: power, SWD and the virtual</text>
+  <text font-size="12" fill="#57606a" x="50" y="498">COM port (USART2, PA2/PA3). Nothing to wire.</text>
+
+  <!-- Target PIC -->
+  <rect fill="#f6f8fa" stroke="#24292f" stroke-width="2" x="600" y="80" width="290" height="190" rx="8"/>
+  <text font-size="15" font-weight="bold" fill="#24292f" x="620" y="106">Target PIC</text>
+  <text font-size="12" fill="#57606a" x="620" y="124">PIC16F17146, 20-pin PDIP/SOIC/SSOP</text>
+  <text fill="#24292f" x="620" y="154">18  ICSPCLK (RA1)</text>
+  <text fill="#24292f" x="620" y="184">19  ICSPDAT (RA0)</text>
+  <text fill="#24292f" x="620" y="214">4   MCLR (RA3)</text>
+  <text fill="#24292f" x="620" y="244">1   VDD</text>
+  <text fill="#24292f" x="620" y="264">20  VSS</text>
+
+  <!-- ICSP wires -->
+  <polyline fill="none" stroke="#0969da" stroke-width="2.5" points="330,120 460,120 460,150 600,150"/>
+  <polyline fill="none" stroke="#0969da" stroke-width="2.5" points="330,150 440,150 440,180 600,180"/>
+  <polyline fill="none" stroke="#0969da" stroke-width="2.5" points="330,180 420,180 420,210 600,210"/>
+  <polyline fill="none" stroke="#cf222e" stroke-width="2.5"  points="330,210 400,210 400,240 600,240"/>
+  <polyline fill="none" stroke="#24292f" stroke-width="2.5"  points="330,240 380,240 380,260 600,260"/>
+  <text font-size="12" fill="#57606a" x="490" y="144">ICSPCLK</text>
+  <text font-size="12" fill="#57606a" x="490" y="174">ICSPDAT</text>
+  <text font-size="12" fill="#57606a" x="490" y="204">MCLR</text>
+
+  <!-- OLED module -->
+  <rect fill="#f6f8fa" stroke="#24292f" stroke-width="2" x="600" y="300" width="290" height="250" rx="8"/>
+  <text font-size="15" font-weight="bold" fill="#24292f" x="620" y="326">OLED module (I2C mode)</text>
+  <text font-size="12" fill="#57606a" x="620" y="344">2.42" SSD1309 128x64, 7-pin header</text>
+  <text fill="#24292f" x="620" y="374">SCL</text>
+  <text fill="#24292f" x="620" y="404">SDA</text>
+  <text fill="#24292f" x="620" y="434">RES</text>
+  <text fill="#24292f" x="620" y="464">VCC</text>
+  <text fill="#24292f" x="620" y="494">GND</text>
+  <text fill="#24292f" x="620" y="514">DC   (to GND: address 0x3C)</text>
+  <text fill="#24292f" x="620" y="534">CS   (to GND: unused in I2C)</text>
+
+  <!-- OLED wires -->
+  <polyline fill="none" stroke="#1a7f37" stroke-width="2.5" points="330,320 470,320 470,370 600,370"/>
+  <polyline fill="none" stroke="#1a7f37" stroke-width="2.5" points="330,350 450,350 450,400 600,400"/>
+  <polyline fill="none" stroke="#8250df" stroke-width="2.5" points="330,380 430,380 430,430 600,430"/>
+  <polyline fill="none" stroke="#cf222e" stroke-width="2.5" points="330,410 410,410 410,460 600,460"/>
+  <polyline fill="none" stroke="#24292f" stroke-width="2.5" points="330,440 390,440 390,530 600,530"/>
+  <polyline fill="none" stroke="#24292f" stroke-width="2.5" points="390,490 600,490"/>
+  <polyline fill="none" stroke="#24292f" stroke-width="2.5" points="390,510 600,510"/>
+  <circle cx="390" cy="490" r="4" fill="#24292f"/>
+  <circle cx="390" cy="510" r="4" fill="#24292f"/>
+
+  <!-- optional pull-ups -->
+  <text font-size="12" fill="#57606a" x="420" y="576">Optional: 4.7 kOhm from SCL and SDA to 3V3 if the module has no pull-ups</text>
+
+  <!-- legend -->
+  <text font-size="12" fill="#57606a" x="30" y="28">Blue: ICSP   Green: I2C   Purple: OLED reset   Red: 3.3 V   Black: ground</text>
+</svg>
