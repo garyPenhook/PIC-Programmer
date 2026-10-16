@@ -41,3 +41,10 @@ gcc $flags -DI2C_IGNORE_ACK=1 -Itests/vendor/unity $core src/oled.c src/ui.c \
     tests/sim_p16_8bit.c tests/stub_i2c.c tests/test_oled.c tests/vendor/unity/unity.c \
     -o "$out/test_oled_ignore_ack"
 "$out/test_oled_ignore_ack"
+
+# Host tool (host/picprog) against the PC build of the firmware's command layer.
+if python3 -c "import pytest" 2>/dev/null; then
+    python3 -m pytest -q host/tests
+else
+    echo "pytest not installed: host tool tests skipped"
+fi

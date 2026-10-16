@@ -1,3 +1,5 @@
 build/
 *.pdf
 .claude/
+__pycache__/
+.pytest_cache/

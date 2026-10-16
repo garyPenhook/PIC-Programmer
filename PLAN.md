@@ -138,10 +138,12 @@ Both:
    skipping erased runs. PA2/PA3 reach the virtual COM port by default (UM2324 Table 8);
    the highest baud rate the ST-LINK accepts still has to be tried on the board. Optional
    SSD1309 OLED status screen on I2C1 (README, "OLED status display").
-5. **M5:** host tool (Python): parse Intel HEX, `id`, `read`, `erase`, `write`, `verify`,
-   and `dump` (program extraction to an Intel HEX file, see "Program extraction").
-   It reads the same `data/pic_devices.csv` for geometry and checks it against the DCI.
-   Reading the DIA (calibration data) needs a read-only region in `pic.h` first.
+5. **M5 (started):** host tool (Python, `host/picprog`): Intel HEX parsing and writing,
+   `probe`, `id`, `dci`, `read`, `dump`, `erase`, `write` (bulk erase, program, verify) and
+   `verify`, with the DCI checked against `data/pic_devices.csv`. Tested end to end against
+   the firmware's command layer built for the PC. To do: confirm the PIC16 EEPROM and
+   PIC18 word placement in MPLAB hex files; decode code-protect bits per part (see
+   "Program extraction"); read the DIA (needs a read-only region in `pic.h` first).
 6. **M6:** more rows for the existing protocols (PIC16F13145, 13276, 17576; PIC18-Q20,
    Q43; Q24 after the config address list), then new protocols for PIC10, PIC12, older
    PIC16 and older PIC18, once their programming specs are in the project.

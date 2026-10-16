@@ -264,13 +264,46 @@ cell.
 
 A part whose command set matches no protocol needs a new protocol; `PLAN.md` says how.
 
+## Host tool
+
+`host/picprog` is a Python 3 command-line tool that drives the programmer over the virtual
+COM port. It needs pyserial (`pip install -r host/requirements.txt`).
+
+```sh
+cd host
+python3 -m picprog probe                    # identify the target
+python3 -m picprog dump backup.hex          # read every region into an Intel HEX file
+python3 -m picprog write firmware.hex       # bulk erase, program and verify
+python3 -m picprog verify firmware.hex      # compare the target with a file
+python3 -m picprog erase all                # or: erase flash, erase flash --row 0x40
+python3 -m picprog read flash 0 32          # print cells
+python3 -m picprog dci                      # Device Configuration Information
+```
+
+`--port` selects the serial port (default `/dev/ttyACM0`). Every command probes the part
+first and checks its DCI against `data/pic_devices.csv`, the same table the firmware is
+built from.
+
+Hex files follow the PIC16F171XX programming specification (DS40002266B 3.5): INHX32, two
+bytes per word, low byte first, at twice the word address, so Configuration Word 1 is at
+`0x1000E`. Configuration Words and User IDs are written and dumped with the program. A
+device ID in the file (at `0x1000C`) is checked against the part, and a missing
+Configuration Word section gives a warning, as 3.5.1 and 3.5.2 ask. A dump whose flash
+reads as all zeros is flagged as probably code protected (3.4).
+
+Not yet confirmed: where an MPLAB hex file puts PIC16 EEPROM data (assumed `0x1E000`, one
+byte per word), and the byte order of PIC18 words in a hex file (assumed low byte first).
+Check both against a hex file built by MPLAB before relying on them.
+
 ## Tests
 
 ```sh
 tests/run_tests.sh
 ```
 
-Builds with the PC compiler, not the ARM toolchain.
+Builds with the PC compiler, not the ARM toolchain. The host tool's tests (pytest) run the
+firmware's command layer compiled for the PC (`tests/host_sim_main.c`) in front of the
+simulated PIC, so they go through the real serial protocol end to end.
 
 ### Flash
 
