@@ -24,7 +24,7 @@ cmake --preset Debug   && cmake --build --preset Debug
 cmake --preset Release && cmake --build --preset Release
 ```
 
-Each build writes `pic_programmer_debugger` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 6500 B  128 KB  4.96%` (Release). RAM covers static data only (`.data` + `.bss`); the stack is not counted.
+Each build writes `pic_programmer_debugger` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 8816 B  128 KB  6.73%` (Release). RAM covers static data only (`.data` + `.bss`); the stack is not counted.
 
 ## Clock and LED Blink
 
@@ -102,6 +102,10 @@ Layers:
 - `include/cmd.h`, `src/cmd.c`, `include/uart.h`, `src/uart.c`: the serial command
   interface (see "Serial commands" below). `uart.c` is a polled USART2 driver and the only
   hardware-specific part; `cmd.c` is plain C and runs on the PC in the tests.
+- `include/i2c.h`, `src/i2c.c`, `include/oled.h`, `src/oled.c`, `include/ui.h`,
+  `src/ui.c`: the optional OLED status screen (see "OLED status display" below). `i2c.c`
+  is a polled I2C1 driver; `oled.c` (SSD1309) and `ui.c` are plain C and are tested on the
+  PC against a stub bus.
 - `src/icsp.c`: pins and microsecond delays only, and the only hardware-specific file
   under the protocols. The three pins use low output speed (OSPEEDR `01`,
   RM0444 7.5.3): ICSPCLK runs at about 500 kHz, far below that setting's limit, and the
@@ -172,6 +176,41 @@ reached without a high-voltage (7.9 to 9.0 V) MCLR supply.
 Not yet tested on real silicon. The PIC16F171XX payload layout comes from figures in the
 spec and the protocols share one reading of it with the simulators, so a first run on a real
 PIC16F17146 or PIC16F17124 is the real test. See `PLAN.md`.
+
+### OLED status display
+
+An optional 128 x 64 SSD1309 OLED module on I2C shows the probed device, its IDs and the
+result of the last command. Without a display everything works the same: the firmware
+looks for one at boot and, if nothing answers, never touches the bus again.
+
+| Nucleo | MCU pin | Module |
+|---|---|---|
+| D15 | PB8 (I2C1_SCL, AF6) | SCL |
+| D14 | PB9 (I2C1_SDA, AF6) | SDA |
+| 3V3 | - | VDD |
+| GND | - | GND |
+
+Pins from UM2324 Table 12 and the STM32G071 datasheet Table 14. The bus runs at about
+380 kHz, inside the SSD1309 minimum clock cycle of 2.5 us (SSD1309 Table 13-6), with
+375 ns data hold (the SSD1309 needs 300 ns on SDAIN).
+
+What the module must provide (SSD1309 datasheet sections 2, 8.1.5 and 8.8):
+
+- **Pull-ups on SDA and SCL.** The SSD1309 requires them. The STM32's internal pull-ups are
+  also enabled, but they are weak and only keep an unconnected bus from floating.
+- **The 7 to 16 V panel supply VCC.** The SSD1309 needs it in addition to VDD, so the module
+  must generate it.
+- **Power-on reset.** RES# is not driven by the firmware, so the module must hold it low
+  for at least 3 us at power-up (an RC reset does this).
+- **Address 0x3C or 0x3D** (set by SA0, the D/C# pin on the module). Both are tried.
+
+If the picture is upside down, build with `OLED_FLIP=1` (in `include/oled.h`); that sends
+the segment re-map and COM scan direction commands (A1h, C8h) instead of the reset values.
+
+The screen is redrawn before a command sends its final `OK` or `ERR`, and only the
+128-byte pages that changed are sent (about 3.5 ms each), so a host that waits for the
+reply never sends while the bus is busy. This adds a few milliseconds per command, not per
+cell.
 
 ### Adding a part
 

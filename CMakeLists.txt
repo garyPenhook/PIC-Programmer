@@ -21,7 +21,9 @@ add_executable(${PROJECT_NAME}
     src/main.c
     src/clock.c
     src/cmd.c
+    src/i2c.c
     src/icsp.c
+    src/oled.c
     src/pic.c
     src/proto/icsp8.c
     src/proto/p16_8bit.c
@@ -30,6 +32,7 @@ add_executable(${PROJECT_NAME}
     src/system_stm32g0xx.c
     src/platform.c
     src/uart.c
+    src/ui.c
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE include)

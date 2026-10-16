@@ -1,8 +1,10 @@
 #include "cmd.h"
+#include "i2c.h"
 #include "icsp.h"
 #include "pic.h"
 #include "platform.h"
 #include "uart.h"
+#include "ui.h"
 
 /*
  * Result of the boot-time probe of the target PIC, readable over SWD.
@@ -47,7 +49,10 @@ int main(void)
      */
     icsp_init();
     uart_init();
+    i2c_init();
+    ui_init(); /* optional OLED status screen; a no-op without one */
     probe_target();
+    ui_probe((pic_status_t)g_pic_status, g_pic_device, g_pic_device_id, g_pic_revision_id);
     cmd_set_device(g_pic_device);
 
     for (;;) {

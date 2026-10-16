@@ -25,7 +25,13 @@ gcc $flags -Itests/vendor/unity $core tests/sim_p16_8bit.c tests/test_pic_find.c
     tests/vendor/unity/unity.c -o "$out/test_pic_find"
 "$out/test_pic_find"
 
-# Serial command layer, against the p16 simulator with a stub UART.
-gcc $flags -Itests/vendor/unity $core src/cmd.c tests/sim_p16_8bit.c tests/stub_uart.c \
-    tests/test_cmd.c tests/vendor/unity/unity.c -o "$out/test_cmd"
+# Serial command layer, against the p16 simulator with a stub UART (and no display).
+gcc $flags -Itests/vendor/unity $core src/cmd.c src/ui.c src/oled.c tests/sim_p16_8bit.c \
+    tests/stub_uart.c tests/stub_i2c.c tests/test_cmd.c tests/vendor/unity/unity.c \
+    -o "$out/test_cmd"
 "$out/test_cmd"
+
+# OLED driver and status screen, against a stub I2C bus.
+gcc $flags -Itests/vendor/unity $core src/oled.c src/ui.c tests/sim_p16_8bit.c \
+    tests/stub_i2c.c tests/test_oled.c tests/vendor/unity/unity.c -o "$out/test_oled"
+"$out/test_oled"

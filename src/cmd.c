@@ -4,6 +4,7 @@
 
 #include "platform.h"
 #include "uart.h"
+#include "ui.h"
 
 #define LINE_MAX 64u
 #define ARG_MAX  4u
@@ -176,6 +177,7 @@ static void do_probe(void)
     pic_status_t st = pic_probe(&found, &id, &rev);
 
     device = found; /* NULL after a failed probe: forget the old device */
+    ui_probe(st, found, id, rev);
     if (st != PIC_OK) {
         reply_status(st);
         return;
@@ -260,8 +262,10 @@ static void do_read(char *argv[ARG_MAX], int binary)
         return;
     }
 
+    const char *name = binary ? "READB" : "READ";
     pic_status_t st = pic_enter(device);
     if (st != PIC_OK) {
+        ui_result(name, st, 0u);
         reply_status(st);
         return;
     }
@@ -273,6 +277,7 @@ static void do_read(char *argv[ARG_MAX], int binary)
         st = pic_read(device, region, offset + done, cells, n);
         if (st != PIC_OK) {
             pic_exit(device);
+            ui_result(name, st, done);
             reply_status(st);
             return;
         }
@@ -284,6 +289,7 @@ static void do_read(char *argv[ARG_MAX], int binary)
         done += n;
     }
     pic_exit(device);
+    ui_result(name, PIC_OK, count);
     out_str("OK ");
     out_int((int32_t)count);
     out_char('\n');

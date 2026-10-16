@@ -135,8 +135,9 @@ Both:
    `PROBE`, `READ` (text, per-line CRC) and `READB` (binary frames) (README, "Serial
    commands"). Later: DMA transmit so ICSP reads overlap the serial link, and skipping
    erased runs. To do: `ERASE`, `WRITE`,
-   `VERIFY`, and `DCI`/ID reads; check on hardware that PA2/PA3 reach the virtual COM port
-   (UM2324 is not on disk).
+   `VERIFY`, and `DCI`/ID reads. PA2/PA3 reach the virtual COM port by default (UM2324
+   Table 8); the highest baud rate the ST-LINK accepts still has to be tried on the board.
+   Optional SSD1309 OLED status screen on I2C1 (README, "OLED status display").
 5. **M5:** host tool (Python): parse Intel HEX, `id`, `read`, `erase`, `write`, `verify`,
    and `dump` (program extraction to an Intel HEX file, see "Program extraction").
    It reads the same `data/pic_devices.csv` for geometry and checks it against the DCI.
