@@ -36,15 +36,43 @@
  *       and including the last cell. The final OK or ERR is still a text line. A host tells
  *       them apart by the first byte: 0x42 starts a frame, 'O' or 'E' a text line.
  *
+ *   ERASE ALL
+ *   ERASE <region>
+ *   ERASE ROW <region> <offset>
+ *       Bulk erase every region the device has, bulk erase one region, or erase the row
+ *       (PIC18: page) that holds offset. Row erase works on flash and userid only
+ *       (ERR -4 otherwise). Programming can only turn 1s into 0s, so erase before WRITE.
+ *       OK
+ *
+ *   WRITE <region> <offset> <count>
+ *   VERIFY <region> <offset> <count>
+ *       Program count cells, or compare them with what the target holds. The host sends the
+ *       data after the command, one line at a time, and only when asked:
+ *           NEXT <offset, 8 hex digits> <n>     send the n cells starting at offset
+ *       The host answers with one data line in the READ format,
+ *           D <offset, 8 hex digits> <cell, 4 hex digits> ... *<crc, 4 hex digits>
+ *       carrying exactly n cells (at most CMD_DATA_LINE_CELLS). A line with a bad crc, a
+ *       different offset or cell count, or a receive error is asked for again with
+ *           RESEND <offset> <n>
+ *       and any other line ends the command with ERR aborted and releases the target.
+ *       Flash writes on a device with write latches must start on a row boundary
+ *       (ERR -3 otherwise); the cells are written a whole row at a time as they arrive, and
+ *       a short last row is padded with blank cells. VERIFY reports the first difference as
+ *       ERR -8 verify mismatch @<offset, 8 hex digits>.
+ *       OK <count>
+ *       The target stays in programming mode until the final OK or ERR.
+ *
  * Errors: "ERR <pic_status_t value> <text>" for a failure reported by pic.h (for example
  * "ERR -2 range outside region"), or "ERR <word>" for a problem with the command itself:
- * bad-command, bad-argument, no-device, line-too-long, rx-error.
+ * bad-command, bad-argument, no-device, line-too-long, rx-error, aborted.
  *
  * The serial port is polled and has no receive buffer, so the host must wait for the final
- * OK or ERR line before it sends the next command.
+ * OK or ERR line (or, during WRITE and VERIFY, for each NEXT or RESEND) before it sends
+ * anything else.
  */
-#define CMD_CHUNK_CELLS  16u
-#define CMD_FRAME_MARKER 0x42u /* first byte of a READB data frame ('B') */
+#define CMD_CHUNK_CELLS     16u
+#define CMD_FRAME_MARKER    0x42u /* first byte of a READB data frame ('B') */
+#define CMD_DATA_LINE_CELLS 8u    /* most cells in one WRITE/VERIFY data line */
 
 /* Set the device later commands act on (NULL for none). PROBE also sets it. */
 void cmd_set_device(const pic_device_t *dev);

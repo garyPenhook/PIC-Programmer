@@ -325,6 +325,226 @@ static void test_readb_errors_are_text(void)
     TEST_ASSERT_EQUAL_STRING("ERR bad-command\n", stub_uart_output());
 }
 
+/* Answer NEXT/RESEND requests with lines taken from cells[] (indexed from `base`) until the
+ * command ends. Returns the number of data lines sent. */
+static int upload(uint32_t base, const uint16_t *cells)
+{
+    int lines = 0;
+
+    for (;;) {
+        const char *out = stub_uart_output();
+        unsigned offset;
+        unsigned n;
+        char body[96];
+        char text[112];
+
+        if (sscanf(out, "NEXT %8X %u", &offset, &n) != 2 &&
+            sscanf(out, "RESEND %8X %u", &offset, &n) != 2) {
+            return lines;
+        }
+        int len = snprintf(body, sizeof body, "D %08X", offset);
+        for (unsigned i = 0; i < n; i++) {
+            len += snprintf(body + len, sizeof body - (size_t)len, " %04X",
+                            (unsigned)cells[offset - base + i]);
+        }
+        snprintf(text, sizeof text, "%s *%04X", body, (unsigned)reference_crc(body, (size_t)len));
+        send_line(text);
+        lines++;
+    }
+}
+
+static void blank_target(void)
+{
+    send_line("PROBE");
+    send_line("ERASE ALL");
+    TEST_ASSERT_EQUAL_STRING("OK\n", stub_uart_output());
+}
+
+static void test_erase_all_blanks_every_region(void)
+{
+    blank_target();
+    for (unsigned i = 0; i < PATTERN_WORDS; i++) {
+        TEST_ASSERT_EQUAL_HEX16(0x3FFF, sim_flash_word(i));
+    }
+    TEST_ASSERT_EQUAL_INT(0, sim_in_program_mode());
+    TEST_ASSERT_EQUAL_UINT32(0u, sim_violations());
+}
+
+static void test_erase_row_erases_only_that_row(void)
+{
+    send_line("PROBE");
+    send_line("ERASE ROW flash 33"); /* any cell in the second 32-word row */
+    TEST_ASSERT_EQUAL_STRING("OK\n", stub_uart_output());
+    TEST_ASSERT_EQUAL_HEX16(pattern[31], sim_flash_word(31));
+    for (unsigned i = 32; i < 64; i++) {
+        TEST_ASSERT_EQUAL_HEX16(0x3FFF, sim_flash_word(i));
+    }
+}
+
+static void test_erase_one_region(void)
+{
+    const uint16_t bytes[2] = {0x12u, 0x34u};
+
+    TEST_ASSERT_EQUAL_INT(PIC_OK, pic_enter(dev));
+    TEST_ASSERT_EQUAL_INT(PIC_OK, pic_write(dev, PIC_REGION_EEPROM, 0u, bytes, 2u));
+    pic_exit(dev);
+    send_line("PROBE");
+    send_line("ERASE eeprom");
+    TEST_ASSERT_EQUAL_STRING("OK\n", stub_uart_output());
+    TEST_ASSERT_EQUAL_HEX8(0xFF, sim_eeprom_byte(0));
+    TEST_ASSERT_EQUAL_HEX16(pattern[0], sim_flash_word(0)); /* flash left alone */
+}
+
+static void test_erase_errors(void)
+{
+    send_line("ERASE ALL");
+    TEST_ASSERT_EQUAL_STRING("ERR no-device\n", stub_uart_output());
+    send_line("PROBE");
+    send_line("ERASE nowhere");
+    TEST_ASSERT_EQUAL_STRING("ERR bad-argument\n", stub_uart_output());
+    send_line("ERASE ROW flash");
+    TEST_ASSERT_EQUAL_STRING("ERR bad-command\n", stub_uart_output());
+    send_line("ERASE ROW flash 0x4000");
+    TEST_ASSERT_EQUAL_STRING("ERR -2 range outside region\n", stub_uart_output());
+    send_line("ERASE ROW config 0");
+    TEST_ASSERT_EQUAL_STRING("ERR -4 not supported by this device\n", stub_uart_output());
+    TEST_ASSERT_EQUAL_INT(0, sim_in_program_mode());
+}
+
+static void test_write_flash_whole_rows_and_a_padded_last_row(void)
+{
+    uint16_t data[40];
+
+    for (unsigned i = 0; i < 40u; i++) {
+        data[i] = (uint16_t)((0x2A5u + i * 77u) & 0x3FFFu);
+    }
+    blank_target();
+    send_line("WRITE flash 0 40");
+    TEST_ASSERT_EQUAL_STRING("NEXT 00000000 8\n", stub_uart_output());
+    TEST_ASSERT_EQUAL_INT(5, upload(0u, data));
+    TEST_ASSERT_EQUAL_STRING("OK 40\n", stub_uart_output());
+    for (unsigned i = 0; i < 40u; i++) {
+        TEST_ASSERT_EQUAL_HEX16(data[i], sim_flash_word(i));
+    }
+    for (unsigned i = 40; i < 64u; i++) {
+        TEST_ASSERT_EQUAL_HEX16(0x3FFF, sim_flash_word(i)); /* padding programs nothing */
+    }
+    TEST_ASSERT_EQUAL_INT(0, sim_in_program_mode());
+    TEST_ASSERT_EQUAL_UINT32(0u, sim_violations());
+}
+
+static void test_write_asks_for_the_remainder_last(void)
+{
+    char line[96];
+    char body[64];
+    int len;
+
+    blank_target();
+    send_line("WRITE flash 32 12");
+    TEST_ASSERT_EQUAL_STRING("NEXT 00000020 8\n", stub_uart_output());
+    len = snprintf(body, sizeof body, "D 00000020");
+    for (unsigned i = 0; i < 8u; i++) {
+        len += snprintf(body + len, sizeof body - (size_t)len, " %04X", (unsigned)pattern[i]);
+    }
+    snprintf(line, sizeof line, "%s *%04X", body, (unsigned)reference_crc(body, (size_t)len));
+    send_line(line);
+    TEST_ASSERT_EQUAL_STRING("NEXT 00000028 4\n", stub_uart_output()); /* 12 - 8 left */
+    TEST_ASSERT_EQUAL_HEX16(0x3FFF, sim_flash_word(32)); /* row not complete: nothing yet */
+    upload(32u, pattern);                                /* cells 32.. are pattern[0..] */
+    TEST_ASSERT_EQUAL_STRING("OK 12\n", stub_uart_output());
+    for (unsigned i = 0; i < 12u; i++) {
+        TEST_ASSERT_EQUAL_HEX16(pattern[i], sim_flash_word(32u + i));
+    }
+}
+
+static void test_write_must_start_on_a_row_boundary(void)
+{
+    uint64_t before;
+
+    send_line("PROBE");
+    before = sim_time_us();
+    send_line("WRITE flash 5 4");
+    TEST_ASSERT_EQUAL_STRING("ERR -3 flash write not on a row boundary\n", stub_uart_output());
+    TEST_ASSERT_EQUAL_UINT64(before, sim_time_us());
+}
+
+static void test_damaged_lines_are_asked_for_again(void)
+{
+    const uint16_t data[1] = {0x0123u};
+    char good[64];
+    char body[32];
+    int len;
+
+    blank_target();
+    send_line("WRITE eeprom 0 1");
+    TEST_ASSERT_EQUAL_STRING("NEXT 00000000 1\n", stub_uart_output());
+
+    send_line("D 00000000 0123 *0000"); /* bad crc */
+    TEST_ASSERT_EQUAL_STRING("RESEND 00000000 1\n", stub_uart_output());
+
+    len = snprintf(body, sizeof body, "D 00000004 0123"); /* wrong offset */
+    snprintf(good, sizeof good, "%s *%04X", body, (unsigned)reference_crc(body, (size_t)len));
+    send_line(good);
+    TEST_ASSERT_EQUAL_STRING("RESEND 00000000 1\n", stub_uart_output());
+
+    len = snprintf(body, sizeof body, "D 00000000 0123 0456"); /* too many cells */
+    snprintf(good, sizeof good, "%s *%04X", body, (unsigned)reference_crc(body, (size_t)len));
+    send_line(good);
+    TEST_ASSERT_EQUAL_STRING("RESEND 00000000 1\n", stub_uart_output());
+
+    cmd_rx_error();
+    send_line("D 00000000 0123");
+    TEST_ASSERT_EQUAL_STRING("RESEND 00000000 1\n", stub_uart_output());
+
+    upload(0u, data);
+    TEST_ASSERT_EQUAL_STRING("OK 1\n", stub_uart_output());
+    TEST_ASSERT_EQUAL_HEX8(0x23, sim_eeprom_byte(0)); /* EEPROM cells keep the low byte */
+}
+
+static void test_any_other_line_aborts_and_releases_the_target(void)
+{
+    blank_target();
+    send_line("WRITE flash 0 32");
+    TEST_ASSERT_EQUAL_INT(1, sim_in_program_mode());
+    send_line("PROBE");
+    TEST_ASSERT_EQUAL_STRING("ERR aborted\n", stub_uart_output());
+    TEST_ASSERT_EQUAL_INT(0, sim_in_program_mode());
+    TEST_ASSERT_EQUAL_HEX16(0x3FFF, sim_flash_word(0)); /* nothing was written */
+    send_line("PROBE");                                 /* normal commands work again */
+    TEST_ASSERT_EQUAL_INT(0, strncmp(stub_uart_output(), "OK PIC16F17146", 14u));
+}
+
+static void test_verify_matches_and_reports_the_first_difference(void)
+{
+    uint16_t data[PATTERN_WORDS];
+
+    memcpy(data, pattern, sizeof data);
+    send_line("PROBE");
+    send_line("VERIFY flash 0 20");
+    upload(0u, data);
+    TEST_ASSERT_EQUAL_STRING("OK 20\n", stub_uart_output());
+
+    data[13] ^= 0x0001u;
+    send_line("VERIFY flash 0 20");
+    upload(0u, data);
+    TEST_ASSERT_EQUAL_STRING("ERR -8 verify mismatch @0000000D\n", stub_uart_output());
+    TEST_ASSERT_EQUAL_INT(0, sim_in_program_mode());
+}
+
+static void test_write_then_read_back(void)
+{
+    const uint16_t ids[4] = {0x0001u, 0x0002u, 0x0003u, 0x0004u};
+
+    blank_target();
+    send_line("WRITE userid 0 4");
+    upload(0u, ids);
+    TEST_ASSERT_EQUAL_STRING("OK 4\n", stub_uart_output());
+    send_line("VERIFY userid 0 4");
+    upload(0u, ids);
+    TEST_ASSERT_EQUAL_STRING("OK 4\n", stub_uart_output());
+    TEST_ASSERT_EQUAL_HEX16(0x0003, sim_userid_word(2));
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -346,5 +566,16 @@ int main(void)
     RUN_TEST(test_readb_splits_into_chunks_and_encodes_offset_little_endian);
     RUN_TEST(test_readb_frame_with_high_offset_bytes);
     RUN_TEST(test_readb_errors_are_text);
+    RUN_TEST(test_erase_all_blanks_every_region);
+    RUN_TEST(test_erase_row_erases_only_that_row);
+    RUN_TEST(test_erase_one_region);
+    RUN_TEST(test_erase_errors);
+    RUN_TEST(test_write_flash_whole_rows_and_a_padded_last_row);
+    RUN_TEST(test_write_asks_for_the_remainder_last);
+    RUN_TEST(test_write_must_start_on_a_row_boundary);
+    RUN_TEST(test_damaged_lines_are_asked_for_again);
+    RUN_TEST(test_any_other_line_aborts_and_releases_the_target);
+    RUN_TEST(test_verify_matches_and_reports_the_first_difference);
+    RUN_TEST(test_write_then_read_back);
     return UNITY_END();
 }

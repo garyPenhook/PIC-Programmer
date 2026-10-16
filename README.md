@@ -24,7 +24,7 @@ cmake --preset Debug   && cmake --build --preset Debug
 cmake --preset Release && cmake --build --preset Release
 ```
 
-Each build writes `pic_programmer_debugger` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 8816 B  128 KB  6.73%` (Release). RAM covers static data only (`.data` + `.bss`); the stack is not counted.
+Each build writes `pic_programmer_debugger` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 10708 B  128 KB  8.17%` (Release). RAM covers static data only (`.data` + `.bss`); the stack is not counted.
 
 ## Clock and LED Blink
 
@@ -139,6 +139,9 @@ cleanly at that rate). Commands are upper case, one per line. Every command ends
 | `PROBE` | `OK <name> <device id> <revision id>`; remembers the device for later commands |
 | `READ <region> <offset> <count>` | `D <offset> <cells...> *<crc>` lines, then `OK <count>` |
 | `READB <region> <offset> <count>` | binary frames (2 bytes per cell), then `OK <count>` |
+| `ERASE ALL`, `ERASE <region>`, `ERASE ROW <region> <offset>` | `OK` |
+| `WRITE <region> <offset> <count>` | `NEXT <offset> <n>` requests, then `OK <count>` |
+| `VERIFY <region> <offset> <count>` | `NEXT <offset> <n>` requests, then `OK <count>` or `ERR -8 verify mismatch @<offset>` |
 
 `region` is `flash`, `userid`, `config` or `eeprom`; numbers are decimal or `0x` hex. Each
 `D` line carries up to 16 cells, with a CRC-16/CCITT-FALSE over the text before ` *`, so
@@ -166,7 +169,24 @@ Estimated time for a 16 KW part, from the per-cell costs (ICSP about 70 us per c
 `READB` about 1.6 s (2.5 bytes per cell with the frame overhead). These are
 calculations, not measurements; the ST-LINK virtual COM port has not been tested at
 921600 yet.
-Writes, erase and verify are not on the serial interface yet.
+`WRITE` and `VERIFY` take their data from the host in lock-step, which suits the polled
+port: the programmer sends `NEXT <offset> <n>`, the host answers with one data line of
+exactly n cells in the `READ` format (`D <offset> <cells...> *<crc>`, at most 8 cells),
+and waits for the next request. A damaged line is asked for again with `RESEND`; any other
+line aborts and releases the target. Flash on a device with write latches is written a
+whole row at a time as the cells arrive, so a flash `WRITE` must start on a row boundary.
+Erase first: programming only turns 1s into 0s.
+
+```
+> ERASE ALL
+< OK
+> WRITE flash 0 12
+< NEXT 00000000 8
+> D 00000000 3FFF 3FFF 3FFF 3FFF 3FFF 3FFF 3FFF 3FFF *<crc>
+< NEXT 00000008 4
+> D 00000008 3FFF 3FFF 3FFF 3FFF *<crc>
+< OK 12
+```
 
 The API reads the device ID, revision ID and the five DCI values, but not the other
 read-only areas (the PIC16 DIA at 0x8100, for example); that would be a new read-only

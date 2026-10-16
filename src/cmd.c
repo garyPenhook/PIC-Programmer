@@ -9,11 +9,37 @@
 #define LINE_MAX 64u
 #define ARG_MAX  4u
 
+/* A WRITE/VERIFY data line: "D", the offset, up to CMD_DATA_LINE_CELLS cells, "*crc". */
+#define DATA_ARG_MAX (2u + CMD_DATA_LINE_CELLS + 1u)
+
+/* Cells held back before one pic_write(): a whole row of write latches. Every device in
+ * the table has 32 or fewer (data/pic_devices.csv); a larger row is refused. */
+#define WRITE_BUF_CELLS 64u
+
 static const pic_device_t *device;
 static char line[LINE_MAX];
 static size_t line_len;
 static int line_too_long;
 static int line_rx_error;
+
+/*
+ * A WRITE or VERIFY in progress. The target stays in programming mode while the host
+ * sends the data, one line per NEXT request.
+ */
+typedef enum { SESSION_NONE = 0, SESSION_WRITE, SESSION_VERIFY } session_kind_t;
+
+static struct {
+    session_kind_t kind;
+    const char *name; /* "WRITE" or "VERIFY", for the status screen */
+    pic_region_t region;
+    uint32_t offset;    /* first cell of the transfer */
+    uint32_t count;     /* cells in the transfer */
+    uint32_t received;  /* cells accepted so far */
+    uint32_t buf_start; /* cell offset of buf[0] */
+    uint32_t buffered;  /* cells in buf */
+    uint32_t flush_at;  /* cells per pic_write() or pic_verify() call */
+    uint16_t buf[WRITE_BUF_CELLS];
+} session;
 
 /* CRC of the data line being sent; only bytes sent while crc_on is set are included. */
 static uint16_t crc;
@@ -148,8 +174,8 @@ static int parse_region(const char *s, pic_region_t *region)
 }
 
 /* Split the line in place at spaces and tabs. Returns the field count, or -1 if there
- * are more than ARG_MAX. */
-static int split(char *text, char *argv[ARG_MAX])
+ * are more than max. */
+static int split(char *text, char *argv[], size_t max)
 {
     int argc = 0;
 
@@ -158,7 +184,7 @@ static int split(char *text, char *argv[ARG_MAX])
             *text++ = '\0';
             continue;
         }
-        if ((size_t)argc == ARG_MAX) {
+        if ((size_t)argc == max) {
             return -1;
         }
         argv[argc++] = text;
@@ -235,6 +261,35 @@ static void send_chunk_binary(uint32_t offset, const uint16_t *cells, size_t cou
     out_le16(crc);
 }
 
+/* Common start of a command that acts on the target: a device, and a range inside the
+ * region. Replies and returns 0 if either is missing. */
+static int need_device(void)
+{
+    if (device == NULL) {
+        reply_error("no-device");
+        return 0;
+    }
+    return 1;
+}
+
+static int range_ok(pic_region_t region, uint32_t offset, uint32_t count)
+{
+    uint32_t size = pic_region_size(device, region);
+
+    if (offset >= size || count > size - offset) {
+        reply_status(PIC_ERR_RANGE);
+        return 0;
+    }
+    return 1;
+}
+
+static void reply_ok_count(uint32_t count)
+{
+    out_str("OK ");
+    out_int((int32_t)count);
+    out_char('\n');
+}
+
 static void do_read(char *argv[ARG_MAX], int binary)
 {
     pic_region_t region;
@@ -242,8 +297,7 @@ static void do_read(char *argv[ARG_MAX], int binary)
     uint32_t count;
     uint16_t cells[CMD_CHUNK_CELLS];
 
-    if (device == NULL) {
-        reply_error("no-device");
+    if (!need_device()) {
         return;
     }
     if (!parse_region(argv[1], &region) || !parse_number(argv[2], &offset) ||
@@ -256,9 +310,7 @@ static void do_read(char *argv[ARG_MAX], int binary)
         return;
     }
     /* Check the range before touching the target, so a bad request sends nothing to it. */
-    uint32_t size = pic_region_size(device, region);
-    if (offset >= size || count > size - offset) {
-        reply_status(PIC_ERR_RANGE);
+    if (!range_ok(region, offset, count)) {
         return;
     }
 
@@ -290,15 +342,277 @@ static void do_read(char *argv[ARG_MAX], int binary)
     }
     pic_exit(device);
     ui_result(name, PIC_OK, count);
-    out_str("OK ");
-    out_int((int32_t)count);
+    reply_ok_count(count);
+}
+
+/* Exactly `digits` hex digits (no 0x prefix), as in the data lines. Returns 1 on success. */
+static int parse_hex_digits(const char *s, uint32_t digits, uint32_t *value)
+{
+    uint32_t acc = 0u;
+
+    for (uint32_t i = 0; i < digits; i++) {
+        char c = s[i];
+        uint32_t d;
+
+        if (c >= '0' && c <= '9') {
+            d = (uint32_t)(c - '0');
+        } else if (c >= 'A' && c <= 'F') {
+            d = (uint32_t)(c - 'A') + 10u;
+        } else if (c >= 'a' && c <= 'f') {
+            d = (uint32_t)(c - 'a') + 10u;
+        } else {
+            return 0;
+        }
+        acc = (acc << 4) | d;
+    }
+    if (s[digits] != '\0') {
+        return 0;
+    }
+    *value = acc;
+    return 1;
+}
+
+/*
+ * ERASE ALL | ERASE <region> | ERASE ROW <region> <offset>
+ * Bulk erase of every region the device has, bulk erase of one region, or erase of the
+ * row (page on PIC18) holding offset.
+ */
+static void do_erase(int argc, char *argv[ARG_MAX])
+{
+    pic_region_t region = PIC_REGION_FLASH;
+    uint32_t offset = 0u;
+    int row = 0;
+    uint8_t mask = 0u;
+
+    if (!need_device()) {
+        return;
+    }
+    if (argc == 2 && streq(argv[1], "ALL")) {
+        mask = PIC_ERASE_ALL;
+    } else if (argc == 2 && parse_region(argv[1], &region)) {
+        static const uint8_t masks[] = {PIC_ERASE_FLASH, PIC_ERASE_USERID, PIC_ERASE_CONFIG,
+                                        PIC_ERASE_EEPROM};
+        mask = masks[region];
+    } else if (argc == 4 && streq(argv[1], "ROW") && parse_region(argv[2], &region) &&
+               parse_number(argv[3], &offset)) {
+        row = 1;
+        if (!range_ok(region, offset, 1u)) {
+            return;
+        }
+    } else {
+        reply_error("bad-argument");
+        return;
+    }
+
+    pic_status_t st = pic_enter(device);
+    if (st == PIC_OK) {
+        st = row ? pic_row_erase(device, region, offset) : pic_bulk_erase(device, mask);
+        pic_exit(device);
+    }
+    ui_result("ERASE", st, 0u);
+    if (st != PIC_OK) {
+        reply_status(st);
+        return;
+    }
+    out_str("OK\n");
+}
+
+/* Cells the next data line must carry: up to CMD_DATA_LINE_CELLS, and never past the end
+ * of the transfer or of the row being buffered. */
+static uint32_t requested_cells(void)
+{
+    uint32_t n = session.count - session.received;
+
+    if (n > CMD_DATA_LINE_CELLS) {
+        n = CMD_DATA_LINE_CELLS;
+    }
+    if (n > session.flush_at - session.buffered) {
+        n = session.flush_at - session.buffered;
+    }
+    return n;
+}
+
+/* Ask the host for the next data line ("NEXT"), or for the last one again ("RESEND"). */
+static void request(const char *word)
+{
+    out_str(word);
+    out_char(' ');
+    out_hex(session.offset + session.received, 8u);
+    out_char(' ');
+    out_int((int32_t)requested_cells());
     out_char('\n');
+}
+
+/* Release the target. The status screen shows the result unless the host aborted. */
+static void end_session(pic_status_t st, uint32_t cells, int show)
+{
+    pic_exit(device);
+    if (show) {
+        ui_result(session.name, st, cells);
+    }
+    session.kind = SESSION_NONE;
+}
+
+/*
+ * WRITE <region> <offset> <count> | VERIFY <region> <offset> <count>
+ * Checks everything it can before touching the target, enters programming mode, then
+ * asks for the first data line.
+ */
+static void do_session(char *argv[ARG_MAX], session_kind_t kind)
+{
+    pic_region_t region;
+    uint32_t offset;
+    uint32_t count;
+
+    if (!need_device()) {
+        return;
+    }
+    if (!parse_region(argv[1], &region) || !parse_number(argv[2], &offset) ||
+        !parse_number(argv[3], &count)) {
+        reply_error("bad-argument");
+        return;
+    }
+    if (count == 0u) {
+        out_str("OK 0\n");
+        return;
+    }
+    if (!range_ok(region, offset, count)) {
+        return;
+    }
+
+    uint32_t flush_at = CMD_DATA_LINE_CELLS;
+    if (kind == SESSION_WRITE && region == PIC_REGION_FLASH && device->latch_words != 0u) {
+        if (device->latch_words > WRITE_BUF_CELLS) {
+            reply_status(PIC_ERR_UNSUPPORTED);
+            return;
+        }
+        if (offset % device->latch_words != 0u) {
+            reply_status(PIC_ERR_ALIGN);
+            return;
+        }
+        flush_at = device->latch_words; /* one whole row per pic_write() */
+    }
+
+    const char *name = kind == SESSION_WRITE ? "WRITE" : "VERIFY";
+    pic_status_t st = pic_enter(device);
+    if (st != PIC_OK) {
+        ui_result(name, st, 0u);
+        reply_status(st);
+        return;
+    }
+    session.kind = kind;
+    session.name = name;
+    session.region = region;
+    session.offset = offset;
+    session.count = count;
+    session.received = 0u;
+    session.buf_start = offset;
+    session.buffered = 0u;
+    session.flush_at = flush_at;
+    request("NEXT");
+}
+
+/* Write or compare the buffered cells. Returns 0 and ends the session on failure. */
+static int flush_session(void)
+{
+    pic_status_t st;
+    size_t mismatch = 0u;
+
+    if (session.kind == SESSION_WRITE) {
+        st = pic_write(device, session.region, session.buf_start, session.buf, session.buffered);
+    } else {
+        st = pic_verify(device, session.region, session.buf_start, session.buf, session.buffered,
+                        &mismatch);
+    }
+    if (st != PIC_OK) {
+        end_session(st, session.buf_start - session.offset, 1);
+        if (st == PIC_ERR_VERIFY) {
+            /* Say where: the first cell that differs, as an offset in the region. */
+            out_str("ERR ");
+            out_int(st);
+            out_char(' ');
+            out_str(pic_strerror(st));
+            out_str(" @");
+            out_hex(session.buf_start + (uint32_t)mismatch, 8u);
+            out_char('\n');
+        } else {
+            reply_status(st);
+        }
+        return 0;
+    }
+    session.buf_start += session.buffered;
+    session.buffered = 0u;
+    return 1;
+}
+
+/*
+ * One line received while a WRITE or VERIFY is waiting for data. A good data line is
+ * taken; a damaged one (bad CRC, wrong offset or cell count, receive error, line too long)
+ * is asked for again with RESEND; anything else aborts the command and releases the
+ * target.
+ */
+static void session_line(int damaged)
+{
+    char *argv[DATA_ARG_MAX];
+    uint32_t n = requested_cells();
+    uint32_t value;
+    char *star = NULL;
+
+    if (line_len == 0u && !damaged) {
+        return; /* blank line, for example the second half of a stray CR LF */
+    }
+    if (!damaged && !(line[0] == 'D' && line[1] == ' ')) {
+        end_session(PIC_OK, session.received, 0);
+        reply_error("aborted");
+        return;
+    }
+    for (size_t i = 0; i < line_len; i++) {
+        if (line[i] == '*') {
+            star = &line[i];
+            break;
+        }
+    }
+    /* The crc covers the text from the 'D' up to, not including, the " *". */
+    int ok = !damaged && star != NULL && star > line && star[-1] == ' ' &&
+             parse_hex_digits(star + 1, 4u, &value);
+    if (ok) {
+        uint16_t check = 0xFFFFu;
+        for (char *c = line; c < star - 1; c++) {
+            check = crc16_update(check, (uint8_t)*c);
+        }
+        ok = check == value;
+    }
+    int argc = ok ? split(line, argv, DATA_ARG_MAX) : -1;
+    ok = ok && argc == (int)(n + 3u) && parse_hex_digits(argv[1], 8u, &value) &&
+         value == session.offset + session.received;
+    for (uint32_t i = 0; ok && i < n; i++) {
+        ok = parse_hex_digits(argv[2u + i], 4u, &value);
+        session.buf[session.buffered + i] = (uint16_t)value;
+    }
+    if (!ok) {
+        request("RESEND");
+        return;
+    }
+
+    platform_watchdog_kick();
+    session.buffered += n;
+    session.received += n;
+    if ((session.buffered == session.flush_at || session.received == session.count) &&
+        !flush_session()) {
+        return;
+    }
+    if (session.received == session.count) {
+        end_session(PIC_OK, session.count, 1);
+        reply_ok_count(session.count);
+        return;
+    }
+    request("NEXT");
 }
 
 static void execute(void)
 {
     char *argv[ARG_MAX];
-    int argc = split(line, argv);
+    int argc = split(line, argv, ARG_MAX);
 
     if (argc == 0) {
         return; /* blank line */
@@ -309,6 +623,12 @@ static void execute(void)
         do_read(argv, 0);
     } else if (argc > 0 && streq(argv[0], "READB") && argc == 4) {
         do_read(argv, 1);
+    } else if (argc > 0 && streq(argv[0], "ERASE") && (argc == 2 || argc == 4)) {
+        do_erase(argc, argv);
+    } else if (argc > 0 && streq(argv[0], "WRITE") && argc == 4) {
+        do_session(argv, SESSION_WRITE);
+    } else if (argc > 0 && streq(argv[0], "VERIFY") && argc == 4) {
+        do_session(argv, SESSION_VERIFY);
     } else {
         reply_error("bad-command");
     }
@@ -339,7 +659,9 @@ void cmd_feed(uint8_t byte)
     }
 
     line[line_len] = '\0';
-    if (line_too_long) {
+    if (session.kind != SESSION_NONE) {
+        session_line(line_too_long || line_rx_error);
+    } else if (line_too_long) {
         reply_error("line-too-long");
     } else if (line_rx_error) {
         reply_error("rx-error");
