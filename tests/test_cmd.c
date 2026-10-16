@@ -678,6 +678,24 @@ static void test_power_and_vdd(void)
     TEST_ASSERT_EQUAL_STRING("ERR bad-argument\n", stub_uart_output());
 }
 
+static void test_status_reports_start_up_faults(void)
+{
+    send_line("STATUS");
+    TEST_ASSERT_EQUAL_STRING("OK clock=pll adc=ok\n", stub_uart_output());
+    stub_board_set_faults(1, 1);
+    send_line("STATUS");
+    TEST_ASSERT_EQUAL_STRING("OK clock=hsi16 adc=fail\n", stub_uart_output());
+}
+
+static void test_a_failed_adc_is_an_error_not_zero_millivolts(void)
+{
+    stub_board_set_faults(0, 1);
+    send_line("VDD");
+    TEST_ASSERT_EQUAL_STRING("ERR adc\n", stub_uart_output());
+    send_line("POWER");
+    TEST_ASSERT_EQUAL_STRING("OK on -1\n", stub_uart_output());
+}
+
 static void test_power_off_refuses_target_commands_and_forgets_the_device(void)
 {
     send_line("PROBE");
@@ -755,6 +773,8 @@ int main(void)
     RUN_TEST(test_selftest_reports_each_line_then_ok);
     RUN_TEST(test_selftest_reports_a_short);
     RUN_TEST(test_power_and_vdd);
+    RUN_TEST(test_status_reports_start_up_faults);
+    RUN_TEST(test_a_failed_adc_is_an_error_not_zero_millivolts);
     RUN_TEST(test_power_off_refuses_target_commands_and_forgets_the_device);
     RUN_TEST(test_bridge_opens_relays_and_closes);
     return UNITY_END();

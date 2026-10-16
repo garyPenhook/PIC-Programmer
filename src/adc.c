@@ -28,6 +28,7 @@
 #define ADC_ISR_CCRDY              (1u << 13)
 #define ADC_CR_ADEN                (1u << 0)
 #define ADC_CR_ADSTART             (1u << 2)
+#define ADC_CR_ADSTP               (1u << 4)
 #define ADC_CR_ADVREGEN            (1u << 28)
 #define ADC_CR_ADCAL               (1u << 31)
 #define ADC_CFGR2_CKMODE_PCLK_DIV2 (1u << 30) /* CKMODE 01 (15.12.5) */
@@ -85,27 +86,44 @@ void adc_init(void)
     ready = 1;
 }
 
-uint16_t adc_read(uint32_t channel)
+int adc_ready(void)
+{
+    return ready;
+}
+
+int adc_read(uint32_t channel, uint16_t *value)
 {
     if (!ready || channel > ADC_CHANNEL_MAX) {
-        return 0u;
+        return 0;
     }
     /* After writing CHSELR, wait for CCRDY before converting (15.12.9). */
     ADC_ISR = ADC_ISR_CCRDY;
     ADC_CHSELR = 1u << channel;
     if (!wait_set(ADC_ISR_CCRDY)) {
-        return 0u;
+        return 0;
     }
+    ADC_ISR = ADC_ISR_EOC; /* a stale EOC must not pass for this conversion */
     ADC_CR |= ADC_CR_ADSTART;
     if (!wait_set(ADC_ISR_EOC)) {
-        return 0u;
+        /* Stop and discard the conversion (ADSTP, 15.12.3): CHSELR may only be written
+         * while ADSTART = 0, so the next read would otherwise be ignored. */
+        ADC_CR |= ADC_CR_ADSTP;
+        for (uint32_t i = 0; i < WAIT_LOOPS && (ADC_CR & ADC_CR_ADSTP) != 0u; i++) {
+        }
+        ADC_ISR = ADC_ISR_EOC;
+        return 0;
     }
-    return (uint16_t)(ADC_DR & 0xFFFu); /* reading DR clears EOC */
+    *value = (uint16_t)(ADC_DR & 0xFFFu); /* reading DR clears EOC */
+    return 1;
 }
 
-uint32_t adc_vdda_mv(void)
+int adc_vdda_mv(uint32_t *mv)
 {
-    uint32_t data = adc_read(ADC_CHANNEL_VREFINT);
+    uint16_t data;
 
-    return data != 0u ? VREFINT_CAL_MV * VREFINT_CAL / data : 0u;
+    if (!adc_read(ADC_CHANNEL_VREFINT, &data) || data == 0u) {
+        return 0;
+    }
+    *mv = VREFINT_CAL_MV * VREFINT_CAL / data;
+    return 1;
 }

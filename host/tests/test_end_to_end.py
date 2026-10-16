@@ -255,3 +255,28 @@ def test_command_line_ctrl_c_exits_130(target, monkeypatch, capsys):
     monkeypatch.setattr(cli, "cmd_probe", lambda link, args: (_ for _ in ()).throw(KeyboardInterrupt))
     assert cli.main(["probe"]) == 130
     assert "interrupted" in capsys.readouterr().err
+
+
+def test_status_and_vdd_on_a_healthy_programmer(target):
+    assert target.status() == {"clock": "pll", "adc": "ok"}
+    assert target.vdd() == (3300, 3300)
+
+
+def test_status_command_line_reports_a_fallback_clock(monkeypatch, capsys):
+    from picprog import cli
+    from picprog.link import Link
+
+    monkeypatch.setattr(cli, "open_link",
+                        lambda args: Link(ScriptedStream(b"OK clock=hsi16 adc=fail\n")))
+    assert cli.main(["status"]) == 1
+    captured = capsys.readouterr()
+    assert "16 MHz fallback" in captured.out and "fallback clock" in captured.err
+
+
+def test_power_reports_an_unavailable_vdd(monkeypatch, capsys):
+    from picprog import cli
+    from picprog.link import Link
+
+    monkeypatch.setattr(cli, "open_link", lambda args: Link(ScriptedStream(b"OK on -1\n")))
+    assert cli.main(["power"]) == 0
+    assert "unavailable" in capsys.readouterr().out

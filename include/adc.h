@@ -17,14 +17,19 @@
  * regulator start-up wait uses icsp_delay_us()). */
 void adc_init(void);
 
-/* One conversion of `channel` (0 to 18); returns 0 to 4095. */
-uint16_t adc_read(uint32_t channel);
+/* 1 if adc_init() got the ADC running, 0 if it gave up (every read then fails). */
+int adc_ready(void);
+
+/* One conversion of `channel` (0 to 18). Stores 0 to 4095 in *value and returns 1, or
+ * returns 0 (leaving *value alone) if the ADC is not ready, the channel is invalid or a
+ * conversion timed out. A failure is not a reading of 0. */
+int adc_read(uint32_t channel, uint16_t *value);
 
 /*
  * VDDA (= VREF+ on this package) in millivolts, from the factory VREFINT calibration:
  * VREF+ = 3.0 V x VREFINT_CAL / VREFINT_DATA (RM0444 15.9; VREFINT_CAL measured at
  * VDDA = 3.0 V, DS12232 Table 6).
  */
-uint32_t adc_vdda_mv(void);
+int adc_vdda_mv(uint32_t *mv); /* 1 and *mv set, or 0 if the reading failed */
 
 #endif

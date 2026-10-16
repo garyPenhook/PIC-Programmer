@@ -43,4 +43,15 @@ extern uint32_t SystemCoreClock;
  */
 void clock_init(void);
 
+/* How clock_init() ended. Anything but CLOCK_OK means the chip stayed on 16 MHz, so the
+ * UART baud rate is a few percent off (uart.c) and everything timed is slower. */
+typedef enum {
+    CLOCK_OK = 0,          /* running at CLOCK_SYSCLK_HZ from the PLL */
+    CLOCK_ERR_FLASH = 1,   /* flash wait states never took effect */
+    CLOCK_ERR_PLL = 2,     /* the PLL did not lock */
+    CLOCK_ERR_SWITCH = 3,  /* SYSCLK never switched to the PLL */
+} clock_status_t;
+
+clock_status_t clock_status(void);
+
 #endif

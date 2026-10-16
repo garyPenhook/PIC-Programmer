@@ -1,4 +1,5 @@
 #include "adc.h"
+#include "clock.h"
 #include "cmd.h"
 #include "i2c.h"
 #include "icsp.h"
@@ -21,6 +22,9 @@ volatile uint16_t g_pic_revision_id;
 const pic_device_t *volatile g_pic_device;
 volatile int g_pic_status; /* pic_status_t of the probe: 0 = found, else PIC_ERR_* */
 
+/* clock_status_t from start-up: 0 = running at 64 MHz, else the step that failed. */
+volatile int g_clock_status;
+
 static void probe_target(void)
 {
     uint16_t id = 0u;
@@ -41,6 +45,7 @@ static void probe_target(void)
 int main(void)
 {
     platform_init(); /* clock, LED pin and the TIM16 interrupt that blinks it */
+    g_clock_status = (int)clock_status();
     platform_watchdog_init();
 
     /*

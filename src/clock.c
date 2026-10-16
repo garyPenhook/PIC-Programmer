@@ -49,6 +49,13 @@ static int wait_for(const volatile uint32_t *reg, uint32_t mask, uint32_t value)
     return 0;
 }
 
+static clock_status_t status;
+
+clock_status_t clock_status(void)
+{
+    return status;
+}
+
 void clock_init(void)
 {
     /*
@@ -67,6 +74,7 @@ void clock_init(void)
     FLASH_ACR = (FLASH_ACR & ~FLASH_ACR_LATENCY_MASK) | FLASH_ACR_LATENCY_2WS | FLASH_ACR_PRFTEN;
     if (!wait_for(&FLASH_ACR, FLASH_ACR_LATENCY_MASK, FLASH_ACR_LATENCY_2WS)) {
         SystemCoreClock = 16000000u;
+        status = CLOCK_ERR_FLASH;
         return;
     }
 
@@ -82,6 +90,7 @@ void clock_init(void)
         /* PLL did not lock: stay on HSI16 (16 MHz) so the rest of the code still works. */
         RCC_CR &= ~RCC_CR_PLLON;
         SystemCoreClock = 16000000u;
+        status = CLOCK_ERR_PLL;
         return;
     }
 
@@ -92,6 +101,7 @@ void clock_init(void)
     RCC_CFGR = (RCC_CFGR & ~RCC_CFGR_SW_MASK) | RCC_CFGR_SW_PLLRCLK;
     if (!wait_for(&RCC_CFGR, RCC_CFGR_SWS_MASK, RCC_CFGR_SWS_PLLRCLK)) {
         SystemCoreClock = 16000000u;
+        status = CLOCK_ERR_SWITCH;
         return;
     }
 
@@ -100,4 +110,5 @@ void clock_init(void)
      * back from the registers, so this variable is the only record of the frequency.
      */
     SystemCoreClock = CLOCK_SYSCLK_HZ;
+    status = CLOCK_OK;
 }

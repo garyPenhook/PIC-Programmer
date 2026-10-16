@@ -64,6 +64,23 @@
  *           SHORT <line> <line>                       for each short found
  *       then OK, or ERR wiring when a line or a short is wrong.
  *
+ *   POWER [ON|OFF]
+ *       Switch or report the target supply (target_power.h). The reply gives the state
+ *       and the target VDD in millivolts, or -1 if the ADC could not measure it.
+ *       OK <on|off> <mV>
+ *
+ *   VDD
+ *       Target VDD and the programmer's own VDDA in millivolts, or ERR adc if the ADC
+ *       failed (a failed measurement is never reported as 0 mV).
+ *       OK <target mV> <VDDA mV>
+ *
+ *   STATUS
+ *       Faults found at start-up. clock=hsi16 means the PLL setup failed and the chip
+ *       runs at 16 MHz (the serial baud rate is then a few percent off, so this may only
+ *       be readable at a slower host baud or over SWD: g_clock_status); adc=fail means
+ *       the ADC never came up, so VDD and VDDA fail.
+ *       OK clock=<pll|hsi16> adc=<ok|fail>
+ *
  *   ERASE ALL
  *   ERASE <region>
  *   ERASE ROW <region> <offset>
@@ -93,7 +110,7 @@
  * Errors: "ERR <pic_status_t value> <text>" for a failure reported by pic.h (for example
  * "ERR -2 range outside region"), or "ERR <word>" for a problem with the command itself:
  * bad-command, bad-argument, no-device, line-too-long, rx-error, aborted, not-blank,
- * wiring.
+ * wiring, adc.
  *
  * The serial port is polled and has no receive buffer, so the host must wait for the final
  * OK or ERR line (or, during WRITE and VERIFY, for each NEXT or RESEND) before it sends

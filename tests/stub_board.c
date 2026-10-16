@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "adc.h"
+#include "clock.h"
 #include "target_power.h"
 #include "target_uart.h"
 
@@ -15,6 +16,8 @@ static char tx[8192];
 static size_t tx_len;
 static int tx_blocked;
 static uint32_t baud;
+static int adc_failed;
+static int clock_fallback;
 
 void stub_board_reset(void)
 {
@@ -23,6 +26,7 @@ void stub_board_reset(void)
     rx_len = rx_pos = tx_len = 0u;
     tx_blocked = 0;
     baud = 0u;
+    adc_failed = clock_fallback = 0;
 }
 
 void stub_board_set_vdd(uint32_t mv)
@@ -66,24 +70,49 @@ int target_power_on(void)
     return powered;
 }
 
-uint32_t target_vdd_mv(void)
+int target_vdd_mv(uint32_t *mv)
 {
-    return powered ? vdd : 0u;
+    if (adc_failed) {
+        return 0;
+    }
+    *mv = powered ? vdd : 0u;
+    return 1;
 }
 
 void adc_init(void)
 {
 }
 
-uint16_t adc_read(uint32_t channel)
+int adc_ready(void)
 {
-    (void)channel;
-    return 0u;
+    return !adc_failed;
 }
 
-uint32_t adc_vdda_mv(void)
+int adc_read(uint32_t channel, uint16_t *value)
 {
-    return 3300u;
+    (void)channel;
+    if (adc_failed) {
+        return 0;
+    }
+    *value = 0u;
+    return 1;
+}
+
+int adc_vdda_mv(uint32_t *mv)
+{
+    *mv = 3300u;
+    return !adc_failed;
+}
+
+clock_status_t clock_status(void)
+{
+    return clock_fallback ? CLOCK_ERR_PLL : CLOCK_OK;
+}
+
+void stub_board_set_faults(int clock_fell_back, int adc_dead)
+{
+    clock_fallback = clock_fell_back;
+    adc_failed = adc_dead;
 }
 
 int target_uart_open(uint32_t b)

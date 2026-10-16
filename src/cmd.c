@@ -4,6 +4,7 @@
 
 #include "adc.h"
 #include "bridge.h"
+#include "clock.h"
 #include "platform.h"
 #include "selftest.h"
 #include "target_power.h"
@@ -525,9 +526,11 @@ static void do_selftest(void)
 
 static void reply_power(void)
 {
+    uint32_t vdd;
+
     out_str("OK ");
     out_str(target_power_on() ? "on " : "off ");
-    out_int((int32_t)target_vdd_mv());
+    out_int(target_vdd_mv(&vdd) ? (int32_t)vdd : -1); /* -1: the ADC failed */
     out_char('\n');
 }
 
@@ -552,16 +555,28 @@ static void do_power(int argc, char *argv[ARG_MAX])
     reply_power();
 }
 
-/* VDD: target VDD and the programmer's own VDDA, in millivolts. */
+/* VDD: target VDD and the programmer's own VDDA, in millivolts; ERR adc if the ADC failed. */
 static void do_vdd(void)
 {
-    uint32_t vdd = target_vdd_mv();
+    uint32_t vdd;
+    uint32_t vdda;
 
+    if (!target_vdd_mv(&vdd) || !adc_vdda_mv(&vdda)) {
+        reply_error("adc");
+        return;
+    }
     out_str("OK ");
     out_int((int32_t)vdd);
     out_char(' ');
-    out_int((int32_t)adc_vdda_mv());
+    out_int((int32_t)vdda);
     out_char('\n');
+}
+
+/* STATUS: self-reported hardware faults from start-up. */
+static void do_status(void)
+{
+    out_str(clock_status() == CLOCK_OK ? "OK clock=pll adc=" : "OK clock=hsi16 adc=");
+    out_str(adc_ready() ? "ok\n" : "fail\n");
 }
 
 /*
@@ -897,6 +912,8 @@ static void execute(void)
         do_power(argc, argv);
     } else if (argc > 0 && streq(argv[0], "VDD") && argc == 1) {
         do_vdd();
+    } else if (argc > 0 && streq(argv[0], "STATUS") && argc == 1) {
+        do_status();
     } else if (argc > 0 && streq(argv[0], "BRIDGE") && argc == 2) {
         do_bridge(argv);
     } else if (argc > 0 && streq(argv[0], "SELFTEST") && argc == 1) {

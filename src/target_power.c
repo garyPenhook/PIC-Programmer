@@ -67,10 +67,14 @@ int target_power_on(void)
     return powered;
 }
 
-uint32_t target_vdd_mv(void)
+int target_vdd_mv(uint32_t *mv)
 {
-    uint32_t vdda = adc_vdda_mv();
-    uint32_t raw = adc_read(ADC_CHANNEL);
+    uint32_t vdda;
+    uint16_t raw;
 
-    return vdda * raw * TARGET_VDD_DIVIDER / 4095u;
+    if (!adc_vdda_mv(&vdda) || !adc_read(ADC_CHANNEL, &raw)) {
+        return 0;
+    }
+    *mv = vdda * raw * TARGET_VDD_DIVIDER / 4095u;
+    return 1;
 }

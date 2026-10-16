@@ -121,7 +121,20 @@ def cmd_selftest(link, args):
 
 def cmd_power(link, args):
     on, vdd = link.power(None if args.state is None else args.state == "on")
-    print(f"target power {'on' if on else 'off'}, VDD {vdd} mV")
+    shown = f"{vdd} mV" if vdd is not None else "unavailable (ADC failed, see picprog status)"
+    print(f"target power {'on' if on else 'off'}, VDD {shown}")
+
+
+def cmd_status(link, args):
+    status = link.status()
+    fell_back = status["clock"] != "pll"
+    print(f"clock: {'64 MHz PLL' if not fell_back else '16 MHz fallback (PLL setup failed)'}")
+    print(f"adc:   {status['adc']}")
+    if fell_back:
+        raise LinkError("the programmer is running on its 16 MHz fallback clock: the serial "
+                        "baud rate and all timing are off")
+    if status["adc"] != "ok":
+        raise LinkError("the ADC failed at start-up: VDD cannot be measured")
 
 
 def cmd_vdd(link, args):
@@ -222,6 +235,8 @@ def main(argv=None):
     p.add_argument("state", nargs="?", choices=("on", "off"))
     p.set_defaults(run=cmd_power)
 
+    sub.add_parser("status", help="report start-up hardware faults (clock, ADC)"
+                   ).set_defaults(run=cmd_status)
     sub.add_parser("vdd", help="measure the target VDD").set_defaults(run=cmd_vdd)
 
     p = sub.add_parser("bridge", help="terminal to the target's serial port (Ctrl-] ends)")

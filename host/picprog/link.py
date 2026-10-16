@@ -123,13 +123,26 @@ class Link:
         return self._ints(self._span("BLANK", region, offset, count), 1)[0]
 
     def power(self, on=None):
-        """Switch the target supply (True/False) or just report it. Returns (on, VDD in mV)."""
+        """Switch the target supply (True/False) or just report it. Returns (on, VDD in mV),
+        with VDD None if the programmer's ADC could not measure it."""
         verb = "POWER" if on is None else ("POWER ON" if on else "POWER OFF")
         text = self.command(verb)
         state, _, vdd = text.partition(" ")
         if state not in ("on", "off"):
             raise LinkError(f"unexpected reply: {text!r}")
-        return state == "on", self._ints(vdd, 1)[0]
+        vdd = self._ints(vdd, 1)[0]
+        return state == "on", (vdd if vdd >= 0 else None)
+
+    def status(self):
+        """Start-up faults the programmer found: {"clock": "pll" | "hsi16", "adc": "ok" | "fail"}."""
+        text = self.command("STATUS")
+        try:
+            fields = dict(word.split("=", 1) for word in text.split())
+        except ValueError:
+            fields = {}
+        if not {"clock", "adc"} <= set(fields):
+            raise LinkError(f"unexpected reply: {text!r}")
+        return fields
 
     def vdd(self):
         """(target VDD, programmer VDDA) in millivolts."""
