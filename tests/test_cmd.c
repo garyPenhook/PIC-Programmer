@@ -9,6 +9,7 @@
 #include "pic.h"
 #include "pic_proto.h"
 #include "sim_p16_8bit.h"
+#include "stub_icsp_lines.h"
 #include "stub_uart.h"
 #include "unity.h"
 
@@ -91,6 +92,7 @@ static void assert_output(const uint8_t *expected, size_t length)
 
 void setUp(void)
 {
+    stub_lines_reset();
     sim_set_lvp(1);
     sim_set_dat_stuck_high(0);
     sim_select_device(DEVICE_ID);
@@ -580,6 +582,89 @@ static void test_id_and_dci_refuse_a_different_part(void)
     TEST_ASSERT_EQUAL_INT(0, sim_in_program_mode());
 }
 
+/* Standard CRC-32 (zlib's crc32), written bit by bit independently of src/cmd.c. */
+static uint32_t reference_crc32(const uint8_t *data, size_t length)
+{
+    uint32_t crc = 0xFFFFFFFFu;
+
+    for (size_t i = 0; i < length; i++) {
+        crc ^= data[i];
+        for (int bit = 0; bit < 8; bit++) {
+            crc = (crc & 1u) ? (crc >> 1) ^ 0xEDB88320u : crc >> 1;
+        }
+    }
+    return ~crc;
+}
+
+static void test_crc32_reference_matches_published_check_value(void)
+{
+    TEST_ASSERT_EQUAL_HEX32(0xCBF43926u, reference_crc32((const uint8_t *)"123456789", 9u));
+}
+
+static void test_crc_of_cells_matches_their_hex_file_bytes(void)
+{
+    uint8_t bytes[2 * PATTERN_WORDS];
+    char expected[32];
+
+    for (unsigned i = 0; i < PATTERN_WORDS; i++) {
+        bytes[2 * i] = (uint8_t)(pattern[i] & 0xFFu); /* low byte first, as in a hex file */
+        bytes[2 * i + 1] = (uint8_t)(pattern[i] >> 8);
+    }
+    send_line("PROBE");
+    send_line("CRC flash 0 64");
+    snprintf(expected, sizeof expected, "OK %08X\n", (unsigned)reference_crc32(bytes, 128u));
+    TEST_ASSERT_EQUAL_STRING(expected, stub_uart_output());
+    send_line("CRC flash 3 1");
+    snprintf(expected, sizeof expected, "OK %08X\n", (unsigned)reference_crc32(bytes + 6, 2u));
+    TEST_ASSERT_EQUAL_STRING(expected, stub_uart_output());
+    TEST_ASSERT_EQUAL_INT(0, sim_in_program_mode());
+}
+
+static void test_crc_errors(void)
+{
+    send_line("CRC flash");
+    TEST_ASSERT_EQUAL_STRING("ERR no-device\n", stub_uart_output());
+    send_line("PROBE");
+    send_line("CRC nowhere");
+    TEST_ASSERT_EQUAL_STRING("ERR bad-argument\n", stub_uart_output());
+    send_line("CRC flash 0x3FFF 2");
+    TEST_ASSERT_EQUAL_STRING("ERR -2 range outside region\n", stub_uart_output());
+    send_line("CRC flash 0");
+    TEST_ASSERT_EQUAL_STRING("ERR bad-command\n", stub_uart_output());
+}
+
+static void test_blank_check(void)
+{
+    send_line("PROBE");
+    send_line("BLANK flash");
+    TEST_ASSERT_EQUAL_STRING("ERR not-blank @00000000 0007\n", stub_uart_output());
+    send_line("BLANK flash 64 100"); /* past the written pattern */
+    TEST_ASSERT_EQUAL_STRING("OK 100\n", stub_uart_output());
+    send_line("ERASE ALL");
+    send_line("BLANK flash");
+    TEST_ASSERT_EQUAL_STRING("OK 16384\n", stub_uart_output());
+    send_line("BLANK eeprom");
+    TEST_ASSERT_EQUAL_STRING("OK 256\n", stub_uart_output());
+    TEST_ASSERT_EQUAL_INT(0, sim_in_program_mode());
+}
+
+static void test_selftest_reports_each_line_then_ok(void)
+{
+    send_line("SELFTEST"); /* needs no PROBE */
+    TEST_ASSERT_EQUAL_STRING("LINE CLK float\nLINE DAT float\nLINE MCLR float\nOK\n",
+                             stub_uart_output());
+}
+
+static void test_selftest_reports_a_short(void)
+{
+    stub_lines_short(ICSP_LINE_CLK, ICSP_LINE_DAT);
+    stub_lines_hold(ICSP_LINE_MCLR, STUB_LINE_HELD_HIGH);
+    send_line("SELFTEST");
+    TEST_ASSERT_EQUAL_STRING(
+        "LINE CLK float\nLINE DAT float\nLINE MCLR high\nSHORT CLK DAT\nERR wiring\n",
+        stub_uart_output());
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -615,5 +700,11 @@ int main(void)
     RUN_TEST(test_id_reads_device_and_revision);
     RUN_TEST(test_dci_reads_the_five_fields);
     RUN_TEST(test_id_and_dci_refuse_a_different_part);
+    RUN_TEST(test_crc32_reference_matches_published_check_value);
+    RUN_TEST(test_crc_of_cells_matches_their_hex_file_bytes);
+    RUN_TEST(test_crc_errors);
+    RUN_TEST(test_blank_check);
+    RUN_TEST(test_selftest_reports_each_line_then_ok);
+    RUN_TEST(test_selftest_reports_a_short);
     return UNITY_END();
 }

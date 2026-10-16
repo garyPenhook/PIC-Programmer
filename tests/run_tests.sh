@@ -26,8 +26,8 @@ gcc $flags -Itests/vendor/unity $core tests/sim_p16_8bit.c tests/test_pic_find.c
 "$out/test_pic_find"
 
 # Serial command layer, against the p16 simulator with a stub UART (and no display).
-gcc $flags -Itests/vendor/unity $core src/cmd.c src/ui.c src/oled.c tests/sim_p16_8bit.c \
-    tests/stub_uart.c tests/stub_i2c.c tests/test_cmd.c tests/vendor/unity/unity.c \
+gcc $flags -Itests/vendor/unity $core src/cmd.c src/ui.c src/oled.c src/selftest.c tests/sim_p16_8bit.c \
+    tests/stub_icsp_lines.c tests/stub_uart.c tests/stub_i2c.c tests/test_cmd.c tests/vendor/unity/unity.c \
     -o "$out/test_cmd"
 "$out/test_cmd"
 
@@ -41,6 +41,11 @@ gcc $flags -DI2C_IGNORE_ACK=1 -Itests/vendor/unity $core src/oled.c src/ui.c \
     tests/sim_p16_8bit.c tests/stub_i2c.c tests/test_oled.c tests/vendor/unity/unity.c \
     -o "$out/test_oled_ignore_ack"
 "$out/test_oled_ignore_ack"
+
+# ICSP wiring self-test, against a model of the three wires.
+gcc $flags -Itests/vendor/unity src/selftest.c tests/stub_icsp_lines.c tests/test_selftest.c \
+    tests/vendor/unity/unity.c -o "$out/test_selftest"
+"$out/test_selftest"
 
 # Host tool (host/picprog) against the PC build of the firmware's command layer.
 if command -v uv >/dev/null 2>&1; then

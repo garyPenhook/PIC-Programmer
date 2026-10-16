@@ -46,4 +46,17 @@ uint8_t icsp_get_dat(void);        /* read ICSPDAT */
 /* Busy-wait for at least this many microseconds. */
 void icsp_delay_us(uint32_t us);
 
+/*
+ * Line-level access for the wiring self-test (selftest.h). Not used while programming.
+ * A line is either an input with the STM32's weak pull-up or pull-down (25 to 55 kOhm,
+ * DS12232 Table 51), or a push-pull output at a level.
+ */
+typedef enum { ICSP_LINE_CLK = 0, ICSP_LINE_DAT, ICSP_LINE_MCLR } icsp_line_t;
+#define ICSP_LINES 3u
+
+void icsp_line_pull(icsp_line_t line, uint8_t up);     /* input, pull-up (1) or down (0) */
+void icsp_line_drive(icsp_line_t line, uint8_t level); /* push-pull output */
+uint8_t icsp_line_read(icsp_line_t line);              /* the level on the pin */
+void icsp_lines_idle(void); /* back to the icsp_init() state: target running */
+
 #endif

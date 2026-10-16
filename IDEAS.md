@@ -19,7 +19,7 @@ These five make the programmer safer and more useful day to day, and most are fi
 | Target power control | A GPIO switches target VDD through a P-FET or load switch, so the host can power-cycle the target for a clean LVP entry. | P-FET or load switch |
 | VDD and current measurement | ADC reads target VDD before entering programming mode and warns or refuses if it is out of range; optional shunt amplifier reads target current to catch shorts and show sleep current. | Divider, optional shunt amplifier |
 | High-voltage MCLR (M7) | Boost converter (about 8 to 9 V) and a switch recover parts with LVP off. An ADC check confirms the rail has settled before it touches MCLR. | Boost converter, switch |
-| Wiring diagnostic | Before programming, drive each ICSP line and read the others to report shorts, a floating MCLR or swapped CLK and DAT. | None |
+| Wiring diagnostic | **Done:** `SELFTEST` / `picprog selftest` reports shorts between ICSP lines and lines held high or low. Open wires and swapped CLK/DAT cannot be seen this way. | None |
 
 ## Debug and bring-up tools
 
@@ -39,7 +39,7 @@ These make the tool trustworthy on the bench and usable without a PC.
 | Idea | What it does |
 | --- | --- |
 | Stored hex image | Keeps a golden image in spare STM32 flash or an external SPI flash, with a button to program standalone and pass/fail LEDs. A small bench production tool. |
-| Protection handling | Detects code-protect and read-protect bits, warns before an erase, and adds blank-check and checksum commands. |
+| Protection handling | Detects code-protect and read-protect bits and warns before an erase. Blank-check and checksum commands are **done** (`BLANK`, `CRC`). |
 | Config-word editor | Reads, decodes and writes config words by name (WDT, BOR, LVP and so on), driven by the same CSV device table so each part decodes its own bits. |
 | Self-test mode | Checks the 3.3 V rail, pin directions and timing against a known loopback fixture before the programmer is trusted. |
 

@@ -83,6 +83,42 @@ def cmd_write(link, args):
     print(f"{device.name}: programmed{'' if args.no_verify else ' and verified'}")
 
 
+def cmd_crc(link, args):
+    """Compare each region in a hex file by CRC-32, without reading the cells back."""
+    device = programmer.connect(link)
+    with open(args.file) as f:
+        cells, _ = devices.image_to_cells(device, ihex.parse(f.read()))
+    same = True
+    for region in devices.REGIONS:
+        if not cells[region]:
+            continue
+        want = devices.region_crc(device, region, cells[region])
+        got = link.crc(region)
+        same = same and want == got
+        print(f"{region:6s} part {got:08X}  file {want:08X}  {'same' if want == got else 'DIFFERENT'}")
+    if not same:
+        raise LinkError("the part differs from the file")
+
+
+def cmd_blank(link, args):
+    device = programmer.connect(link)
+    regions = devices.REGIONS if args.region == "all" else (args.region,)
+    for region in regions:
+        if device.size(region):
+            print(f"{region}: blank ({link.blank(region)} cells)")
+
+
+def cmd_selftest(link, args):
+    states, shorts, ok = link.selftest()
+    for name, state in states.items():
+        print(f"{name:4s} {state}")
+    for a, b in shorts:
+        print(f"short between {a} and {b}")
+    if not ok:
+        raise LinkError("wiring fault (see include/selftest.h for what each result means)")
+    print("wiring ok (an open wire or swapped CLK/DAT cannot be detected this way)")
+
+
 def cmd_verify(link, args):
     device = programmer.connect(link)
     with open(args.file) as f:
@@ -128,6 +164,17 @@ def main(argv=None):
     p = sub.add_parser("verify", help="compare the target with an Intel HEX file")
     p.add_argument("file")
     p.set_defaults(run=cmd_verify)
+
+    p = sub.add_parser("crc", help="compare the target with an Intel HEX file by CRC-32")
+    p.add_argument("file")
+    p.set_defaults(run=cmd_crc)
+
+    p = sub.add_parser("blank", help="check that regions are erased")
+    p.add_argument("region", nargs="?", default="all", choices=("all",) + devices.REGIONS)
+    p.set_defaults(run=cmd_blank)
+
+    sub.add_parser("selftest", help="check the ICSP wiring for shorts and stuck lines"
+                   ).set_defaults(run=cmd_selftest)
 
     args = parser.parse_args(argv)
     try:

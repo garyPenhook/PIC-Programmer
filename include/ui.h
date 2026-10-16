@@ -23,4 +23,7 @@ void ui_probe(pic_status_t status, const pic_device_t *dev, uint16_t id, uint16_
 /* Result of any other command that reached the target: its name, status and cell count. */
 void ui_result(const char *command, pic_status_t status, uint32_t count);
 
+/* A free-form result: `summary` on the result row, `detail` (may be "") under it. */
+void ui_note(const char *summary, const char *detail);
+
 #endif

@@ -181,6 +181,9 @@ netlist or the values swept.
 
 - Over SWD: `g_pic_status` is 0 when a part was recognised. A PIC16F17146 reads device ID
   `0x30E1`, a PIC16F17124 `0x30DC` (DS40002266B 2.6).
+- Run `picprog selftest` (or send `SELFTEST`) first: it reports a short between ICSP
+  lines, or a line held high or low (a short to a supply, an unpowered target). MCLR
+  showing `high` is normal when the target board has a pull-up on it.
 - Over the serial port (921600 baud, 8N1): send `PROBE`; the reply is
   `OK <name> <device id> <revision id>` or `ERR <code> <text>`.
 - `ERR -5 no target answered`: the ID read back as 0. Check the wiring, target power, and

@@ -127,6 +127,14 @@ static int region_valid(pic_region_t region)
            region == PIC_REGION_CONFIG || region == PIC_REGION_EEPROM;
 }
 
+uint16_t pic_cell_mask(const pic_device_t *dev, pic_region_t region)
+{
+    if (dev == NULL || dev->proto == NULL || !region_valid(region)) {
+        return 0u;
+    }
+    return dev->proto->cell_mask(region);
+}
+
 static int dev_ok(const pic_device_t *dev)
 {
     return dev != NULL && dev->proto != NULL;

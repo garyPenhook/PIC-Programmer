@@ -27,6 +27,7 @@ add_executable(${PROJECT_NAME}
     src/oled_port.c
     src/pic.c
     src/proto/icsp8.c
+    src/selftest.c
     src/proto/p16_8bit.c
     src/proto/p18_8bit.c
     ${PIC_DEVICES_C}

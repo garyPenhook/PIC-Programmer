@@ -116,6 +116,13 @@ pic_status_t pic_probe(const pic_device_t **dev, uint16_t *device_id, uint16_t *
 uint32_t pic_region_size(const pic_device_t *dev, pic_region_t region);
 
 /*
+ * The bits a cell of this region stores (0x3FFF for a PIC16 word, 0xFF for an EEPROM byte).
+ * An erased cell reads back as this value: erasing sets every bit to 1 (DS40002266B
+ * Table 1-2). 0 for a NULL device or an unknown region.
+ */
+uint16_t pic_cell_mask(const pic_device_t *dev, pic_region_t region);
+
+/*
  * Enter Program/Verify mode with the low-voltage key. The target must have LVP = 1. Then
  * read the device ID and compare it with dev, so a missing or different part is caught
  * before any write: PIC_ERR_NO_TARGET (ID 0), PIC_ERR_MISMATCH (a different ID, or the

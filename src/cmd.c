@@ -3,6 +3,7 @@
 #include <stddef.h>
 
 #include "platform.h"
+#include "selftest.h"
 #include "uart.h"
 #include "ui.h"
 
@@ -372,6 +373,132 @@ static int parse_hex_digits(const char *s, uint32_t digits, uint32_t *value)
     return 1;
 }
 
+/* Optional "<offset> <count>" after the region (argv[2], argv[3]); the whole region if
+ * absent. Replies and returns 0 on a bad argument or range. */
+static int region_span(int argc, char *argv[ARG_MAX], pic_region_t *region, uint32_t *offset,
+                       uint32_t *count)
+{
+    if (!parse_region(argv[1], region) ||
+        (argc == 4 && (!parse_number(argv[2], offset) || !parse_number(argv[3], count)))) {
+        reply_error("bad-argument");
+        return 0;
+    }
+    if (argc == 2) {
+        *offset = 0u;
+        *count = pic_region_size(device, *region);
+    }
+    return *count == 0u || range_ok(*region, *offset, *count);
+}
+
+/* CRC-32 (polynomial 0x04C11DB7, the one in DS40002266B 3.6), bit-reflected with initial
+ * value and final XOR 0xFFFFFFFF: the same as zlib's crc32(). This updates the running
+ * value without the final XOR. */
+static uint32_t crc32_update(uint32_t value, uint8_t byte)
+{
+    value ^= byte;
+    for (int i = 0; i < 8; i++) {
+        value = (value >> 1) ^ (0xEDB88320u & (0u - (value & 1u)));
+    }
+    return value;
+}
+
+/*
+ * CRC <region> [<offset> <count>] | BLANK <region> [<offset> <count>]
+ * Read the cells on the programmer and reply with their CRC-32, or check they are all
+ * erased, without sending the data over the serial port.
+ */
+static void do_scan(int argc, char *argv[ARG_MAX], int blank)
+{
+    const char *name = blank ? "BLANK" : "CRC";
+    pic_region_t region;
+    uint32_t offset = 0u;
+    uint32_t count = 0u;
+    uint16_t cells[CMD_CHUNK_CELLS];
+    uint32_t sum = 0xFFFFFFFFu; /* running CRC-32 */
+
+    if (!need_device() || !region_span(argc, argv, &region, &offset, &count)) {
+        return;
+    }
+    uint16_t erased = pic_cell_mask(device, region);
+    pic_status_t st = PIC_OK;
+    int entered = 0;
+    if (count != 0u) {
+        st = pic_enter(device); /* on failure it has already released the target */
+        entered = st == PIC_OK;
+    }
+    for (uint32_t done = 0; st == PIC_OK && done < count;) {
+        uint32_t n = count - done < CMD_CHUNK_CELLS ? count - done : CMD_CHUNK_CELLS;
+
+        platform_watchdog_kick();
+        st = pic_read(device, region, offset + done, cells, n);
+        for (uint32_t i = 0; st == PIC_OK && i < n; i++) {
+            if (blank && cells[i] != erased) {
+                pic_exit(device);
+                ui_note("BLANK no", "not erased");
+                out_str("ERR not-blank @");
+                out_hex(offset + done + i, 8u);
+                out_char(' ');
+                out_hex(cells[i], 4u);
+                out_char('\n');
+                return;
+            }
+            /* Each cell as two bytes, low byte first, as in a hex file. */
+            sum = crc32_update(crc32_update(sum, (uint8_t)(cells[i] & 0xFFu)),
+                               (uint8_t)(cells[i] >> 8));
+        }
+        done += n;
+    }
+    if (entered) {
+        pic_exit(device);
+    }
+    ui_result(name, st, count);
+    if (st != PIC_OK) {
+        reply_status(st);
+        return;
+    }
+    out_str("OK ");
+    if (blank) {
+        out_int((int32_t)count);
+    } else {
+        out_hex(~sum, 8u);
+    }
+    out_char('\n');
+}
+
+/*
+ * SELFTEST
+ * Wiring check of the ICSP lines (selftest.h). Needs no PROBE.
+ *     LINE <CLK|DAT|MCLR> <float|high|low>     one per line
+ *     SHORT <line> <line>                       for each short found
+ * then OK, or ERR wiring if anything is wrong.
+ */
+static void do_selftest(void)
+{
+    selftest_result_t r;
+
+    selftest_run(&r);
+    for (uint32_t i = 0; i < ICSP_LINES; i++) {
+        out_str("LINE ");
+        out_str(selftest_line_name((icsp_line_t)i));
+        out_char(' ');
+        out_str(selftest_state_name(r.state[i]));
+        out_char('\n');
+    }
+    for (uint32_t i = 0; i < ICSP_LINES; i++) {
+        for (uint32_t j = i + 1u; j < ICSP_LINES; j++) {
+            if (r.shorted[i][j]) {
+                out_str("SHORT ");
+                out_str(selftest_line_name((icsp_line_t)i));
+                out_char(' ');
+                out_str(selftest_line_name((icsp_line_t)j));
+                out_char('\n');
+            }
+        }
+    }
+    ui_note(r.fault ? "SELFTEST fault" : "SELFTEST ok", r.fault ? "check the wiring" : "");
+    out_str(r.fault ? "ERR wiring\n" : "OK\n");
+}
+
 /*
  * ID | DCI
  * Read the device and revision IDs, or the Device Configuration Information, from the
@@ -670,6 +797,12 @@ static void execute(void)
         do_read(argv, 0);
     } else if (argc > 0 && streq(argv[0], "READB") && argc == 4) {
         do_read(argv, 1);
+    } else if (argc > 0 && streq(argv[0], "CRC") && (argc == 2 || argc == 4)) {
+        do_scan(argc, argv, 0);
+    } else if (argc > 0 && streq(argv[0], "BLANK") && (argc == 2 || argc == 4)) {
+        do_scan(argc, argv, 1);
+    } else if (argc > 0 && streq(argv[0], "SELFTEST") && argc == 1) {
+        do_selftest();
     } else if (argc > 0 && streq(argv[0], "ID") && argc == 1) {
         do_info(0);
     } else if (argc > 0 && streq(argv[0], "DCI") && argc == 1) {

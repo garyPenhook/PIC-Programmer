@@ -25,8 +25,10 @@
 #define MODE_OUTPUT 1u
 
 /* OSPEEDR: 2 bits per pin, 01 = low speed (RM0444 7.5.3). PUPDR: 2 bits per pin,
- * 10 = pull-down. */
+ * 00 = none, 01 = pull-up, 10 = pull-down (7.5.4). */
 #define SPEED_LOW 1u
+#define PULL_NONE 0u
+#define PULL_UP   1u
 #define PULL_DOWN 2u
 
 /* SysTick (PM0223): free-running 24-bit down-counter on the processor clock. */
@@ -130,4 +132,37 @@ void icsp_delay_us(uint32_t us)
         }
         us -= chunk;
     }
+}
+
+static const uint32_t line_pin[ICSP_LINES] = {PIN_CLK, PIN_DAT, PIN_MCLR};
+
+void icsp_line_pull(icsp_line_t line, uint8_t up)
+{
+    uint32_t pin = line_pin[line];
+
+    set_field(&GPIOB_PUPDR, pin, up ? PULL_UP : PULL_DOWN);
+    set_field(&GPIOB_MODER, pin, MODE_INPUT);
+}
+
+void icsp_line_drive(icsp_line_t line, uint8_t level)
+{
+    uint32_t pin = line_pin[line];
+
+    drive(pin, level); /* level first, then output, as in icsp_set_dat() */
+    set_field(&GPIOB_MODER, pin, MODE_OUTPUT);
+    set_field(&GPIOB_PUPDR, pin, PULL_NONE);
+}
+
+uint8_t icsp_line_read(icsp_line_t line)
+{
+    return (uint8_t)((GPIOB_IDR >> line_pin[line]) & 1u);
+}
+
+void icsp_lines_idle(void)
+{
+    /* The same pin state icsp_init() leaves: MCLR high, ICSPCLK low, ICSPDAT an input with
+     * the weak pull-down. */
+    icsp_line_drive(ICSP_LINE_MCLR, 1u);
+    icsp_line_drive(ICSP_LINE_CLK, 0u);
+    icsp_line_pull(ICSP_LINE_DAT, 0u);
 }

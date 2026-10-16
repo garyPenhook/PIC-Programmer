@@ -46,6 +46,24 @@
  *       and including the last cell. The final OK or ERR is still a text line. A host tells
  *       them apart by the first byte: 0x42 starts a frame, 'O' or 'E' a text line.
  *
+ *   CRC <region> [<offset> <count>]
+ *       CRC-32 (zlib's crc32: polynomial 0x04C11DB7, reflected, initial value and final
+ *       XOR 0xFFFFFFFF) of the cells, each taken as two bytes, low byte first. The whole
+ *       region if offset and count are left out. Computed on the programmer, so only the
+ *       result crosses the serial port.
+ *       OK <crc, 8 hex digits>
+ *
+ *   BLANK <region> [<offset> <count>]
+ *       Check that every cell reads as erased (all the bits the cell stores set).
+ *       OK <count>, or ERR not-blank @<offset, 8 hex digits> <value, 4 hex digits> for the
+ *       first cell that is not.
+ *
+ *   SELFTEST
+ *       Wiring check of the ICSP lines (see selftest.h). Needs no PROBE.
+ *           LINE <CLK|DAT|MCLR> <float|high|low>     for each line
+ *           SHORT <line> <line>                       for each short found
+ *       then OK, or ERR wiring when a line or a short is wrong.
+ *
  *   ERASE ALL
  *   ERASE <region>
  *   ERASE ROW <region> <offset>
@@ -74,7 +92,8 @@
  *
  * Errors: "ERR <pic_status_t value> <text>" for a failure reported by pic.h (for example
  * "ERR -2 range outside region"), or "ERR <word>" for a problem with the command itself:
- * bad-command, bad-argument, no-device, line-too-long, rx-error, aborted.
+ * bad-command, bad-argument, no-device, line-too-long, rx-error, aborted, not-blank,
+ * wiring.
  *
  * The serial port is polled and has no receive buffer, so the host must wait for the final
  * OK or ERR line (or, during WRITE and VERIFY, for each NEXT or RESEND) before it sends

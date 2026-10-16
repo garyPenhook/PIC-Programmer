@@ -24,7 +24,7 @@ cmake --preset Debug   && cmake --build --preset Debug
 cmake --preset Release && cmake --build --preset Release
 ```
 
-Each build writes `pic_programmer_debugger` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 11076 B  128 KB  8.45%` (Release). RAM covers static data only (`.data` + `.bss`); the stack is not counted.
+Each build writes `pic_programmer_debugger` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 12676 B  128 KB  9.67%` (Release). RAM covers static data only (`.data` + `.bss`); the stack is not counted.
 
 ## Clock and LED Blink
 
@@ -137,10 +137,13 @@ cleanly at that rate). Commands are upper case, one per line. Every command ends
 | Command | Reply |
 |---|---|
 | `PROBE` | `OK <name> <device id> <revision id>`; remembers the device for later commands |
+| `SELFTEST` | `LINE <line> <float/high/low>` per ICSP line, `SHORT <a> <b>` per short, then `OK` or `ERR wiring` (no PROBE needed) |
 | `ID` | `OK <device id> <revision id>` (ERR -6 if a different part now answers) |
 | `DCI` | `OK <ERSIZ> <WLSIZ> <URSIZ> <EESIZ> <PCNT>` in decimal |
 | `READ <region> <offset> <count>` | `D <offset> <cells...> *<crc>` lines, then `OK <count>` |
 | `READB <region> <offset> <count>` | binary frames (2 bytes per cell), then `OK <count>` |
+| `CRC <region> [<offset> <count>]` | `OK <crc32>`: CRC-32 of the cells, computed on the programmer |
+| `BLANK <region> [<offset> <count>]` | `OK <count>`, or `ERR not-blank @<offset> <value>` |
 | `ERASE ALL`, `ERASE <region>`, `ERASE ROW <region> <offset>` | `OK` |
 | `WRITE <region> <offset> <count>` | `NEXT <offset> <n>` requests, then `OK <count>` |
 | `VERIFY <region> <offset> <count>` | `NEXT <offset> <n>` requests, then `OK <count>` or `ERR -8 verify mismatch @<offset>` |
@@ -283,7 +286,23 @@ picprog verify firmware.hex      # compare the target with a file
 picprog erase all                # or: erase flash, erase flash --row 0x40
 picprog read flash 0 32          # print cells
 picprog dci                      # Device Configuration Information
+picprog crc firmware.hex         # compare by CRC-32, without reading the data back
+picprog blank                    # check every region is erased (or: blank flash)
+picprog selftest                 # check the ICSP wiring for shorts and stuck lines
 ```
+
+`crc` computes the CRC-32 of each region on the programmer and compares it with the same
+CRC of the file (each cell as two bytes, low byte first; cells the file does not give count
+as erased), so it is much faster than `verify` but only says whether a region differs, not
+where. The polynomial is the one DS40002266B 3.6 names for MPLAB's hex file checksum, but
+whether these values equal the checksum MPLAB shows has not been confirmed.
+
+`selftest` reads each ICSP line with the STM32's weak pull-up and pull-down to find lines
+held high or low, then drives floating lines one at a time to find shorts between them. It
+never drives a line it found held, so a short to a supply is reported, not fought. It
+cannot find an open wire (that floats like a connected input) or ICSPCLK and ICSPDAT
+swapped; `probe` failing on wiring that passes `selftest` points at those. The details are
+in `include/selftest.h`.
 
 Without installing, run it from the checkout with `uv run --project host picprog ...`.
 The installed tool carries its own copy of `data/pic_devices.csv`, taken at install time

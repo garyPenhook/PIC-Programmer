@@ -124,3 +124,52 @@ def test_program_without_erase_does_not_verify_the_padding(target):
         "the hex file has no Configuration Words"]
     cells, _ = devices.image_to_cells(device, programmer.dump(target, device)[0])
     assert cells["flash"][0] == 0x0101 and cells["flash"][5] == 0x0202
+
+
+def test_crc_matches_the_file_and_spots_a_change(target):
+    device = programmer.connect(target)
+    image = make_image(device)
+    programmer.program(target, device, image)
+    cells, _ = devices.image_to_cells(device, image)
+    for region in devices.REGIONS:
+        assert target.crc(region) == devices.region_crc(device, region, cells[region]), region
+    changed = dict(cells["flash"])
+    changed[7] ^= 1
+    assert target.crc("flash") != devices.region_crc(device, "flash", changed)
+
+
+def test_blank_check(target):
+    device = programmer.connect(target)
+    programmer.program(target, device, make_image(device))
+    with pytest.raises(LinkError, match="not-blank @00000000"):
+        target.blank("flash")
+    assert target.blank("flash", 200, 50) == 50
+    target.erase("ALL")
+    assert target.blank("flash") == 16384
+
+
+def test_selftest(target):
+    states, shorts, ok = target.selftest()
+    assert states == {"CLK": "float", "DAT": "float", "MCLR": "float"}
+    assert shorts == [] and ok
+
+
+def test_command_line_crc_blank_and_selftest(target, tmp_path, monkeypatch, capsys):
+    from picprog import cli
+
+    monkeypatch.setattr(cli, "open_link", lambda args: target)
+    device = devices.find("PIC16F17146")
+    source = tmp_path / "in.hex"
+    source.write_text(ihex.to_text(make_image(device)))
+    assert cli.main(["-q", "write", str(source)]) == 0
+    assert cli.main(["crc", str(source)]) == 0
+    other = tmp_path / "other.hex"
+    image = make_image(device)
+    image[0] ^= 1
+    other.write_text(ihex.to_text(image))
+    assert cli.main(["crc", str(other)]) == 1
+    assert cli.main(["selftest"]) == 0
+    assert cli.main(["erase", "all"]) == 0
+    assert cli.main(["blank"]) == 0
+    out = capsys.readouterr().out
+    assert "DIFFERENT" in out and "flash: blank (16384 cells)" in out and "wiring ok" in out

@@ -121,3 +121,13 @@ void ui_result(const char *command, pic_status_t status, uint32_t count)
     show_status(status);
     (void)oled_flush();
 }
+
+void ui_note(const char *summary, const char *detail)
+{
+    if (!oled_present()) {
+        return;
+    }
+    oled_line(ROW_LAST, summary);
+    oled_line(ROW_ERROR, detail);
+    (void)oled_flush();
+}

@@ -94,6 +94,39 @@ class Link:
     def erase_row(self, region, offset):
         self.command(f"ERASE ROW {region} {offset}")
 
+    def _span(self, verb, region, offset, count):
+        span = f" {offset} {count}" if offset is not None else ""
+        return self.command(f"{verb} {region}{span}")
+
+    def crc(self, region, offset=None, count=None):
+        """CRC-32 the programmer computes over the cells (each as two bytes, low first);
+        the whole region unless offset and count are given."""
+        return int(self._span("CRC", region, offset, count), 16)
+
+    def blank(self, region, offset=None, count=None):
+        """Number of cells checked; raises LinkError ("not-blank @<offset> <value>") if one
+        is not erased."""
+        return int(self._span("BLANK", region, offset, count))
+
+    def selftest(self):
+        """Wiring check. Returns (states, shorts, ok): states maps "CLK", "DAT", "MCLR" to
+        "float", "high" or "low"; shorts lists (line, line) pairs."""
+        self._send("SELFTEST")
+        states, shorts = {}, []
+        while True:
+            line = self._read_line()
+            word, _, rest = line.partition(" ")
+            if word == "LINE":
+                name, state = rest.split()
+                states[name] = state
+            elif word == "SHORT":
+                shorts.append(tuple(rest.split()))
+            elif line == "ERR wiring":
+                return states, shorts, False
+            else:
+                self._check(line)
+                return states, shorts, True
+
     def read(self, region, offset, count, progress=None):
         """`count` cells of `region` from `offset`, using the binary READB frames."""
         self._send(f"READB {region} {offset} {count}")

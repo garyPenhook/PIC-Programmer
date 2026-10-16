@@ -6,6 +6,7 @@ Configuration Words (PIC16) or configuration bytes (PIC18), EEPROM cells are byt
 """
 import importlib.util
 import os
+import zlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
@@ -153,6 +154,17 @@ def image_to_cells(device, image):
                 used.add(high)
     unused = sorted(set(image) - used)
     return cells, unused
+
+
+def region_crc(device, region, cells):
+    """CRC-32 the programmer's CRC command gives for a whole region holding `cells`
+    ({offset: value}); cells not given count as erased."""
+    blank = device.blank(region)
+    data = bytearray()
+    for offset in range(device.size(region)):
+        value = cells.get(offset, blank)
+        data += bytes((value & 0xFF, value >> 8))
+    return zlib.crc32(data)
 
 
 def runs(offsets):
