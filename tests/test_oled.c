@@ -84,6 +84,14 @@ static void test_init_sequence_clears_ram_then_turns_the_panel_on(void)
     assert_transfer(17, 0x3C, on, sizeof on);
 }
 
+static void test_reset_is_pulsed_before_any_transfer(void)
+{
+    stub_i2c_attach(0x3C);
+    TEST_ASSERT_EQUAL_INT(1, oled_init());
+    TEST_ASSERT_EQUAL_INT(1, stub_oled_resets());
+    TEST_ASSERT_EQUAL_UINT(0u, stub_oled_reset_at());
+}
+
 static void test_second_address_is_used_when_sa0_is_high(void)
 {
     stub_i2c_attach(0x3D);
@@ -190,6 +198,7 @@ int main(void)
     UNITY_BEGIN();
     RUN_TEST(test_no_display_means_no_traffic_after_the_search);
     RUN_TEST(test_init_sequence_clears_ram_then_turns_the_panel_on);
+    RUN_TEST(test_reset_is_pulsed_before_any_transfer);
     RUN_TEST(test_second_address_is_used_when_sa0_is_high);
     RUN_TEST(test_a_glyph_lands_in_its_page_and_columns);
     RUN_TEST(test_unchanged_text_sends_nothing);

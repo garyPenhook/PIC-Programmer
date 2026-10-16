@@ -102,7 +102,7 @@ Layers:
 - `include/cmd.h`, `src/cmd.c`, `include/uart.h`, `src/uart.c`: the serial command
   interface (see "Serial commands" below). `uart.c` is a polled USART2 driver and the only
   hardware-specific part; `cmd.c` is plain C and runs on the PC in the tests.
-- `include/i2c.h`, `src/i2c.c`, `include/oled.h`, `src/oled.c`, `include/ui.h`,
+- `include/i2c.h`, `src/i2c.c`, `include/oled.h`, `src/oled.c`, `src/oled_port.c`, `include/ui.h`,
   `src/ui.c`: the optional OLED status screen (see "OLED status display" below). `i2c.c`
   is a polled I2C1 driver; `oled.c` (SSD1309) and `ui.c` are plain C and are tested on the
   PC against a stub bus.
@@ -183,26 +183,38 @@ An optional 128 x 64 SSD1309 OLED module on I2C shows the probed device, its IDs
 result of the last command. Without a display everything works the same: the firmware
 looks for one at boot and, if nothing answers, never touches the bus again.
 
-| Nucleo | MCU pin | Module |
+Configured for the 2.42" SSD1309 module with a 7-pin header (GND VCC SCL SDA RES DC CS,
+for example HiLetgo's). Its pin order does not match the Arduino header (SCL and SDA come
+in the opposite order to D14/D15), so it is wired with jumper leads:
+
+| Module | Nucleo | MCU pin |
 |---|---|---|
-| D15 | PB8 (I2C1_SCL, AF6) | SCL |
-| D14 | PB9 (I2C1_SDA, AF6) | SDA |
-| 3V3 | - | VDD |
-| GND | - | GND |
+| GND | GND | - |
+| VCC | 3V3 | - |
+| SCL | D15 | PB8 (I2C1_SCL, AF6) |
+| SDA | D14 | PB9 (I2C1_SDA, AF6) |
+| RES | D7 | PA8, pulsed low at boot (`src/oled_port.c`) |
+| DC | GND | - (selects address 0x3C) |
+| CS | GND | - (unused in I2C mode) |
 
 Pins from UM2324 Table 12 and the STM32G071 datasheet Table 14. The bus runs at about
 380 kHz, inside the SSD1309 minimum clock cycle of 2.5 us (SSD1309 Table 13-6), with
-375 ns data hold (the SSD1309 needs 300 ns on SDAIN).
+375 ns data hold (the SSD1309 needs 300 ns on SDAIN). RES is held low for 10 us (the
+SSD1309 minimum is 3 us, Table 13-1).
 
-What the module must provide (SSD1309 datasheet sections 2, 8.1.5 and 8.8):
+Preparing the module (from seller listings and user reports, not a module datasheet;
+check your board's silkscreen first):
 
-- **Pull-ups on SDA and SCL.** The SSD1309 requires them. The STM32's internal pull-ups are
-  also enabled, but they are weak and only keep an unconnected bus from floating.
-- **The 7 to 16 V panel supply VCC.** The SSD1309 needs it in addition to VDD, so the module
-  must generate it.
-- **Power-on reset.** RES# is not driven by the firmware, so the module must hold it low
-  for at least 3 us at power-up (an RC reset does this).
-- **Address 0x3C or 0x3D** (set by SA0, the D/C# pin on the module). Both are tried.
+- **It ships set to SPI.** On boards with R3/R4/R5 next to the header, I2C is selected by
+  removing R4 and bridging R3 and R5. Other board revisions use R13/R15/R17 instead.
+- **Pull-ups on SDA and SCL.** The SSD1309 requires them (8.1.5) and it is not confirmed
+  that this module has them. If the display does not answer, fit 4.7 kOhm from each line to
+  3V3. The STM32's internal pull-ups are enabled but are too weak to rely on.
+- **DC must be tied to a fixed level** (GND for 0x3C, 3V3 for 0x3D); both are tried.
+- **VCC panel supply.** The SSD1309 needs 7 to 16 V for the panel in addition to VDD
+  (SSD1309 2, 8.8), so the module must generate it from its VCC pin.
+
+To use a module with a different reset pin, change `PIN_RES` in `src/oled_port.c`.
 
 If the picture is upside down, build with `OLED_FLIP=1` (in `include/oled.h`); that sends
 the segment re-map and COM scan direction commands (A1h, C8h) instead of the reset values.

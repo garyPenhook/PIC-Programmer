@@ -24,6 +24,7 @@ add_executable(${PROJECT_NAME}
     src/i2c.c
     src/icsp.c
     src/oled.c
+    src/oled_port.c
     src/pic.c
     src/proto/icsp8.c
     src/proto/p16_8bit.c

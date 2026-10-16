@@ -3,6 +3,7 @@
 #include <stddef.h>
 
 #include "i2c.h"
+#include "oled_port.h"
 
 /*
  * SSD1309 facts used here (Solomon Systech SSD1309 datasheet Rev 1.1):
@@ -106,6 +107,7 @@ int oled_init(void)
     static const uint8_t candidates[] = {ADDR_SA0_LOW, ADDR_SA0_HIGH};
 
     present = 0;
+    oled_port_reset();
     for (size_t i = 0; i < sizeof candidates; i++) {
         address = candidates[i];
         if (commands(init, sizeof init) == 0) {

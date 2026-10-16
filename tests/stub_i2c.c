@@ -3,12 +3,15 @@
 #include <string.h>
 
 #include "i2c.h"
+#include "oled_port.h"
 
 static stub_i2c_transfer_t log_[STUB_I2C_MAX_TRANSFERS];
 static size_t count;
 static uint8_t attached;
 static int fail_after = -1;
 static int acked;
+static int resets;
+static size_t reset_at;
 
 void stub_i2c_reset(void)
 {
@@ -16,6 +19,8 @@ void stub_i2c_reset(void)
     attached = 0;
     fail_after = -1;
     acked = 0;
+    resets = 0;
+    reset_at = 0;
 }
 
 void stub_i2c_attach(uint8_t addr7)
@@ -60,4 +65,20 @@ i2c_status_t i2c_write(uint8_t addr7, uint8_t first, const uint8_t *data, size_t
     }
     acked++;
     return I2C_OK;
+}
+
+int stub_oled_resets(void)
+{
+    return resets;
+}
+
+size_t stub_oled_reset_at(void)
+{
+    return reset_at;
+}
+
+void oled_port_reset(void)
+{
+    resets++;
+    reset_at = count;
 }

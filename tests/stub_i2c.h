@@ -21,7 +21,11 @@ typedef struct {
 void stub_i2c_reset(void);
 void stub_i2c_attach(uint8_t addr7);     /* 0 for no device */
 void stub_i2c_fail_after(int transfers); /* NACK every write after this many; -1 = never */
-size_t stub_i2c_count(void);             /* transfers recorded, including NACKed ones */
+size_t stub_i2c_count(void);
+int stub_oled_resets(void); /* oled_port_reset() calls since stub_i2c_reset() */
+size_t stub_oled_reset_at(void);
+    /* transfer count when the last reset happened */ /* transfers recorded, including NACKed ones
+                                                       */
 const stub_i2c_transfer_t *stub_i2c_get(size_t index);
 
 #endif

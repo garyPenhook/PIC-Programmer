@@ -14,8 +14,7 @@
  * Module wiring and assumptions (check against your module):
  *   - SDA, SCL, VDD (3.3 V), GND. The SSD1309 needs a separate 7 to 16 V panel supply VCC
  *     (SSD1309 2, 8.8), so the module must generate it from its own supply.
- *   - RES# is not driven by this code. The module must reset the controller at power-up
- *     (RES# low for at least 3 us, SSD1309 8.8), as modules with an RC reset do.
+ *   - RES# is pulsed low by oled_port_reset() at init (wiring in oled_port.h).
  *   - The address is 0x3C (SA0 = D/C# low) or 0x3D (SA0 high) (SSD1309 8.1.5); both are
  *     tried.
  */
@@ -31,7 +30,8 @@
 #define OLED_FLIP 0
 #endif
 
-/* Find and initialise the display, then clear it. Returns 1 if one answered, else 0. */
+/* Reset, find and initialise the display, then clear it. Returns 1 if one answered,
+ * else 0. Call after icsp_init(): the reset pulse is timed with icsp_delay_us(). */
 int oled_init(void);
 
 /* 1 if oled_init() found a display. */
