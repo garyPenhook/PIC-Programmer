@@ -238,4 +238,7 @@ def main(argv=None):
     except (LinkError, ihex.HexError, KeyError, OSError) as e:
         print(f"picprog: {e}", file=sys.stderr)
         return 1
+    except KeyboardInterrupt:  # Link has already ended any transfer in progress
+        print("picprog: interrupted", file=sys.stderr)
+        return 130
     return 0

@@ -183,3 +183,75 @@ def test_power_and_vdd(target):
         target.read("flash", 0, 1)
     assert target.power(True) == (True, 3300)
     assert programmer.connect(target).name == "PIC16F17146"  # probed again after power-up
+
+
+class ScriptedStream:
+    """Replies from a fixed byte string; records what was written."""
+
+    def __init__(self, data):
+        self.data = data
+        self.written = b""
+
+    def read(self, n):
+        chunk, self.data = self.data[:n], self.data[n:]
+        return chunk
+
+    def write(self, data):
+        self.written += data
+
+
+@pytest.mark.parametrize("reply, call", [
+    (b"OK garbage\n", lambda link: link.probe()),
+    (b"OK 30E1\n", lambda link: link.ids()),
+    (b"OK 1 2\n", lambda link: link.dci()),
+    (b"OK on\n", lambda link: link.power()),
+    (b"OK x y\n", lambda link: link.vdd()),
+    (b"OK zz\n", lambda link: link.crc("flash")),
+    (b"OK many\n", lambda link: link.blank("flash")),
+    (b"NEXT 00000000\n", lambda link: link.write("flash", 0, [1, 2])),
+    (b"NEXT zz 2\n", lambda link: link.write("flash", 0, [1, 2])),
+    (b"LINE CLK\nOK\n", lambda link: link.selftest()),
+])
+def test_a_malformed_reply_is_a_link_error(reply, call):
+    from picprog.link import Link
+
+    with pytest.raises(LinkError, match="unexpected reply"):
+        call(Link(ScriptedStream(reply)))
+
+
+def test_a_malformed_reply_is_reported_not_a_traceback(monkeypatch, capsys):
+    from picprog import cli
+    from picprog.link import Link
+
+    monkeypatch.setattr(cli, "open_link", lambda args: Link(ScriptedStream(b"OK garbage\n")))
+    assert cli.main(["probe"]) == 1
+    assert "picprog: unexpected reply" in capsys.readouterr().err
+
+
+def test_ctrl_c_during_a_write_ends_the_transfer_and_drains_replies(target, monkeypatch):
+    device = programmer.connect(target)
+
+    def interrupt(done, total):
+        raise KeyboardInterrupt
+
+    with pytest.raises(KeyboardInterrupt):
+        target.write("flash", 0, list(range(40)), progress=interrupt)
+    # The transfer is over and nothing is left to confuse the next command.
+    assert target.ids()[0] == device.device_id
+    assert target.read("flash", 0, 1) is not None
+
+
+def test_ctrl_c_just_after_a_transfer_finished_still_leaves_a_clean_link(target):
+    programmer.connect(target)
+    target._send("PROBE")  # an idle programmer answers the abort with ERR bad-command
+    target._abort_session()
+    assert target.ids()[0] == 0x30E1
+
+
+def test_command_line_ctrl_c_exits_130(target, monkeypatch, capsys):
+    from picprog import cli
+
+    monkeypatch.setattr(cli, "open_link", lambda args: target)
+    monkeypatch.setattr(cli, "cmd_probe", lambda link, args: (_ for _ in ()).throw(KeyboardInterrupt))
+    assert cli.main(["probe"]) == 130
+    assert "interrupted" in capsys.readouterr().err

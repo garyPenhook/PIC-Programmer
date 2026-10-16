@@ -69,6 +69,17 @@ class Link:
             raise LinkError(text or rest, code)
         raise LinkError(f"unexpected reply: {line!r}")
 
+    @staticmethod
+    def _ints(text, count, base=10):
+        """`count` whitespace-separated integers from a reply, or LinkError if it is not that."""
+        words = text.split()
+        try:
+            if len(words) != count:
+                raise ValueError
+            return [int(w, base) for w in words]
+        except ValueError:
+            raise LinkError(f"unexpected reply: {text!r}") from None
+
     def command(self, text):
         """Send a command that answers with a single OK or ERR line; return the OK text."""
         self._send(text)
@@ -78,16 +89,18 @@ class Link:
 
     def probe(self):
         """(name, device id, revision id) of the part found."""
-        name, device_id, revision = self.command("PROBE").split()
-        return name, int(device_id, 16), int(revision, 16)
+        text = self.command("PROBE")
+        name = text.split(" ", 1)[0]
+        device_id, revision = self._ints(text[len(name):], 2, 16)
+        return name, device_id, revision
 
     def ids(self):
-        device_id, revision = self.command("ID").split()
-        return int(device_id, 16), int(revision, 16)
+        device_id, revision = self._ints(self.command("ID"), 2, 16)
+        return device_id, revision
 
     def dci(self):
         keys = ("erase_words", "latch_words", "user_rows", "eeprom_bytes", "pin_count")
-        return dict(zip(keys, (int(v) for v in self.command("DCI").split())))
+        return dict(zip(keys, self._ints(self.command("DCI"), len(keys))))
 
     def erase(self, region="ALL"):
         self.command(f"ERASE {region}")
@@ -102,23 +115,26 @@ class Link:
     def crc(self, region, offset=None, count=None):
         """CRC-32 the programmer computes over the cells (each as two bytes, low first);
         the whole region unless offset and count are given."""
-        return int(self._span("CRC", region, offset, count), 16)
+        return self._ints(self._span("CRC", region, offset, count), 1, 16)[0]
 
     def blank(self, region, offset=None, count=None):
         """Number of cells checked; raises LinkError ("not-blank @<offset> <value>") if one
         is not erased."""
-        return int(self._span("BLANK", region, offset, count))
+        return self._ints(self._span("BLANK", region, offset, count), 1)[0]
 
     def power(self, on=None):
         """Switch the target supply (True/False) or just report it. Returns (on, VDD in mV)."""
         verb = "POWER" if on is None else ("POWER ON" if on else "POWER OFF")
-        state, vdd = self.command(verb).split()
-        return state == "on", int(vdd)
+        text = self.command(verb)
+        state, _, vdd = text.partition(" ")
+        if state not in ("on", "off"):
+            raise LinkError(f"unexpected reply: {text!r}")
+        return state == "on", self._ints(vdd, 1)[0]
 
     def vdd(self):
         """(target VDD, programmer VDDA) in millivolts."""
-        target, own = self.command("VDD").split()
-        return int(target), int(own)
+        target, own = self._ints(self.command("VDD"), 2)
+        return target, own
 
     def bridge_open(self, baud):
         """Start BRIDGE: from here on, bytes written go to the target's serial port."""
@@ -136,7 +152,7 @@ class Link:
         while not (marker in tail and tail.endswith(b"\n")):
             tail += self._read_exact(1)
         before, _, after = tail.rpartition(marker)
-        return before, int(after.strip())
+        return before, self._ints(after, 1)[0]
 
     def selftest(self):
         """Wiring check. Returns (states, shorts, ok): states maps "CLK", "DAT", "MCLR" to
@@ -147,8 +163,10 @@ class Link:
             line = self._read_line()
             word, _, rest = line.partition(" ")
             if word == "LINE":
-                name, state = rest.split()
-                states[name] = state
+                fields = rest.split()
+                if len(fields) != 2:
+                    raise LinkError(f"unexpected reply: {line!r}")
+                states[fields[0]] = fields[1]
             elif word == "SHORT":
                 shorts.append(tuple(rest.split()))
             elif line == "ERR wiring":
@@ -184,22 +202,46 @@ class Link:
 
     def _upload(self, verb, region, offset, cells, progress=None):
         self._send(f"{verb} {region} {offset} {len(cells)}")
+        try:
+            result = self._upload_lines(offset, cells, progress)
+        except KeyboardInterrupt:
+            self._abort_session()
+            raise
+        if progress:
+            progress(len(cells), len(cells))
+        return result
+
+    def _upload_lines(self, offset, cells, progress):
         while True:
             line = self._read_line()
             word, _, rest = line.partition(" ")
             if word not in ("NEXT", "RESEND"):
-                result = self._check(line)
-                if progress:
-                    progress(len(cells), len(cells))
-                return result
-            at, n = rest.split()
-            at, n = int(at, 16), int(n)
+                return self._check(line)
+            fields = rest.split()
+            if len(fields) != 2:
+                raise LinkError(f"unexpected reply: {line!r}")
+            at, n = self._ints(fields[0], 1, 16)[0], self._ints(fields[1], 1)[0]
             if not (offset <= at and at + n <= offset + len(cells) and 0 < n <= DATA_LINE_CELLS):
                 raise LinkError(f"programmer asked for {n} cells at 0x{at:X}, outside the data")
             body = f"D {at:08X} " + " ".join(f"{c:04X}" for c in cells[at - offset:at - offset + n])
             self._send(f"{body} *{crc16(body.encode('ascii')):04X}")
             if progress and word == "NEXT":
                 progress(at - offset, len(cells))
+
+    def _abort_session(self):
+        """After Ctrl-C mid-transfer: end the programmer's WRITE/VERIFY and drain its replies,
+        so the next command does not read this one's leftovers. A blank line finishes a
+        half-sent data line; ABORT is not a data line, so the programmer releases the target
+        and answers "ERR aborted" (or "ERR bad-command" if the transfer had just finished).
+        Stale NEXT/RESEND/OK lines come first and are skipped."""
+        try:
+            self.stream.write(b"\nABORT\n")
+            if hasattr(self.stream, "flush"):
+                self.stream.flush()
+            while not self._read_line().startswith("ERR"):
+                pass
+        except (LinkError, OSError):
+            pass
 
     def write(self, region, offset, cells, progress=None):
         self._upload("WRITE", region, offset, cells, progress)
