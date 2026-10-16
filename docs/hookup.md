@@ -122,36 +122,39 @@ have pull-ups. The STM32 drives both lines open drain and also enables its inter
 pull-ups, but those (25 to 55 kOhm) are far too weak on their own.
 
 Simulated with ngspice (`docs/sim/i2c_pullup.cir`, swept by `tools/sim_i2c_pullup.py`):
-the line is pulled low by the STM32 output (modelled from its worst-case VOL of 0.4 V at
-2 mA, DS12232 Table 52), released, and the rise time measured between two pairs of
-thresholds: the SSD1309's own input levels (0.2 and 0.8 x VDD, Table 12-1) and the 30 to
-70 % points I2C usually uses. The SSD1309 limit is a rise time of at most 300 ns (Table
-13-6); the datasheet does not say between which levels, so both are shown. The internal
+the line is pulled low by the STM32 output (modelled from the weakest output in DS12232
+Table 52, 0.4 V at 2 mA, so a worst case), then released. The fall time is measured
+between the SSD1309's input levels, and the rise time between two pairs of thresholds: the SSD1309's own input levels (0.2 and 0.8 x VDD, Table 12-1) and the 30 to
+70 % points I2C usually uses. The SSD1309 limits both rise and fall time to at most 300 ns
+(Table 13-6); the datasheet does not say between which levels, so both are shown for the
+rise. The internal
 pull-up (typical 40 kOhm) is included in parallel in every case. The simulation assumes
 the SSD1309 runs from 3.3 V; if the module regulates it lower, its thresholds scale down
 with it.
 
-| External pull-up | Effective | C bus | VOL | Rise 20-80 % | Rise 30-70 % | Within 300 ns |
-|---|---|---|---|---|---|---|
-| none (internal only) | 40.00 kOhm | 20 pF | 0.016 V | 1109 ns | 678 ns | no |
-| none (internal only) | 40.00 kOhm | 50 pF | 0.016 V | 2773 ns | 1695 ns | no |
-| none (internal only) | 40.00 kOhm | 100 pF | 0.016 V | 5546 ns | 3389 ns | no |
-| none (internal only) | 40.00 kOhm | 200 pF | 0.016 V | 11091 ns | 6779 ns | no |
-| 10 kOhm | 8.00 kOhm | 20 pF | 0.080 V | 222 ns | 136 ns | both |
-| 10 kOhm | 8.00 kOhm | 50 pF | 0.080 V | 555 ns | 339 ns | no |
-| 10 kOhm | 8.00 kOhm | 100 pF | 0.080 V | 1109 ns | 678 ns | no |
-| 10 kOhm | 8.00 kOhm | 200 pF | 0.080 V | 2218 ns | 1356 ns | no |
-| 4.7 kOhm | 4.21 kOhm | 20 pF | 0.150 V | 117 ns | 71 ns | both |
-| 4.7 kOhm | 4.21 kOhm | 50 pF | 0.150 V | 292 ns | 178 ns | both |
-| 4.7 kOhm | 4.21 kOhm | 100 pF | 0.150 V | 583 ns | 356 ns | no |
-| 4.7 kOhm | 4.21 kOhm | 200 pF | 0.150 V | 1166 ns | 713 ns | no |
-| 2.2 kOhm | 2.09 kOhm | 20 pF | 0.289 V | 58 ns | 35 ns | both |
-| 2.2 kOhm | 2.09 kOhm | 50 pF | 0.289 V | 145 ns | 88 ns | both |
-| 2.2 kOhm | 2.09 kOhm | 100 pF | 0.289 V | 289 ns | 177 ns | both |
-| 2.2 kOhm | 2.09 kOhm | 200 pF | 0.289 V | 578 ns | 353 ns | no |
+| External pull-up | Effective | C bus | VOL | Rise 20-80 % | Rise 30-70 % | Fall 80-20 % | Within 300 ns |
+|---|---|---|---|---|---|---|---|
+| none (internal only) | 40.00 kOhm | 20 pF | 0.016 V | 1109 ns | 678 ns | 6 ns | no |
+| none (internal only) | 40.00 kOhm | 50 pF | 0.016 V | 2773 ns | 1695 ns | 14 ns | no |
+| none (internal only) | 40.00 kOhm | 100 pF | 0.016 V | 5546 ns | 3389 ns | 28 ns | no |
+| none (internal only) | 40.00 kOhm | 200 pF | 0.016 V | 11091 ns | 6779 ns | 56 ns | no |
+| 10 kOhm | 8.00 kOhm | 20 pF | 0.080 V | 222 ns | 136 ns | 6 ns | both |
+| 10 kOhm | 8.00 kOhm | 50 pF | 0.080 V | 555 ns | 339 ns | 14 ns | no |
+| 10 kOhm | 8.00 kOhm | 100 pF | 0.080 V | 1109 ns | 678 ns | 29 ns | no |
+| 10 kOhm | 8.00 kOhm | 200 pF | 0.080 V | 2218 ns | 1356 ns | 58 ns | no |
+| 4.7 kOhm | 4.21 kOhm | 20 pF | 0.150 V | 117 ns | 71 ns | 6 ns | both |
+| 4.7 kOhm | 4.21 kOhm | 50 pF | 0.150 V | 292 ns | 178 ns | 15 ns | both |
+| 4.7 kOhm | 4.21 kOhm | 100 pF | 0.150 V | 583 ns | 356 ns | 30 ns | no |
+| 4.7 kOhm | 4.21 kOhm | 200 pF | 0.150 V | 1166 ns | 713 ns | 61 ns | no |
+| 2.2 kOhm | 2.09 kOhm | 20 pF | 0.289 V | 58 ns | 35 ns | 7 ns | both |
+| 2.2 kOhm | 2.09 kOhm | 50 pF | 0.289 V | 145 ns | 88 ns | 17 ns | both |
+| 2.2 kOhm | 2.09 kOhm | 100 pF | 0.289 V | 289 ns | 177 ns | 34 ns | both |
+| 2.2 kOhm | 2.09 kOhm | 200 pF | 0.289 V | 578 ns | 353 ns | 67 ns | no |
 
 How to read it:
 
+- **Falls are never the problem:** the STM32 pulls the line low actively, so even the
+  worst case (200 pF) falls in 67 ns.
 - **Internal pull-ups alone never work** at this bus speed, even with almost no wiring.
 - **4.7 kOhm** meets the limit by both measures up to about 50 pF of bus capacitance:
   short jumper wires and one module.
@@ -184,3 +187,11 @@ netlist or the values swept.
   that LVP is enabled on the part.
 - No picture on the OLED: check the SPI-to-I2C change, the pull-ups and the RES wire. If
   the picture is upside down, rebuild with `-DOLED_FLIP=1`.
+- Still no picture, with wiring and pull-ups correct: the module may never acknowledge.
+  The SSD1309 only acknowledges through its SDAOUT pin, which a module may leave
+  unconnected (datasheet 8.1.5), and the firmware then decides there is no display.
+  Check for continuity between the module's SDA pin and the panel's SDAOUT, or rebuild
+  with `cmake --preset Release -DI2C_IGNORE_ACK=ON`. That build drives SCL and SDA in
+  software at about 250 kHz, ignores acknowledges and uses address 0x3C only (DC tied to
+  GND; build with `OLED_I2C_ADDR=0x3D` otherwise). It can no longer tell whether a display
+  is attached.

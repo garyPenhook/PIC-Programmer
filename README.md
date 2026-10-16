@@ -218,6 +218,10 @@ check your board's silkscreen first):
 
 To use a module with a different reset pin, change `PIN_RES` in `src/oled_port.c`.
 
+For a module that never acknowledges (an SSD1309 whose SDAOUT pin is not connected),
+configure with `-DI2C_IGNORE_ACK=ON`: the I2C pins are then driven in software and
+acknowledges are ignored (see `include/i2c.h` and `docs/hookup.md`).
+
 If the picture is upside down, build with `OLED_FLIP=1` (in `include/oled.h`); that sends
 the segment re-map and COM scan direction commands (A1h, C8h) instead of the reset values.
 

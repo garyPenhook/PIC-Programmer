@@ -22,6 +22,9 @@
  */
 #define ADDR_SA0_LOW  0x3Cu
 #define ADDR_SA0_HIGH 0x3Du
+#ifndef OLED_I2C_ADDR
+#define OLED_I2C_ADDR ADDR_SA0_LOW /* the only address used when I2C_IGNORE_ACK is set */
+#endif
 #define CTRL_COMMANDS 0x00u
 #define CTRL_DATA     0x40u
 
@@ -104,7 +107,13 @@ int oled_init(void)
 #endif
     };
     static const uint8_t display_on[] = {0xAF};
+#if I2C_IGNORE_ACK
+    /* Without acknowledges every address looks present, so only the configured one is
+     * used. Tie DC (SA0) low for 0x3C, or build with OLED_I2C_ADDR=0x3D. */
+    static const uint8_t candidates[] = {OLED_I2C_ADDR};
+#else
     static const uint8_t candidates[] = {ADDR_SA0_LOW, ADDR_SA0_HIGH};
+#endif
 
     present = 0;
     oled_port_reset();

@@ -2,30 +2,38 @@
 * Parameters RPU (ohms) and CBUS (farads) are set by tools/sim_i2c_pullup.py.
 * Assumes the SSD1309 logic supply is 3.3 V (its VIL/VIH thresholds scale with VDD).
 *
-* Driver: the STM32 output in open-drain mode, modelled as a switch whose on-resistance
-* gives the datasheet worst case VOL = 0.4 V at 2 mA (FT_c pins, DS12232 Table 52):
-* 0.4 V / 2 mA = 200 ohms. Pins that are not FT_c are stronger (0.4 V at 8 mA).
-* The driver pulls low from 0 to 2 us, then releases the line.
+* Driver: the STM32 output in open-drain mode, modelled as a switch. Its on-resistance is
+* a worst case: 0.4 V at 2 mA, the weakest output in DS12232 Table 52 (FT_c pins), gives
+* 200 ohms. A stronger output only lowers VOL and shortens the fall, so the conclusions
+* drawn from this model hold for any STM32 pin.
+*
+* The line starts released (high), the driver pulls it low from 1 us to 3 us, then lets
+* go, giving one falling and one rising edge.
 .param RPU=4.7k CBUS=50p
 VDD vdd 0 DC 3.3
 RPU vdd line {RPU}
 CBUS line 0 {CBUS}
 SDRV line 0 ctl 0 opendrain
-VCTL ctl 0 PWL(0 1 2u 1 2.001u 0)
+VCTL ctl 0 PWL(0 0 1u 0 1.001u 1 3u 1 3.001u 0)
 .model opendrain SW(Ron=200 Roff=1G Vt=0.5 Vh=0.1)
-.tran 1n 30u
+.ic v(line)=3.3
+.tran 1n 40u uic
 .control
 run
 * VOL while the driver holds the line low
-meas tran vol FIND v(line) AT=1.9u
+meas tran vol FIND v(line) AT=2.9u
 * SSD1309 input thresholds: VIL = 0.2 VDD, VIH = 0.8 VDD (SSD1309 Table 12-1)
+meas tran f80 WHEN v(line)=2.64 FALL=1
+meas tran f20 WHEN v(line)=0.66 FALL=1
 meas tran t20 WHEN v(line)=0.66 RISE=1
 meas tran t80 WHEN v(line)=2.64 RISE=1
-* STM32 input thresholds: VIL = 0.3 VDD, VIH = 0.7 VDD (DS12232 Table 51)
+* 30 and 70 percent of VDD, the points I2C usually measures between, which are also the
+* STM32 input thresholds (VIL = 0.3 VDD, VIH = 0.7 VDD, DS12232 Table 51)
 meas tran t30 WHEN v(line)=0.99 RISE=1
 meas tran t70 WHEN v(line)=2.31 RISE=1
 let tr_ssd = t80 - t20
 let tr_stm = t70 - t30
-print vol tr_ssd tr_stm
+let tf_ssd = f20 - f80
+print vol tr_ssd tr_stm tf_ssd
 .endc
 .end

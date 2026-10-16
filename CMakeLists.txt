@@ -38,6 +38,13 @@ add_executable(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME} PRIVATE include)
 
+# For an OLED module that never acknowledges (SSD1309 with SDAOUT not connected): drive the
+# I2C pins in software and ignore acknowledges. See include/i2c.h.
+option(I2C_IGNORE_ACK "Software I2C that ignores acknowledges" OFF)
+if(I2C_IGNORE_ACK)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE I2C_IGNORE_ACK=1)
+endif()
+
 target_compile_options(${PROJECT_NAME} PRIVATE
     -mcpu=cortex-m0plus
     -mthumb

@@ -35,3 +35,9 @@ gcc $flags -Itests/vendor/unity $core src/cmd.c src/ui.c src/oled.c tests/sim_p1
 gcc $flags -Itests/vendor/unity $core src/oled.c src/ui.c tests/sim_p16_8bit.c \
     tests/stub_i2c.c tests/test_oled.c tests/vendor/unity/unity.c -o "$out/test_oled"
 "$out/test_oled"
+
+# The same, built as for a module that never acknowledges (I2C_IGNORE_ACK).
+gcc $flags -DI2C_IGNORE_ACK=1 -Itests/vendor/unity $core src/oled.c src/ui.c \
+    tests/sim_p16_8bit.c tests/stub_i2c.c tests/test_oled.c tests/vendor/unity/unity.c \
+    -o "$out/test_oled_ignore_ack"
+"$out/test_oled_ignore_ack"

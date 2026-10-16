@@ -6,6 +6,7 @@
  */
 #include <string.h>
 
+#include "i2c.h"
 #include "oled.h"
 #include "pic.h"
 #include "pic_proto.h"
@@ -54,6 +55,7 @@ static void init_at(uint8_t addr)
     stub_i2c_attach(addr);
 }
 
+#if !I2C_IGNORE_ACK
 static void test_no_display_means_no_traffic_after_the_search(void)
 {
     TEST_ASSERT_EQUAL_INT(0, oled_init());
@@ -68,6 +70,20 @@ static void test_no_display_means_no_traffic_after_the_search(void)
     ui_result("READ", PIC_OK, 4u);
     TEST_ASSERT_EQUAL_UINT(2u, stub_i2c_count());
 }
+
+#else
+static void test_ignore_ack_build_uses_only_the_configured_address(void)
+{
+    /* With acknowledges ignored, the search cannot tell addresses apart, so only
+     * OLED_I2C_ADDR (0x3C by default) is ever used. */
+    stub_i2c_attach(0x3C);
+    TEST_ASSERT_EQUAL_INT(1, oled_init());
+    for (size_t i = 0; i < stub_i2c_count(); i++) {
+        TEST_ASSERT_EQUAL_HEX8(0x3C, stub_i2c_get(i)->addr);
+    }
+    assert_transfer(0, 0x3C, init_cmds, sizeof init_cmds);
+}
+#endif
 
 static void test_init_sequence_clears_ram_then_turns_the_panel_on(void)
 {
@@ -92,6 +108,7 @@ static void test_reset_is_pulsed_before_any_transfer(void)
     TEST_ASSERT_EQUAL_UINT(0u, stub_oled_reset_at());
 }
 
+#if !I2C_IGNORE_ACK
 static void test_second_address_is_used_when_sa0_is_high(void)
 {
     stub_i2c_attach(0x3D);
@@ -100,6 +117,8 @@ static void test_second_address_is_used_when_sa0_is_high(void)
     assert_transfer(1, 0x3D, init_cmds, sizeof init_cmds);
     TEST_ASSERT_EQUAL_HEX8(0x3D, stub_i2c_get(2)->addr);
 }
+
+#endif
 
 static void test_a_glyph_lands_in_its_page_and_columns(void)
 {
@@ -196,10 +215,16 @@ static void test_ui_probe_redraws_device_ids_and_result_rows(void)
 int main(void)
 {
     UNITY_BEGIN();
+#if !I2C_IGNORE_ACK
     RUN_TEST(test_no_display_means_no_traffic_after_the_search);
+#else
+    RUN_TEST(test_ignore_ack_build_uses_only_the_configured_address);
+#endif
     RUN_TEST(test_init_sequence_clears_ram_then_turns_the_panel_on);
     RUN_TEST(test_reset_is_pulsed_before_any_transfer);
+#if !I2C_IGNORE_ACK
     RUN_TEST(test_second_address_is_used_when_sa0_is_high);
+#endif
     RUN_TEST(test_a_glyph_lands_in_its_page_and_columns);
     RUN_TEST(test_unchanged_text_sends_nothing);
     RUN_TEST(test_only_changed_pages_are_sent_in_order);
