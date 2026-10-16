@@ -3,10 +3,17 @@ import argparse
 import sys
 
 from . import devices, ihex, programmer
-from .link import Link, LinkError
+from .link import Link, LinkError, LinkTimeout
 
 DEFAULT_PORT = "/dev/ttyACM0"
 DEFAULT_BAUD = 921600  # UART_BAUD in include/uart.h
+FALLBACK_DIVISOR = 2  # UART_BAUD_FALLBACK = UART_BAUD / 2: the rate on the 16 MHz fallback clock
+
+
+def close(link):
+    stream = getattr(link, "stream", None)
+    if hasattr(stream, "close"):
+        stream.close()
 
 
 def open_link(args):
@@ -126,7 +133,23 @@ def cmd_power(link, args):
 
 
 def cmd_status(link, args):
-    status = link.status()
+    try:
+        status = link.status()
+    except LinkTimeout:
+        # A programmer whose PLL failed runs its serial port at UART_BAUD_FALLBACK (include/uart.h)
+        # because 921600 is 2% off at 16 MHz: try that before giving up.
+        close(link)
+        slow = argparse.Namespace(**{**vars(args), "baud": args.baud // FALLBACK_DIVISOR})
+        retry = open_link(slow)
+        try:
+            status = retry.status()
+        except LinkTimeout:
+            raise LinkTimeout(f"no answer at {args.baud} or {slow.baud} baud: check the port "
+                              "and the programmer's power") from None
+        finally:
+            close(retry)
+        print(f"the programmer answered at {slow.baud} baud, not the normal {args.baud}: "
+              "it is running on its fallback clock", file=sys.stderr)
     fell_back = status["clock"] != "pll"
     print(f"clock: {'64 MHz PLL' if not fell_back else '16 MHz fallback (PLL setup failed)'}")
     print(f"adc:   {status['adc']}")
@@ -253,13 +276,22 @@ def main(argv=None):
                    ).set_defaults(run=cmd_selftest)
 
     args = parser.parse_args(argv)
+    link = None
     try:
         link = open_link(args)
         args.run(link, args)
+    except LinkTimeout as e:
+        print(f"picprog: {e}", file=sys.stderr)
+        if args.command != "status":
+            print("picprog: if the programmer's clock failed it talks at half the baud rate; "
+                  "run `picprog status` to check", file=sys.stderr)
+        return 1
     except (LinkError, ihex.HexError, KeyError, OSError) as e:
         print(f"picprog: {e}", file=sys.stderr)
         return 1
     except KeyboardInterrupt:  # Link has already ended any transfer in progress
         print("picprog: interrupted", file=sys.stderr)
         return 130
+    finally:
+        close(link)
     return 0

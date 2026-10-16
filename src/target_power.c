@@ -1,5 +1,7 @@
 #include "target_power.h"
 
+#include <stddef.h>
+
 #include "adc.h"
 #include "icsp.h"
 
@@ -67,7 +69,7 @@ int target_power_on(void)
     return powered;
 }
 
-int target_vdd_mv(uint32_t *mv)
+int target_vdd_mv(uint32_t *mv, uint32_t *vdda_mv)
 {
     uint32_t vdda;
     uint16_t raw;
@@ -76,5 +78,8 @@ int target_vdd_mv(uint32_t *mv)
         return 0;
     }
     *mv = vdda * raw * TARGET_VDD_DIVIDER / 4095u;
+    if (vdda_mv != NULL) {
+        *vdda_mv = vdda;
+    }
     return 1;
 }

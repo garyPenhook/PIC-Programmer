@@ -18,6 +18,10 @@ class LinkError(Exception):
         self.code = code  # the pic_status_t value for "ERR <code> <text>" replies
 
 
+class LinkTimeout(LinkError):
+    """Nothing (or not enough) arrived from the programmer in time."""
+
+
 def crc16(data):
     """CRC-16/CCITT-FALSE (polynomial 0x1021, initial value 0xFFFF), as in src/cmd.c."""
     crc = 0xFFFF
@@ -39,7 +43,7 @@ class Link:
         while len(data) < n:
             chunk = self.stream.read(n - len(data))
             if not chunk:
-                raise LinkError("timeout waiting for the programmer")
+                raise LinkTimeout("timeout waiting for the programmer")
             data += chunk
         return data
 

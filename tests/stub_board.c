@@ -1,5 +1,6 @@
 #include "stub_board.h"
 
+#include <stddef.h>
 #include <string.h>
 
 #include "adc.h"
@@ -71,12 +72,15 @@ int target_power_on(void)
     return powered;
 }
 
-int target_vdd_mv(uint32_t *mv)
+int target_vdd_mv(uint32_t *mv, uint32_t *vdda_mv)
 {
     if (adc_failed) {
         return 0;
     }
     *mv = powered ? vdd : 0u;
+    if (vdda_mv != NULL) {
+        *vdda_mv = 3300u;
+    }
     return 1;
 }
 

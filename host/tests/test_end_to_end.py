@@ -291,3 +291,63 @@ def test_status_reports_a_watchdog_reset(monkeypatch, capsys):
     assert cli.main(["status"]) == 1
     captured = capsys.readouterr()
     assert "watchdog" in captured.out and "hung" in captured.err
+
+
+def test_status_finds_a_programmer_on_its_fallback_baud_rate(monkeypatch, capsys):
+    """After a failed PLL the programmer talks at half the usual rate; `picprog status`
+    tries that when nothing answers at the first rate, and reports the fault."""
+    from picprog import cli
+    from picprog.link import Link
+
+    bauds = []
+
+    def open_link(args):
+        bauds.append(args.baud)
+        reply = b"" if len(bauds) == 1 else b"OK clock=hsi16 adc=ok reset=normal\n"
+        return Link(ScriptedStream(reply))
+
+    monkeypatch.setattr(cli, "open_link", open_link)
+    assert cli.main(["--baud", "921600", "status"]) == 1
+    assert bauds == [921600, 460800]
+    captured = capsys.readouterr()
+    assert "460800 baud" in captured.err and "fallback clock" in captured.err
+
+
+def test_status_does_not_retry_after_a_reply_that_is_not_a_timeout(monkeypatch):
+    from picprog import cli
+    from picprog.link import Link
+
+    calls = []
+
+    def open_link(args):
+        calls.append(args.baud)
+        return Link(ScriptedStream(b"ERR bad-command\n"))
+
+    monkeypatch.setattr(cli, "open_link", open_link)
+    assert cli.main(["status"]) == 1
+    assert len(calls) == 1
+
+
+def test_status_with_no_programmer_says_both_rates_were_tried(monkeypatch, capsys):
+    from picprog import cli
+    from picprog.link import Link
+
+    bauds = []
+
+    def open_link(args):
+        bauds.append(args.baud)
+        return Link(ScriptedStream(b""))
+
+    monkeypatch.setattr(cli, "open_link", open_link)
+    assert cli.main(["--baud", "921600", "status"]) == 1
+    assert bauds == [921600, 460800]
+    assert "no answer at 921600 or 460800 baud" in capsys.readouterr().err
+
+
+def test_a_timeout_on_another_command_points_at_status(monkeypatch, capsys):
+    from picprog import cli
+    from picprog.link import Link
+
+    monkeypatch.setattr(cli, "open_link", lambda args: Link(ScriptedStream(b"")))
+    assert cli.main(["probe"]) == 1
+    assert "picprog status" in capsys.readouterr().err

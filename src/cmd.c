@@ -530,7 +530,7 @@ static void reply_power(void)
 
     out_str("OK ");
     out_str(target_power_on() ? "on " : "off ");
-    out_int(target_vdd_mv(&vdd) ? (int32_t)vdd : -1); /* -1: the ADC failed */
+    out_int(target_vdd_mv(&vdd, NULL) ? (int32_t)vdd : -1); /* -1: the ADC failed */
     out_char('\n');
 }
 
@@ -561,7 +561,7 @@ static void do_vdd(void)
     uint32_t vdd;
     uint32_t vdda;
 
-    if (!target_vdd_mv(&vdd) || !adc_vdda_mv(&vdda)) {
+    if (!target_vdd_mv(&vdd, &vdda)) {
         reply_error("adc");
         return;
     }

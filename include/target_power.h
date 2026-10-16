@@ -33,7 +33,8 @@ void target_power_set(int on);
 int target_power_on(void);
 
 /* Target VDD in millivolts, measured through the divider against the calibrated VDDA.
- * Returns 1 and sets *mv, or 0 if the ADC could not take the measurement. */
-int target_vdd_mv(uint32_t *mv);
+ * Returns 1 and sets *mv (and *vdda_mv, the VDDA it used, unless that is NULL), or 0 if the
+ * ADC could not take the measurement. */
+int target_vdd_mv(uint32_t *mv, uint32_t *vdda_mv);
 
 #endif

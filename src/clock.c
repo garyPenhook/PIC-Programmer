@@ -100,9 +100,30 @@ void clock_init(void)
      */
     RCC_CFGR = (RCC_CFGR & ~RCC_CFGR_SW_MASK) | RCC_CFGR_SW_PLLRCLK;
     if (!wait_for(&RCC_CFGR, RCC_CFGR_SWS_MASK, RCC_CFGR_SWS_PLLRCLK)) {
-        SystemCoreClock = 16000000u;
-        status = CLOCK_ERR_SWITCH;
-        return;
+        /*
+         * The switch was not confirmed. Ask for HSI16 and wait for SWS to say so, then switch
+         * the PLL off (RCC_CR.PLLON cannot be cleared while the PLL is the system clock,
+         * 5.4.1), so a half-done switch does not leave a running PLL behind.
+         */
+        RCC_CFGR &= ~RCC_CFGR_SW_MASK;
+        if (wait_for(&RCC_CFGR, RCC_CFGR_SWS_MASK, 0u)) {
+            RCC_CR &= ~RCC_CR_PLLON;
+            SystemCoreClock = 16000000u;
+            status = CLOCK_ERR_SWITCH;
+            return;
+        }
+        /*
+         * Neither source was confirmed, so SW (what we ask for) and SWS (what the hardware
+         * reports) may disagree and the clock could still change under us. Ask for the PLL
+         * once more: only if SWS then agrees do we know what the clock is. If not, 16 MHz is
+         * the best guess and the state is undefined, so report the fault.
+         */
+        RCC_CFGR = (RCC_CFGR & ~RCC_CFGR_SW_MASK) | RCC_CFGR_SW_PLLRCLK;
+        if (!wait_for(&RCC_CFGR, RCC_CFGR_SWS_MASK, RCC_CFGR_SWS_PLLRCLK)) {
+            SystemCoreClock = 16000000u;
+            status = CLOCK_ERR_SWITCH;
+            return;
+        }
     }
 
     /*

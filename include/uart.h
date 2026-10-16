@@ -17,8 +17,17 @@
 #define UART_BAUD 921600u
 
 /*
+ * Rate used instead when clock_init() fell back to 16 MHz. 921600 needs a divisor of 17.4
+ * there, so the closest (17) runs 2.1 percent fast, and halving the oversampling does not
+ * help (its divisor has to be even: 34 gives the same error). Half the rate needs 34.7,
+ * so 35 is only 0.8 percent off, and a host that finds nothing at UART_BAUD can try this
+ * one (`picprog status` does) and so learn about the fault.
+ */
+#define UART_BAUD_FALLBACK (UART_BAUD / 2u)
+
+/*
  * Configure the pins and the USART. Call after clock_init(): the baud rate divisor is
- * computed from SystemCoreClock.
+ * computed from SystemCoreClock, and the rate is UART_BAUD_FALLBACK if SystemCoreClock is below CLOCK_SYSCLK_HZ.
  */
 void uart_init(void);
 

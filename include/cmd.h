@@ -76,8 +76,8 @@
  *
  *   STATUS
  *       Faults found at start-up. clock=hsi16 means the PLL setup failed and the chip
- *       runs at 16 MHz (the serial baud rate is then a few percent off, so this may only
- *       be readable at a slower host baud or over SWD: g_clock_status); adc=fail means
+ *       runs at 16 MHz. The serial port then runs at UART_BAUD_FALLBACK (half the normal
+ *       rate, uart.h), so this is the one command a host should try at that rate; adc=fail means
  *       the ADC never came up, so VDD and VDDA fail.
  *       reset=watchdog means the last reset was the watchdog's: the programmer hung and
  *       restarted (a WRITE or ERASE in progress was lost). It is cleared by a power-up.

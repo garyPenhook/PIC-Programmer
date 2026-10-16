@@ -77,7 +77,10 @@ void uart_init(void)
      * too far off for the receiver at the other end. BRR can only be written while
      * UE = 0, which it is after reset.
      */
-    USART2_BRR = (SystemCoreClock + UART_BAUD / 2u) / UART_BAUD;
+    /* The rate follows the clock actually running, not the order of the calls. */
+    uint32_t baud = SystemCoreClock >= CLOCK_SYSCLK_HZ ? UART_BAUD : UART_BAUD_FALLBACK;
+
+    USART2_BRR = (SystemCoreClock + baud / 2u) / baud;
     USART2_CR1 = USART_CR1_UE | USART_CR1_TE | USART_CR1_RE;
 }
 
