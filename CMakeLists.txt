@@ -20,6 +20,7 @@ add_executable(${PROJECT_NAME}
     src/startup_stm32g071rb.s
     src/main.c
     src/clock.c
+    src/cmd.c
     src/icsp.c
     src/pic.c
     src/proto/icsp8.c
@@ -28,6 +29,7 @@ add_executable(${PROJECT_NAME}
     ${PIC_DEVICES_C}
     src/system_stm32g0xx.c
     src/platform.c
+    src/uart.c
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE include)

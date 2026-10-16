@@ -1,6 +1,8 @@
+#include "cmd.h"
 #include "icsp.h"
 #include "pic.h"
 #include "platform.h"
+#include "uart.h"
 
 /*
  * Result of the boot-time probe of the target PIC, readable over SWD.
@@ -38,18 +40,33 @@ int main(void)
     platform_watchdog_init();
 
     /*
-     * Look for a target PIC on the ICSP pins once at boot. A real command interface
-     * (over the virtual COM port) will replace this; for now it proves the wiring.
-     * The LED keeps blinking meanwhile because TIM16_IRQHandler runs independently.
+     * Look for a target PIC on the ICSP pins once at boot, so the result can be read over
+     * SWD and the serial commands (cmd.h) start out knowing the device. The PC can probe
+     * again with PROBE. The LED keeps blinking meanwhile because TIM16_IRQHandler runs
+     * independently.
      */
     icsp_init();
+    uart_init();
     probe_target();
+    cmd_set_device(g_pic_device);
 
     for (;;) {
+        uint8_t byte;
+        int rx;
+
         platform_watchdog_kick();
+
         /*
-         * Application work goes here. The LED is not handled in this loop: it is
-         * toggled by TIM16_IRQHandler, so a slow loop iteration does not affect it.
+         * Serial commands. A command runs to completion before the next byte is read, so
+         * the host waits for the final OK or ERR line before sending again (cmd.h). The
+         * LED is not handled in this loop: it is toggled by TIM16_IRQHandler, so a long
+         * command does not affect it.
          */
+        rx = uart_read_byte(&byte);
+        if (rx > 0) {
+            cmd_feed(byte);
+        } else if (rx < 0) {
+            cmd_rx_error();
+        }
     }
 }

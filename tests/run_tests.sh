@@ -24,3 +24,8 @@ gcc $flags $core tests/sim_p18_8bit.c tests/test_p18_8bit.c -o "$out/test_p18_8b
 gcc $flags -Itests/vendor/unity $core tests/sim_p16_8bit.c tests/test_pic_find.c \
     tests/vendor/unity/unity.c -o "$out/test_pic_find"
 "$out/test_pic_find"
+
+# Serial command layer, against the p16 simulator with a stub UART.
+gcc $flags -Itests/vendor/unity $core src/cmd.c tests/sim_p16_8bit.c tests/stub_uart.c \
+    tests/test_cmd.c tests/vendor/unity/unity.c -o "$out/test_cmd"
+"$out/test_cmd"

@@ -24,7 +24,7 @@ cmake --preset Debug   && cmake --build --preset Debug
 cmake --preset Release && cmake --build --preset Release
 ```
 
-Each build writes `pic_programmer_debugger` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 4224 B  128 KB  3.22%` (Release). RAM covers static data only (`.data` + `.bss`); the stack is not counted.
+Each build writes `pic_programmer_debugger` (ELF), `.bin` and `.hex` into its build directory, and the link step prints flash and RAM used out of the device maximum, for example `FLASH: 6356 B  128 KB  4.85%` (Release). RAM covers static data only (`.data` + `.bss`); the stack is not counted.
 
 ## Clock and LED Blink
 
@@ -99,6 +99,9 @@ Layers:
     programming through the write latches, User ID, Configuration Words and EEPROM.
   - `p18_8bit.c`: the PIC18-Q command set, which uses similar command bytes that mean
     different things, so it is a separate protocol.
+- `include/cmd.h`, `src/cmd.c`, `include/uart.h`, `src/uart.c`: the serial command
+  interface (see "Serial commands" below). `uart.c` is a polled USART2 driver and the only
+  hardware-specific part; `cmd.c` is plain C and runs on the PC in the tests.
 - `src/icsp.c`: pins and microsecond delays only, and the only hardware-specific file
   under the protocols. The three pins use low output speed (OSPEEDR `01`,
   RM0444 7.5.3): ICSPCLK runs at about 500 kHz, far below that setting's limit, and the
@@ -116,6 +119,38 @@ Read the result over SWD: `g_pic_status` is 0 when a part was found, else the `P
 *g_pic_device` in GDB shows its name and geometry) or is NULL, and `g_pic_device_id` and
 `g_pic_revision_id` hold the IDs (addresses in the map file). A PIC16F17146 should read
 `0x30E1` and a PIC16F17124 `0x30DC`. With nothing attached, the IDs are 0.
+
+### Serial commands
+
+The programmer takes line commands over the ST-LINK virtual COM port (USART2 on PA2/PA3,
+115200 baud, 8N1). Commands are upper case, one per line. Every command ends with one
+`OK ...` or `ERR ...` line, and the host must wait for it before sending the next command
+(the port has no receive buffer). The full format is in `include/cmd.h`.
+
+| Command | Reply |
+|---|---|
+| `PROBE` | `OK <name> <device id> <revision id>`; remembers the device for later commands |
+| `READ <region> <offset> <count>` | `D <offset> <cells...> *<crc>` lines, then `OK <count>` |
+
+`region` is `flash`, `userid`, `config` or `eeprom`; numbers are decimal or `0x` hex. Each
+`D` line carries up to 16 cells, with a CRC-16/CCITT-FALSE over the text before ` *`, so
+a host can detect corruption on the serial link. Errors read `ERR <code> <text>` (the code
+is the `pic_status_t` value, for example `ERR -2 range outside region`) or `ERR <word>`
+for a bad command (`bad-command`, `bad-argument`, `no-device`, `line-too-long`,
+`rx-error`). On any `ERR`, discard the `D` lines already received. Example (the values
+are from the PC simulator, not a real part):
+
+```
+> PROBE
+< OK PIC16F17146 30E1 2000
+> READ flash 0 4
+< D 00000000 3FFF 3FFF 3FFF 3FFF *8017
+< OK 4
+```
+
+Reading is slow because of the serial link, not the ICSP side: about 5 characters per
+cell at 115200 baud is roughly 2,300 cells a second, so a 16 KW part takes about 7 s.
+Writes, erase and verify are not on the serial interface yet.
 
 The API reads the device ID, revision ID and the five DCI values, but not the other
 read-only areas (the PIC16 DIA at 0x8100, for example); that would be a new read-only

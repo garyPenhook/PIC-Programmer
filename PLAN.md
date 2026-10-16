@@ -130,8 +130,11 @@ Both:
    settle assumptions 1 to 5 and 10. Start read-only: identify, then read the DCI, then dump
    flash, and only then erase and program. Use a scope or logic analyzer if the ID does not
    read back.
-4. **M4:** command interface over the ST-LINK virtual COM port (USART2 on PA2/PA3), so a
-   PC tool can drive the programmer.
+4. **M4 (in progress):** command interface over the ST-LINK virtual COM port (USART2 on
+   PA2/PA3), so a PC tool can drive the programmer. Done: polled UART, line parser, `PROBE`
+   and `READ` with per-line CRC (README, "Serial commands"). To do: `ERASE`, `WRITE`,
+   `VERIFY`, and `DCI`/ID reads; check on hardware that PA2/PA3 reach the virtual COM port
+   (UM2324 is not on disk).
 5. **M5:** host tool (Python): parse Intel HEX, `id`, `read`, `erase`, `write`, `verify`,
    and `dump` (program extraction to an Intel HEX file, see "Program extraction").
    It reads the same `data/pic_devices.csv` for geometry and checks it against the DCI.
