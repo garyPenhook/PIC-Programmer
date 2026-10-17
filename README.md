@@ -101,6 +101,11 @@ Layers:
     programming through the write latches, User ID, Configuration Words and EEPROM.
   - `p18_8bit.c`: the PIC18-Q command set, which uses similar command bytes that mean
     different things, so it is a separate protocol.
+  - `p18_q10.c`: the PIC18F2X/4XQ10 command set (DS40001874H). Same command bytes as
+    `p18_8bit`, but EEPROM at 31 0000h, no DCI (the part is confirmed by its device ID and
+    the fixed nibble of its revision ID), 16-bit Configuration Words, a Bulk Erase with no
+    payload whose region set follows the PC (flash+config, flash+User ID+config, or EEPROM
+    only; other sets are rejected), and different timing.
 - `include/cmd.h`, `src/cmd.c`, `include/uart.h`, `src/uart.c`: the serial command
   interface (see "Serial commands" below). `uart.c` is a polled USART2 driver and the only
   hardware-specific part; `cmd.c` is plain C and runs on the PC in the tests.
@@ -116,11 +121,11 @@ Layers:
   clock (its interrupt stays off), so they stay correct at 64 MHz or the 16 MHz fallback.
 - `tests/`: each protocol run on the PC against a simulated device that also checks every
   wait the spec requires, once for every table row that uses the protocol (14 PIC16F171XX
-  parts, 6 PIC18-Q41 parts). The simulators hold their own memory sizes, copied from the
+  parts, 6 PIC18-Q41 parts, 2 PIC18F27/47Q10 parts). The simulators hold their own memory sizes, copied from the
   spec, and the tests compare the part's DCI with its table row, so a wrong size in the
   CSV fails the tests. Run `tests/run_tests.sh`.
 
-At boot `main()` probes the target once, trying `p16_8bit` first and `p18_8bit` second.
+At boot `main()` probes the target once, trying `p16_8bit`, `p18_8bit` and `p18_q10` in that order.
 Read the result over SWD: `g_pic_status` is 0 when a part was found, else the `PIC_ERR_*` code saying why not. `g_pic_device` points at the matching table row (`print
 *g_pic_device` in GDB shows its name and geometry) or is NULL, and `g_pic_device_id` and
 `g_pic_revision_id` hold the IDs (addresses in the map file). A PIC16F17146 should read

@@ -22,6 +22,11 @@ PROTOCOLS = {
     # bytes from 0x300000, EEPROM bytes from 0x380000, DCI at 0x3C0000.
     "p18_8bit": {"latches": False, "flash_words": 0x100000, "userid_words": 0x80000,
                  "config_count": 0x80000, "eeprom_bytes": 0x40000},
+    # Byte addresses (DS40001874H Figure 2-1): flash words below 0x200000, User ID words
+    # from 0x200000 (128 words, up to 0x2000FF), six 16-bit Configuration Words from
+    # 0x300000 (to 0x30000B), EEPROM bytes from 0x310000 (up to 0x3103FF).
+    "p18_q10": {"latches": False, "flash_words": 0x100000, "userid_words": 0x80,
+                "config_count": 6, "eeprom_bytes": 0x400},
 }
 COLUMNS = ("name", "protocol", "device_id", "flash_words", "erase_words", "latch_words",
            "userid_words", "config_count", "eeprom_bytes", "source")

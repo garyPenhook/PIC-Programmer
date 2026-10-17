@@ -9,6 +9,7 @@
 static const pic_proto_t *const protocols[] = {
     &pic_proto_p16_8bit,
     &pic_proto_p18_8bit,
+    &pic_proto_p18_q10,
 };
 
 const pic_device_t *pic_find_device(const pic_proto_t *proto, uint16_t device_id)
@@ -29,7 +30,12 @@ const pic_device_t *pic_find_device(const pic_proto_t *proto, uint16_t device_id
 static pic_status_t dci_matches(const pic_device_t *dev)
 {
     pic_dci_t dci;
-    pic_status_t st = dev->proto->read_dci(&dci);
+    pic_status_t st;
+
+    if (dev->proto->read_dci == NULL) { /* no DCI on this family: use its own check */
+        return dev->proto->confirm(dev);
+    }
+    st = dev->proto->read_dci(&dci);
 
     if (st != PIC_OK) {
         return st;
@@ -235,7 +241,10 @@ pic_status_t pic_read_revision_id(const pic_device_t *dev, uint16_t *id)
 
 pic_status_t pic_read_dci(const pic_device_t *dev, pic_dci_t *dci)
 {
-    return dev_ok(dev) && dci != NULL ? dev->proto->read_dci(dci) : PIC_ERR_ARG;
+    if (!dev_ok(dev) || dci == NULL) {
+        return PIC_ERR_ARG;
+    }
+    return dev->proto->read_dci != NULL ? dev->proto->read_dci(dci) : PIC_ERR_UNSUPPORTED;
 }
 
 pic_status_t pic_read(const pic_device_t *dev, pic_region_t region, uint32_t offset, uint16_t *buf,

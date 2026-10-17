@@ -26,7 +26,11 @@ struct pic_proto {
     void (*exit)(void);
     pic_status_t (*read_device_id)(uint16_t *id);
     pic_status_t (*read_revision_id)(uint16_t *id);
-    pic_status_t (*read_dci)(pic_dci_t *dci);
+    pic_status_t (*read_dci)(pic_dci_t *dci); /* NULL if the family has no DCI */
+    /* Used when read_dci is NULL: a read-only check, beyond the device ID, that the part
+     * really speaks this protocol (PIC_ERR_UNSUPPORTED if not). May be NULL only if
+     * read_dci is not. */
+    pic_status_t (*confirm)(const pic_device_t *dev);
     uint16_t (*cell_mask)(pic_region_t region); /* bits a cell of this region stores */
     pic_status_t (*read)(const pic_device_t *dev, pic_region_t region, uint32_t offset,
                          uint16_t *buf, size_t count);
@@ -47,5 +51,12 @@ extern const pic_proto_t pic_proto_p16_8bit;
  * programming, page erase.
  */
 extern const pic_proto_t pic_proto_p18_8bit;
+
+/*
+ * 8-bit command set of the PIC18F2X/4XQ10 (DS40001874H): the same command bytes as
+ * p18_8bit, but a different memory map (EEPROM at 31 0000h, no DCI), 16-bit Configuration
+ * Words, and a Bulk Erase that takes no payload and picks what it erases from the PC.
+ */
+extern const pic_proto_t pic_proto_p18_q10;
 
 #endif

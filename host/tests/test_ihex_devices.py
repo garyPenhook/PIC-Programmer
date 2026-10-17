@@ -38,6 +38,18 @@ def test_p18_layout_is_byte_addressed():
     assert dev.layout.cell_hex_bytes("eeprom", 1) == (0x380001, None)
 
 
+def test_p18_q10_layout_follows_the_programming_spec():
+    dev = devices.find("PIC18F27Q10")
+    # DS40001874H Figure 2-1 and 3.4: Configuration Words from 300000h, two addresses each
+    # (1L, 1H, 2L, ...); data EEPROM from 310000h, one byte per address.
+    assert dev.layout.cell_hex_bytes("config", 0) == (0x300000, 0x300001)
+    assert dev.layout.cell_hex_bytes("config", 5) == (0x30000A, 0x30000B)
+    assert dev.layout.cell_hex_bytes("eeprom", 1) == (0x310001, None)
+    assert dev.layout.cell_hex_bytes("userid", 1) == (0x200002, 0x200003)
+    assert dev.layout.cell_mask("config") == 0xFFFF and dev.layout.cell_mask("eeprom") == 0xFF
+    assert devices.cells_to_image(dev, "config", 0, [0x29A7]) == {0x300000: 0xA7, 0x300001: 0x29}
+
+
 def test_image_to_cells_masks_values_and_reports_strays():
     dev = devices.find("PIC16F17146")
     image = devices.cells_to_image(dev, "flash", 4, [0x1234, 0x3FFF])

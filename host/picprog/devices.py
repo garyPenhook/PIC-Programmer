@@ -105,7 +105,30 @@ class P18Layout:
         return self.bases[region] + offset, None
 
 
-LAYOUTS = {"p16_8bit": P16Layout(), "p18_8bit": P18Layout()}
+class P18Q10Layout:
+    """p18_q10: byte-addressed, 16-bit program words (PIC18F2X/4XQ10, DS40001874H).
+
+    Hex addresses are the part's own byte addresses (Figure 2-1; TB3163 for the hex format),
+    as in src/proto/p18_q10.c. Flash, User ID and Configuration Words are 16-bit cells at
+    two addresses each (Configuration Word nL at 30 0000h + 2(n-1), nH on the next address,
+    spec Table B-1 and section 3.4.1); EEPROM cells are bytes from 31 0000h (section 3.4.2).
+    As for P18Layout, the low byte is assumed to sit at the even address.
+    """
+    bases = {"flash": 0x000000, "userid": 0x200000, "config": 0x300000, "eeprom": 0x310000}
+    device_id_hex = 0x3FFFFE
+
+    @staticmethod
+    def cell_mask(region):
+        return 0xFF if region == "eeprom" else 0xFFFF
+
+    def cell_hex_bytes(self, region, offset):
+        if region == "eeprom":
+            return self.bases[region] + offset, None
+        address = self.bases[region] + 2 * offset
+        return address, address + 1
+
+
+LAYOUTS = {"p16_8bit": P16Layout(), "p18_8bit": P18Layout(), "p18_q10": P18Q10Layout()}
 
 
 def load(path=CSV_PATH):

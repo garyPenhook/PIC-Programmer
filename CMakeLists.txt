@@ -32,6 +32,7 @@ add_executable(${PROJECT_NAME}
     src/selftest.c
     src/proto/p16_8bit.c
     src/proto/p18_8bit.c
+    src/proto/p18_q10.c
     ${PIC_DEVICES_C}
     src/system_stm32g0xx.c
     src/platform.c
