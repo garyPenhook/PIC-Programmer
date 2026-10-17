@@ -1,26 +1,12 @@
 #include "adc.h"
 
 #include "icsp.h"
-
-/*
- * Register addresses (RM0444): ADC base 0x40012400 (Table 6); offsets from the register map
- * (Table 81): ISR 0x00, CR 0x08, CFGR1 0x0C, CFGR2 0x10, SMPR 0x14, CHSELR 0x28, DR 0x40,
- * CCR 0x308. RCC_APBENR2 at RCC base + 0x40 (5.4.16).
- */
-#define ADC_ISR     (*(volatile uint32_t *)0x40012400u)
-#define ADC_CR      (*(volatile uint32_t *)0x40012408u)
-#define ADC_CFGR2   (*(volatile uint32_t *)0x40012410u)
-#define ADC_SMPR    (*(volatile uint32_t *)0x40012414u)
-#define ADC_CHSELR  (*(volatile uint32_t *)0x40012428u)
-#define ADC_DR      (*(volatile uint32_t *)0x40012440u)
-#define ADC_CCR     (*(volatile uint32_t *)0x40012708u)
-#define RCC_APBENR2 (*(volatile uint32_t *)0x40021040u)
+#include "regs.h"
 
 /* VREFINT_CAL: raw VREFINT reading at 30 degC with VDDA = VREF+ = 3.0 V (DS12232 Table 6). */
 #define VREFINT_CAL    (*(const volatile uint16_t *)0x1FFF75AAu)
 #define VREFINT_CAL_MV 3000u
 
-#define RCC_APBENR2_ADCEN (1u << 20)
 
 #define ADC_ISR_ADRDY              (1u << 0)
 #define ADC_ISR_EOC                (1u << 2)

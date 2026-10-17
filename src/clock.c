@@ -1,13 +1,6 @@
 #include "clock.h"
 
-/*
- * Register addresses (RM0444). RCC base is 0x40021000, FLASH interface base is
- * 0x40022000.
- */
-#define RCC_CR      (*(volatile uint32_t *)0x40021000u) /* clock control */
-#define RCC_CFGR    (*(volatile uint32_t *)0x40021008u) /* clock configuration */
-#define RCC_PLLCFGR (*(volatile uint32_t *)0x4002100Cu) /* PLL configuration */
-#define FLASH_ACR   (*(volatile uint32_t *)0x40022000u) /* flash access control */
+#include "regs.h"
 
 /* RCC_CR: HSIDIV divides HSI16 to make HSISYS (000 = /1). PLLON starts the PLL. */
 #define RCC_CR_HSIDIV_MASK (7u << 11)

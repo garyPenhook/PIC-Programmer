@@ -1,47 +1,11 @@
 #include "platform.h"
 
 #include "clock.h"
+#include "regs.h"
 
-/*
- * Register access: each register is a fixed address, cast to a volatile pointer
- * and dereferenced. "volatile" stops the compiler from caching, merging or
- * dropping reads and writes, which it must not do for hardware registers.
- * Addresses and offsets are from RM0444; NVIC from PM0223.
- */
-
-/* RCC (base 0x40021000) and GPIOA (base 0x50000000). */
-#define RCC_IOPENR  (*(volatile uint32_t *)0x40021034u) /* I/O port clock enable */
-#define GPIOA_MODER (*(volatile uint32_t *)0x50000000u) /* pin mode, 2 bits per pin */
-#define GPIOA_ODR   (*(volatile uint32_t *)0x50000014u) /* output data, 1 bit per pin */
-#define GPIOA_BSRR  (*(volatile uint32_t *)0x50000018u) /* atomic set (15:0) / reset (31:16) */
-
-/* TIM16 (base 0x40014400), its clock enable in RCC, and the NVIC enable register. */
-#define RCC_APBENR2 (*(volatile uint32_t *)0x40021040u) /* APB peripheral clock enable 2 */
-#define TIM16_CR1   (*(volatile uint32_t *)0x40014400u) /* control 1: counter enable */
-#define TIM16_DIER  (*(volatile uint32_t *)0x4001440Cu) /* interrupt enable */
-#define TIM16_SR    (*(volatile uint32_t *)0x40014410u) /* status / interrupt flags */
-#define TIM16_EGR   (*(volatile uint32_t *)0x40014414u) /* event generation */
-#define TIM16_PSC   (*(volatile uint32_t *)0x40014428u) /* prescaler */
-#define TIM16_ARR   (*(volatile uint32_t *)0x4001442Cu) /* auto-reload (period) */
-#define NVIC_ISER   (*(volatile uint32_t *)0xE000E100u) /* interrupt set-enable */
-
-/*
- * IWDG (base 0x40003000, RM0444 Table 6; registers in 28.4), the DBG freeze register, and
- * the reset flags in RCC_CSR. RCC_APBENR1 (offset 0x3C) holds DBGEN, which must be set
- * before DBG_APB_FZ1 can be written.
- */
-#define IWDG_KR       (*(volatile uint32_t *)0x40003000u) /* key */
-#define IWDG_PR       (*(volatile uint32_t *)0x40003004u) /* prescaler */
-#define IWDG_RLR      (*(volatile uint32_t *)0x40003008u) /* reload value */
-#define IWDG_SR       (*(volatile uint32_t *)0x4000300Cu) /* PVU, RVU, WVU: update busy */
-#define RCC_APBENR1   (*(volatile uint32_t *)0x4002103Cu)
-#define RCC_CSR       (*(volatile uint32_t *)0x40021060u)
-#define DBG_APB_FZ1   (*(volatile uint32_t *)0x40015808u) /* DBG base 0x40015800 + 0x08 */
+/* Registers are in regs.h. RCC_APBENR1.DBGEN must be set before DBG_APB_FZ1 can be written. */
 
 /* Bit definitions. */
-#define RCC_IOPENR_GPIOAEN  (1u << 0)  /* enable the GPIOA peripheral clock */
-#define RCC_APBENR2_TIM16EN (1u << 17) /* enable the TIM16 peripheral clock */
-#define RCC_APBENR1_DBGEN   (1u << 27) /* debug support clock enable */
 #define RCC_CSR_IWDGRSTF    (1u << 29) /* reset flag: the last reset was the IWDG's */
 #define RCC_CSR_RMVF        (1u << 23) /* write 1 to clear the reset flags */
 #define DBG_APB_FZ1_IWDG_STOP (1u << 12) /* freeze the IWDG while the core is halted */

@@ -2,28 +2,8 @@
 
 #include "clock.h"
 #include "icsp.h"
+#include "regs.h"
 
-/*
- * Register addresses (RM0444). I2C1 base is 0x40005400 (Table 6); offsets from 32.9:
- * CR1 0x00, CR2 0x04, TIMINGR 0x10, ISR 0x18, ICR 0x1C, TXDR 0x28. GPIOB base 0x50000400
- * with MODER 0x00, OTYPER 0x04, PUPDR 0x0C, BSRR 0x18, AFRH 0x24 (7.5).
- */
-#define I2C1_CR1     (*(volatile uint32_t *)0x40005400u)
-#define I2C1_CR2     (*(volatile uint32_t *)0x40005404u)
-#define I2C1_TIMINGR (*(volatile uint32_t *)0x40005410u)
-#define I2C1_ISR     (*(volatile uint32_t *)0x40005418u)
-#define I2C1_ICR     (*(volatile uint32_t *)0x4000541Cu)
-#define I2C1_TXDR    (*(volatile uint32_t *)0x40005428u)
-#define RCC_IOPENR   (*(volatile uint32_t *)0x40021034u)
-#define RCC_APBENR1  (*(volatile uint32_t *)0x4002103Cu)
-#define GPIOB_MODER  (*(volatile uint32_t *)0x50000400u)
-#define GPIOB_OTYPER (*(volatile uint32_t *)0x50000404u)
-#define GPIOB_PUPDR  (*(volatile uint32_t *)0x5000040Cu)
-#define GPIOB_AFRH   (*(volatile uint32_t *)0x50000424u)
-#define GPIOB_BSRR   (*(volatile uint32_t *)0x50000418u)
-
-#define RCC_IOPENR_GPIOBEN (1u << 1)
-#define RCC_APBENR1_I2C1EN (1u << 21)
 
 #define PIN_SCL 8u /* PB8 = I2C1_SCL, AF6 (datasheet Table 14) */
 #define PIN_SDA 9u /* PB9 = I2C1_SDA, AF6 */

@@ -1,21 +1,9 @@
 #include "icsp.h"
 
 #include "clock.h"
+#include "regs.h"
 
-/*
- * GPIOB (base 0x50000400, RM0444 memory map) carries all three ICSP signals.
- * Offsets verified in RM0444 7.5: MODER 0x00, OTYPER 0x04, OSPEEDR 0x08, PUPDR 0x0C,
- * IDR 0x10, BSRR 0x18.
- */
-#define RCC_IOPENR    (*(volatile uint32_t *)0x40021034u)
-#define GPIOB_MODER   (*(volatile uint32_t *)0x50000400u)
-#define GPIOB_OSPEEDR (*(volatile uint32_t *)0x50000408u)
-#define GPIOB_PUPDR   (*(volatile uint32_t *)0x5000040Cu)
-#define GPIOB_IDR     (*(volatile uint32_t *)0x50000410u)
-#define GPIOB_BSRR    (*(volatile uint32_t *)0x50000418u)
-
-#define RCC_IOPENR_GPIOBEN (1u << 1)
-
+/* GPIOB carries all three ICSP signals. */
 #define PIN_CLK  3u /* PB3 = ICSPCLK, Arduino D3 */
 #define PIN_DAT  4u /* PB4 = ICSPDAT, Arduino D5 */
 #define PIN_MCLR 5u /* PB5 = MCLR,    Arduino D4 */
@@ -32,9 +20,6 @@
 #define PULL_DOWN 2u
 
 /* SysTick (PM0223): free-running 24-bit down-counter on the processor clock. */
-#define STK_CSR           (*(volatile uint32_t *)0xE000E010u)
-#define STK_RVR           (*(volatile uint32_t *)0xE000E014u)
-#define STK_CVR           (*(volatile uint32_t *)0xE000E018u)
 #define STK_CSR_ENABLE    (1u << 0)
 #define STK_CSR_CLKSOURCE (1u << 2) /* 1 = processor clock */
 #define STK_MASK          0x00FFFFFFu

@@ -1,25 +1,9 @@
 #include "uart.h"
 
 #include "clock.h"
+#define REGS_USART2
+#include "regs.h"
 
-/*
- * Register addresses (RM0444). USART2 base is 0x40004400 (Table 6); offsets from 33.8:
- * CR1 0x00, BRR 0x0C, ISR 0x1C, ICR 0x20, RDR 0x24, TDR 0x28. RCC_APBENR1 is at RCC base
- * + 0x3C (5.4.15) and GPIOA_AFRL at GPIOA base + 0x20 (7.5.9).
- */
-#define USART2_CR1  (*(volatile uint32_t *)0x40004400u)
-#define USART2_BRR  (*(volatile uint32_t *)0x4000440Cu)
-#define USART2_ISR  (*(volatile uint32_t *)0x4000441Cu)
-#define USART2_ICR  (*(volatile uint32_t *)0x40004420u)
-#define USART2_RDR  (*(volatile uint32_t *)0x40004424u)
-#define USART2_TDR  (*(volatile uint32_t *)0x40004428u)
-#define RCC_IOPENR  (*(volatile uint32_t *)0x40021034u)
-#define RCC_APBENR1 (*(volatile uint32_t *)0x4002103Cu)
-#define GPIOA_MODER (*(volatile uint32_t *)0x50000000u)
-#define GPIOA_AFRL  (*(volatile uint32_t *)0x50000020u)
-
-#define RCC_IOPENR_GPIOAEN   (1u << 0)
-#define RCC_APBENR1_USART2EN (1u << 17)
 
 #define PIN_TX    2u /* PA2 = USART2_TX, AF1 (datasheet Table 13) */
 #define PIN_RX    3u /* PA3 = USART2_RX, AF1 */

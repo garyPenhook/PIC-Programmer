@@ -1,26 +1,9 @@
 #include "target_uart.h"
 
 #include "clock.h"
+#define REGS_USART1
+#include "regs.h"
 
-/*
- * Register addresses (RM0444): USART1 base 0x40013800 (Table 6), offsets as for USART2
- * (33.8: CR1 0x00, BRR 0x0C, ISR 0x1C, ICR 0x20, RDR 0x24, TDR 0x28). GPIOC base
- * 0x50000800 (Table 6), MODER 0x00, AFRL 0x20. RCC_IOPENR GPIOCEN bit 2 (5.4.13),
- * RCC_APBENR2 USART1EN bit 14 (5.4.16).
- */
-#define USART1_CR1  (*(volatile uint32_t *)0x40013800u)
-#define USART1_BRR  (*(volatile uint32_t *)0x4001380Cu)
-#define USART1_ISR  (*(volatile uint32_t *)0x4001381Cu)
-#define USART1_ICR  (*(volatile uint32_t *)0x40013820u)
-#define USART1_RDR  (*(volatile uint32_t *)0x40013824u)
-#define USART1_TDR  (*(volatile uint32_t *)0x40013828u)
-#define RCC_IOPENR  (*(volatile uint32_t *)0x40021034u)
-#define RCC_APBENR2 (*(volatile uint32_t *)0x40021040u)
-#define GPIOC_MODER (*(volatile uint32_t *)0x50000800u)
-#define GPIOC_AFRL  (*(volatile uint32_t *)0x50000820u)
-
-#define RCC_IOPENR_GPIOCEN   (1u << 2)
-#define RCC_APBENR2_USART1EN (1u << 14)
 
 #define PIN_TX     4u /* PC4 = USART1_TX, AF1 */
 #define PIN_RX     5u /* PC5 = USART1_RX, AF1 */

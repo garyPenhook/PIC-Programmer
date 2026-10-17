@@ -4,13 +4,8 @@
 
 #include "adc.h"
 #include "icsp.h"
+#include "regs.h"
 
-/* GPIOA (RM0444 Table 6, 7.5): base 0x50000000, MODER 0x00, BSRR 0x18. */
-#define RCC_IOPENR  (*(volatile uint32_t *)0x40021034u)
-#define GPIOA_MODER (*(volatile uint32_t *)0x50000000u)
-#define GPIOA_BSRR  (*(volatile uint32_t *)0x50000018u)
-
-#define RCC_IOPENR_GPIOAEN (1u << 0)
 #define PIN_ENABLE         10u /* PA10, Arduino D2 (UM2324 Table 12) */
 #define PIN_SENSE          0u  /* PA0, Arduino A0, ADC_IN0 */
 #define ADC_CHANNEL        0u
