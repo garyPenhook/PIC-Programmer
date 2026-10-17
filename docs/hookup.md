@@ -37,7 +37,16 @@ I2C pins the OLED uses.
 ## Target PIC
 
 The PIC is powered from the Nucleo's 3.3 V, within the 1.8 to 5.5 V programming range of
-the PIC16F171XX programming specification. Only low-voltage programming is supported: the
+the PIC16F171XX programming specification.
+
+**Power pin: use 3V3 on CN6 pin 4 (silkscreen "3V3"), not 5V.** It is the output of the
+board's 3.3 V regulator (U6, LDL112PV33R). UM2324 6.5.2 limits the total board plus
+attached load on it to less than 500 mA, and Table 7 limits USB input to 100 mA before
+enumeration and 500 mA after, so keep the ST-LINK USB cable plugged in. Do not use the 5V
+pin (CN6 pin 5): the Nucleo's GPIOs and the firmware assume a 3.3 V target. If the
+test load is heavy, power the board from VIN or E5V instead (UM2324 Table 7).
+
+Only low-voltage programming is supported: the
 part must have its LVP configuration bit set (the factory default), because the Nucleo
 cannot supply the 7.9 to 9.0 V high-voltage MCLR level.
 
