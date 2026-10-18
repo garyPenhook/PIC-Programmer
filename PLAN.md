@@ -42,7 +42,7 @@ in its address map), and give it a simulator, a test program, and a line in
 | `p16_8bit` | **PIC16F131XX** (PIC16F13113/14/15, 13123/24/25, 13143/44/45: 9 parts, no EEPROM) | DS40002500B, downloaded to `docs/f13145/` | **Implemented**, simulator only. Its NVM time limits are larger than the F171XX's, so `p16_8bit.c` waits for the larger of the two (timing table in the source). PIC16F13276 and PIC16F17576 still need rows |
 | `p18_8bit` | PIC18-Q41 (all 6 parts in the table) | Q41 data sheet DS40002214; Q24/Q41/Q43 programming specs via the Microchip MCP | Implemented |
 | `p18_8bit` | PIC18-Q20, Q24, Q43 | Programming specs via the Microchip MCP | Protocol present; **rows needed**. Q24 has 13 configuration bytes whose addresses "do not increment sequentially" (Q24 spec 2.4), so the config region needs an address list, not just a count, before Q24 can be added |
-| `p18_q10` | PIC18F27Q10, PIC18F47Q10 | DS40001874H (`docs/q10/`), data sheet DS40002043 | Implemented and tested against a simulator only; **not yet run on silicon**. PIC18F24/25/26/45/46Q10 need rows (same spec; EEPROM and flash sizes come from their own data sheet, which is not on disk) |
+| `p18_q10` | PIC18F24/25/26/27Q10, PIC18F45/46/47Q10 (all 7) | DS40001874H (`docs/q10/`), data sheets DS40001945, DS40001996, DS40002043 | Implemented and tested against a simulator only; **not yet run on silicon** |
 | ? | Baseline PIC10/12/16F5x, older mid-range PIC16, older PIC18F (452, 2620, 4550, 8722), J-series (45J10), K-series (K22, K42, ...) | Not found | **Need the specs** |
 
 Their data sheets are on disk (`~/Projects`, `~/Documents/Microchip/PIC/datasheets/`) but

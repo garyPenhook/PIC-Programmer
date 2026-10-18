@@ -350,7 +350,7 @@ static void test_eeprom_config_and_userid(void)
     CHECK(pic_read(dev, PIC_REGION_EEPROM, 0x10u, ee_back, 5u) == PIC_OK);
     CHECK(memcmp(ee, ee_back, sizeof ee) == 0);
     CHECK(sim_eeprom_byte(0x10) == 0x11u && sim_eeprom_byte(0x14) == 0x55u);
-    CHECK(sim_eeprom_byte(0x3FF) == 0xFFu);
+    CHECK(sim_eeprom_byte(dev->eeprom_bytes - 1u) == 0xFFu); /* last cell untouched */
 
     /* Configuration cells are 16-bit words at 30 0000h + 2n. */
     CHECK(pic_write(dev, PIC_REGION_CONFIG, 2u, cfg, 2u) == PIC_OK);

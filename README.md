@@ -121,7 +121,7 @@ Layers:
   clock (its interrupt stays off), so they stay correct at 64 MHz or the 16 MHz fallback.
 - `tests/`: each protocol run on the PC against a simulated device that also checks every
   wait the spec requires, once for every table row that uses the protocol (14 PIC16F171XX
-  parts, 9 PIC16F131XX parts, 6 PIC18-Q41 parts, 2 PIC18F27/47Q10 parts). The simulators hold their own memory sizes, copied from the
+  parts, 9 PIC16F131XX parts, 6 PIC18-Q41 parts, 7 PIC18F2X/4XQ10 parts). The simulators hold their own memory sizes, copied from the
   spec, and the tests compare the part's DCI with its table row, so a wrong size in the
   CSV fails the tests. Run `tests/run_tests.sh`.
 

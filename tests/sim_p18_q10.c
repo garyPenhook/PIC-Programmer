@@ -10,12 +10,12 @@
  * (Table 2-1 sizes, device IDs), independently of the device table so the tests
  * cross-check it.
  */
-#define FLASH_WORDS      65536u
+#define MAX_FLASH_WORDS  65536u
 #define ERASE_WORDS      128u
 #define ERASE_PAGE_BYTES (2u * ERASE_WORDS)
 #define USERID_WORDS     128u
 #define CONFIG_WORDS     6u
-#define EEPROM_BYTES     1024u
+#define MAX_EEPROM_BYTES 1024u
 
 #define KEY 0x4D434850u
 
@@ -32,6 +32,40 @@
 static int g_lvp = 1;
 static int g_dat_high; /* 1 = ICSPDAT reads high whatever the device sends (fault) */
 static uint16_t g_device_id = 0x7100u;
+
+/*
+ * Sizes by device ID, from the data sheets' Table 1 (flash in bytes: 16k, 32k, 64k, 128k;
+ * words are half of that) and written out independently of the device table. IDs are from
+ * DS40001874H Table B-1.
+ */
+static uint32_t flash_words(void)
+{
+    switch (g_device_id) {
+    case 0x71C0u: /* PIC18F24Q10 */
+        return 8192u;
+    case 0x71A0u: /* PIC18F25Q10 */
+    case 0x7140u: /* PIC18F45Q10 */
+        return 16384u;
+    case 0x7180u: /* PIC18F26Q10 */
+    case 0x7120u: /* PIC18F46Q10 */
+        return 32768u;
+    default: /* PIC18F27Q10, PIC18F47Q10 */
+        return 65536u;
+    }
+}
+
+static uint32_t eeprom_bytes(void)
+{
+    switch (g_device_id) {
+    case 0x71C0u:
+    case 0x71A0u:
+    case 0x7140u:
+        return 256u;
+    default:
+        return 1024u;
+    }
+}
+
 static uint16_t g_revision_id = 0xA000u;
 static int g_cp; /* 1 = CP/CPD enabled: Bulk Erase also takes the EEPROM */
 
@@ -52,10 +86,10 @@ static struct {
     uint64_t wait_start;
     uint32_t wait_us;
     uint32_t violations, bad_commands, bulk_erases;
-    uint16_t flash[FLASH_WORDS];
+    uint16_t flash[MAX_FLASH_WORDS];
     uint16_t userid[USERID_WORDS];
     uint16_t config[CONFIG_WORDS];
-    uint8_t eeprom[EEPROM_BYTES];
+    uint8_t eeprom[MAX_EEPROM_BYTES];
 } s;
 
 void sim_select_device(uint16_t device_id)
@@ -67,7 +101,7 @@ void sim_reset(void)
 {
     memset(&s, 0, sizeof s);
     s.mclr = 1;
-    for (size_t i = 0; i < FLASH_WORDS; i++)
+    for (size_t i = 0; i < flash_words(); i++)
         s.flash[i] = 0xFFFFu;
     for (size_t i = 0; i < USERID_WORDS; i++)
         s.userid[i] = 0xFFFFu;
@@ -114,7 +148,7 @@ uint16_t sim_userid_word(uint32_t i)
 }
 uint8_t sim_eeprom_byte(uint32_t i)
 {
-    return i < EEPROM_BYTES ? s.eeprom[i] : 0u;
+    return i < eeprom_bytes() ? s.eeprom[i] : 0u;
 }
 void sim_set_eeprom_byte(uint32_t i, uint8_t v)
 {
@@ -150,13 +184,13 @@ static void require_wait(uint32_t us)
 static uint32_t mem_read(uint32_t pc, uint32_t *step)
 {
     *step = 2u;
-    if (pc < 2u * FLASH_WORDS)
+    if (pc < 2u * flash_words())
         return s.flash[pc / 2u];
     if (pc >= 0x200000u && pc < 0x200000u + 2u * USERID_WORDS)
         return s.userid[(pc - 0x200000u) / 2u];
     if (pc >= 0x300000u && pc < 0x300000u + 2u * CONFIG_WORDS)
         return s.config[(pc - 0x300000u) / 2u];
-    if (pc >= 0x310000u && pc < 0x310000u + EEPROM_BYTES) {
+    if (pc >= 0x310000u && pc < 0x310000u + eeprom_bytes()) {
         *step = 1u;
         return s.eeprom[pc - 0x310000u];
     }
@@ -175,13 +209,13 @@ static void mem_program(uint32_t pc, uint32_t value, uint32_t *step, uint32_t *w
 {
     *step = 2u;
     *wait = W_FLASH;
-    if (pc < 2u * FLASH_WORDS) {
+    if (pc < 2u * flash_words()) {
         s.flash[pc / 2u] &= (uint16_t)value;
     } else if (pc >= 0x200000u && pc < 0x200000u + 2u * USERID_WORDS) {
         s.userid[(pc - 0x200000u) / 2u] &= (uint16_t)value;
     } else if (pc >= 0x300000u && pc < 0x300000u + 2u * CONFIG_WORDS) {
         s.config[(pc - 0x300000u) / 2u] &= (uint16_t)value;
-    } else if (pc >= 0x310000u && pc < 0x310000u + EEPROM_BYTES) {
+    } else if (pc >= 0x310000u && pc < 0x310000u + eeprom_bytes()) {
         *step = 1u;
         *wait = W_EE;
         s.eeprom[pc - 0x310000u] &= (uint8_t)value;
@@ -204,7 +238,7 @@ static void do_bulk_erase(uint32_t pc)
         eeprom = 1;
     }
     if (flash)
-        for (size_t i = 0; i < FLASH_WORDS; i++)
+        for (size_t i = 0; i < flash_words(); i++)
             s.flash[i] = 0xFFFFu;
     if (userid)
         for (size_t i = 0; i < USERID_WORDS; i++)
@@ -218,7 +252,7 @@ static void do_bulk_erase(uint32_t pc)
 
 static void do_sector_erase(uint32_t pc)
 {
-    if (pc < 2u * FLASH_WORDS) {
+    if (pc < 2u * flash_words()) {
         uint32_t base = (pc & ~(ERASE_PAGE_BYTES - 1u)) / 2u;
         for (uint32_t i = 0; i < ERASE_PAGE_BYTES / 2u; i++)
             s.flash[base + i] = 0xFFFFu;
