@@ -211,12 +211,12 @@ static void test_verify_reports_the_mismatch_index(void)
 
     fresh();
     CHECK(pic_enter(dev) == PIC_OK);
-    CHECK(pic_bulk_erase(dev, PIC_ERASE_EEPROM) == PIC_OK);
-    CHECK(pic_write(dev, PIC_REGION_EEPROM, 0u, data, 3u) == PIC_OK);
-    CHECK(pic_verify(dev, PIC_REGION_EEPROM, 0u, data, 3u, &where) == PIC_OK);
+    CHECK(pic_bulk_erase(dev, PIC_ERASE_USERID) == PIC_OK);
+    CHECK(pic_write(dev, PIC_REGION_USERID, 0u, data, 3u) == PIC_OK);
+    CHECK(pic_verify(dev, PIC_REGION_USERID, 0u, data, 3u, &where) == PIC_OK);
     CHECK(where == 99u); /* untouched on success */
     data[2] = 0x00FFu;
-    CHECK(pic_verify(dev, PIC_REGION_EEPROM, 0u, data, 3u, &where) == PIC_ERR_VERIFY);
+    CHECK(pic_verify(dev, PIC_REGION_USERID, 0u, data, 3u, &where) == PIC_ERR_VERIFY);
     CHECK(where == 2u);
     pic_exit(dev);
 }
@@ -373,6 +373,16 @@ static void test_eeprom(void)
     fresh();
     CHECK(pic_enter(dev) == PIC_OK);
 
+    if (dev->eeprom_bytes == 0u) { /* PIC16F131XX: no data EEPROM, so every EEPROM request fails */
+        uint64_t t0 = sim_time_us();
+        CHECK(pic_write(dev, PIC_REGION_EEPROM, 0u, ee, 1u) == PIC_ERR_RANGE);
+        CHECK(pic_read(dev, PIC_REGION_EEPROM, 0u, back, 1u) == PIC_ERR_RANGE);
+        CHECK(pic_bulk_erase(dev, PIC_ERASE_EEPROM) == PIC_ERR_UNSUPPORTED);
+        CHECK(sim_time_us() == t0);
+        pic_exit(dev);
+        return;
+    }
+
     CHECK(pic_write(dev, PIC_REGION_EEPROM, 0x08u, ee, 6u) == PIC_OK);
     CHECK(pic_verify(dev, PIC_REGION_EEPROM, 0x08u, ee, 6u, NULL) == PIC_OK);
     CHECK(pic_read(dev, PIC_REGION_EEPROM, 0x08u, back, 6u) == PIC_OK);
@@ -417,7 +427,8 @@ static void test_bad_arguments_send_nothing(void)
     CHECK(pic_row_erase(dev, PIC_REGION_CONFIG, 0u) ==
           PIC_ERR_UNSUPPORTED); /* config: bulk erase only */
     CHECK(pic_row_erase(dev, PIC_REGION_EEPROM, 0u) ==
-          PIC_ERR_UNSUPPORTED); /* EEPROM: bulk erase only */
+          (dev->eeprom_bytes != 0u ? PIC_ERR_UNSUPPORTED  /* EEPROM: bulk erase only */
+                                   : PIC_ERR_RANGE));     /* no EEPROM at all */
     CHECK(pic_row_erase(dev, PIC_REGION_FLASH, dev->flash_words) == PIC_ERR_RANGE);
     CHECK(pic_bulk_erase(dev, 0u) == PIC_ERR_ARG);
     CHECK(pic_bulk_erase(dev, 0x10u) == PIC_ERR_ARG); /* unknown region bit */

@@ -39,7 +39,7 @@ in its address map), and give it a simulator, a test program, and a line in
 | Protocol | Families | Spec | Status |
 |---|---|---|---|
 | `p16_8bit` | **PIC16F171XX** (all 14 parts in the table; first targets) | DS40002266B, local | **Implemented** |
-| `p16_8bit` | PIC16F13145, PIC16F13276, PIC16F17576 (their programming specs describe the same Load Data for NVM command, PC increment on bit 1, row latches) | Via the Microchip MCP | Protocol present; **rows needed** (IDs, geometry from each family's spec) |
+| `p16_8bit` | **PIC16F131XX** (PIC16F13113/14/15, 13123/24/25, 13143/44/45: 9 parts, no EEPROM) | DS40002500B, downloaded to `docs/f13145/` | **Implemented**, simulator only. Its NVM time limits are larger than the F171XX's, so `p16_8bit.c` waits for the larger of the two (timing table in the source). PIC16F13276 and PIC16F17576 still need rows |
 | `p18_8bit` | PIC18-Q41 (all 6 parts in the table) | Q41 data sheet DS40002214; Q24/Q41/Q43 programming specs via the Microchip MCP | Implemented |
 | `p18_8bit` | PIC18-Q20, Q24, Q43 | Programming specs via the Microchip MCP | Protocol present; **rows needed**. Q24 has 13 configuration bytes whose addresses "do not increment sequentially" (Q24 spec 2.4), so the config region needs an address list, not just a count, before Q24 can be added |
 | `p18_q10` | PIC18F27Q10, PIC18F47Q10 | DS40001874H (`docs/q10/`), data sheet DS40002043 | Implemented and tested against a simulator only; **not yet run on silicon**. PIC18F24/25/26/45/46Q10 need rows (same spec; EEPROM and flash sizes come from their own data sheet, which is not on disk) |
@@ -145,7 +145,7 @@ Both:
    the firmware's command layer built for the PC. To do: confirm the PIC16 EEPROM and
    PIC18 word placement in MPLAB hex files; decode code-protect bits per part (see
    "Program extraction"); read the DIA (needs a read-only region in `pic.h` first).
-6. **M6:** more rows for the existing protocols (PIC16F13145, 13276, 17576; PIC18-Q20,
+6. **M6:** more rows for the existing protocols (PIC16F13145 family done; 13276, 17576 left; PIC18-Q20,
    Q43; Q24 after the config address list), then new protocols for PIC10, PIC12, older
    PIC16 and older PIC18, once their programming specs are in the project.
 7. **M7:** high-voltage entry (MCLR 7.9 to 9.0 V) to recover parts with LVP = 0.

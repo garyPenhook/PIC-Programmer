@@ -64,6 +64,24 @@ void sim_select_device(uint16_t device_id)
 static void geometry(uint32_t *user_rows, uint32_t *eeprom_bytes)
 {
     switch (g_device_id) {
+    case 0x3121u:
+    case 0x3122u:
+    case 0x3123u: /* PIC16F131x3: 2 KW, no EEPROM (DS40002500B Tables 2-1, 2-3) */
+        *user_rows = 64u;
+        *eeprom_bytes = 0u;
+        break;
+    case 0x3124u:
+    case 0x3125u:
+    case 0x3126u: /* PIC16F131x4: 4 KW */
+        *user_rows = 128u;
+        *eeprom_bytes = 0u;
+        break;
+    case 0x3127u:
+    case 0x3128u:
+    case 0x3129u: /* PIC16F131x5: 8 KW */
+        *user_rows = 256u;
+        *eeprom_bytes = 0u;
+        break;
     case 0x30DBu:
     case 0x30DCu:
     case 0x30DDu:

@@ -44,8 +44,8 @@ Verified on hardware by reading registers over SWD: `RCC_CR = 0x03000500` (PLL o
 ## PIC Programmer
 
 The Nucleo acts as an ICSP programmer. **First targets: PIC16F17146 and PIC16F17124**
-(both in the PIC16F171XX family). The PIC18F04/05/06/14/15/16Q41 are also in the device
-table, and the plan covers PIC10, PIC12 and all of PIC16 and PIC18. `PLAN.md` has the
+(both in the PIC16F171XX family). The PIC16F13113/14/15, 13123/24/25 and 13143/44/45 and the
+PIC18F04/05/06/14/15/16Q41 are also in the device table, and the plan covers PIC10, PIC12 and all of PIC16 and PIC18. `PLAN.md` has the
 scope, sources, assumptions and milestones.
 
 Full wiring, with a schematic, is in [`docs/hookup.md`](docs/hookup.md).
@@ -97,7 +97,7 @@ Layers:
 - `src/proto/`: one file per protocol, each a `pic_proto_t` (`include/pic_proto.h`).
   - `icsp8.c`: the framing shared by the 8-bit-command protocols: low-voltage key entry,
     8-bit commands, 24-clock payloads.
-  - `p16_8bit.c`: the PIC16F171XX command set: identify, read, bulk and row erase, row
+  - `p16_8bit.c`: the PIC16F171XX and PIC16F131XX command set: identify, read, bulk and row erase, row
     programming through the write latches, User ID, Configuration Words and EEPROM.
   - `p18_8bit.c`: the PIC18-Q command set, which uses similar command bytes that mean
     different things, so it is a separate protocol.
@@ -121,7 +121,7 @@ Layers:
   clock (its interrupt stays off), so they stay correct at 64 MHz or the 16 MHz fallback.
 - `tests/`: each protocol run on the PC against a simulated device that also checks every
   wait the spec requires, once for every table row that uses the protocol (14 PIC16F171XX
-  parts, 6 PIC18-Q41 parts, 2 PIC18F27/47Q10 parts). The simulators hold their own memory sizes, copied from the
+  parts, 9 PIC16F131XX parts, 6 PIC18-Q41 parts, 2 PIC18F27/47Q10 parts). The simulators hold their own memory sizes, copied from the
   spec, and the tests compare the part's DCI with its table row, so a wrong size in the
   CSV fails the tests. Run `tests/run_tests.sh`.
 

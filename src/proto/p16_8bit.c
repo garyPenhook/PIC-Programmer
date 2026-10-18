@@ -37,24 +37,25 @@
 #define ADDR_EEPROM 0xF000u
 
 /*
- * NVM timing, in microseconds. The spec gives maximums (Table 4-1); each value below is
- * beyond the stated limit.
+ * NVM timing, in microseconds. The specs give maximums (Table 4-1); each value below is
+ * beyond the larger of the two families' limits, so one set serves every p16_8bit row.
  *
- *   limit (spec Table 4-1)                       used here
- *   mode entry hold (TENTH)     >= 250 us        1 ms
- *   row erase (TERAR)           <= 2.8 ms        3 ms
- *   program flash (TPINT)       <= 2.8 ms        3 ms
- *   program Config Words        <= 5.6 ms        6 ms
- *   bulk erase (TERAB)          <= 8.4 ms        9 ms
+ *                                 PIC16F171XX    PIC16F131XX      used here
+ *                                 DS40002266B    DS40002500B
+ *   mode entry hold (TENTH)       >= 250 us      >= 250 us        1 ms
+ *   row erase (TERAR)             <= 2.8 ms      <= 9 ms          10 ms
+ *   program flash (TPINT)         <= 2.8 ms      <= 7 ms          8 ms
+ *   program Config Words          <= 5.6 ms      <= 12 ms         13 ms
+ *   bulk erase (TERAB)            <= 8.4 ms      <= 20 ms         21 ms
  *
- * User ID and EEPROM writes have no figure of their own in the spec, so they use the
+ * User ID and EEPROM writes have no figure of their own in the specs, so they use the
  * longer Configuration Word time to be safe.
  */
 #define T_ENTH_US       1000u
-#define T_ROW_ERASE_US  3000u
-#define T_PROG_FLASH_US 3000u
-#define T_PROG_OTHER_US 6000u
-#define T_BULK_ERASE_US 9000u
+#define T_ROW_ERASE_US  10000u
+#define T_PROG_FLASH_US 8000u
+#define T_PROG_OTHER_US 13000u
+#define T_BULK_ERASE_US 21000u
 
 #define WORD_MASK  0x3FFFu
 #define BLANK_WORD 0x3FFFu /* an erased 14-bit word */
