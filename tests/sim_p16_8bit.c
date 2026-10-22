@@ -47,7 +47,7 @@ static struct {
     uint32_t flash_words, eeprom_bytes, user_rows;
     uint16_t flash[MAX_FLASH_WORDS];
     uint16_t userid[4];
-    uint16_t config[5];
+    uint16_t config[7];
     uint8_t eeprom[MAX_EEPROM];
     uint16_t latch[ROW_WORDS];
 } s;
@@ -98,11 +98,34 @@ static void geometry(uint32_t *user_rows, uint32_t *eeprom_bytes)
         *user_rows = 256u;
         *eeprom_bytes = 128u;
         break;
+    case 0x3130u:
+    case 0x3131u:
+    case 0x3132u:
+    case 0x3133u:
+    case 0x3134u: /* PIC16F132x4: 4 KW, 256-byte EEPROM (DS40002646A Tables 2-1, 2-3) */
+        *user_rows = 128u;
+        *eeprom_bytes = 256u;
+        break;
+    case 0x3135u:
+    case 0x3136u:
+    case 0x3137u:
+    case 0x3138u:
+    case 0x3139u: /* PIC16F132x5: 8 KW */
+        *user_rows = 256u;
+        *eeprom_bytes = 256u;
+        break;
     default: /* x26 x46 x56 x76 */
         *user_rows = 512u;
         *eeprom_bytes = 256u;
         break;
     }
+}
+
+/* PIC16F132XX parts (device IDs 3130h to 3144h) have seven Configuration Words, the rest
+ * five (DS40002646A 2.5; DS40002500B 2.6). */
+static uint32_t config_words(void)
+{
+    return (g_device_id >= 0x3130u && g_device_id <= 0x3144u) ? 7u : 5u;
 }
 
 void sim_reset(void)
@@ -117,7 +140,7 @@ void sim_reset(void)
         s.flash[i] = BLANK;
     for (size_t i = 0; i < 4; i++)
         s.userid[i] = BLANK;
-    for (size_t i = 0; i < 5; i++)
+    for (size_t i = 0; i < 7; i++)
         s.config[i] = BLANK;
     memset(s.eeprom, 0xFF, sizeof s.eeprom);
     for (size_t i = 0; i < ROW_WORDS; i++)
@@ -187,7 +210,7 @@ static uint32_t mem_read(uint32_t pc)
         return REVISION_ID;
     if (pc == 0x8006u)
         return g_device_id;
-    if (pc >= 0x8007u && pc < 0x800Cu)
+    if (pc >= 0x8007u && pc < 0x8007u + config_words())
         return s.config[pc - 0x8007u];
     if (pc >= 0xF000u && pc < 0xF000u + s.eeprom_bytes)
         return s.eeprom[pc - 0xF000u];
@@ -219,7 +242,7 @@ static void do_begin_program(void)
             s.flash[row + i] &= s.latch[i];
     } else if (pc >= 0x8000u && pc < 0x8004u) {
         s.userid[pc - 0x8000u] &= s.latch[pc & (ROW_WORDS - 1u)];
-    } else if (pc >= 0x8007u && pc < 0x800Cu) {
+    } else if (pc >= 0x8007u && pc < 0x8007u + config_words()) {
         s.config[pc - 0x8007u] &= s.latch[pc & (ROW_WORDS - 1u)];
         wait = W_PROG_CFG;
     } else if (pc >= 0xF000u && pc < 0xF000u + s.eeprom_bytes) {
@@ -241,7 +264,7 @@ static void do_bulk_erase(uint32_t regions)
         for (size_t i = 0; i < 4; i++)
             s.userid[i] = BLANK;
     if (regions & 8u)
-        for (size_t i = 0; i < 5; i++)
+        for (size_t i = 0; i < 7; i++)
             s.config[i] = BLANK;
 }
 

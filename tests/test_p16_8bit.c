@@ -334,8 +334,9 @@ static void test_row_erase_affects_one_row(void)
 static void test_userid_and_config_words(void)
 {
     uint16_t id[4] = {0x1111u, 0x2222u, 0x0333u, 0x3444u};
-    uint16_t cfg[5] = {0x3FF0u, 0x3FF1u, 0x3FF2u, 0x3FF3u, 0x3FF4u};
-    uint16_t back[5];
+    uint16_t cfg[7] = {0x3FF0u, 0x3FF1u, 0x3FF2u, 0x3FF3u, 0x3FF4u, 0x3FF5u, 0x3FF6u};
+    uint16_t back[7];
+    uint16_t n = dev->config_count; /* 5 on most parts, 7 on the PIC16F132XX */
     uint16_t flash_word = 0x0123u;
 
     fresh();
@@ -345,10 +346,10 @@ static void test_userid_and_config_words(void)
     CHECK(pic_verify(dev, PIC_REGION_USERID, 0u, id, 4u, NULL) == PIC_OK);
     CHECK(sim_userid_word(3) == 0x3444u);
 
-    CHECK(pic_write(dev, PIC_REGION_CONFIG, 0u, cfg, 5u) == PIC_OK);
-    CHECK(pic_read(dev, PIC_REGION_CONFIG, 0u, back, 5u) == PIC_OK);
-    CHECK(memcmp(cfg, back, sizeof cfg) == 0);
-    CHECK(sim_config_word(0) == 0x3FF0u && sim_config_word(4) == 0x3FF4u);
+    CHECK(pic_write(dev, PIC_REGION_CONFIG, 0u, cfg, n) == PIC_OK);
+    CHECK(pic_read(dev, PIC_REGION_CONFIG, 0u, back, n) == PIC_OK);
+    CHECK(memcmp(cfg, back, n * sizeof cfg[0]) == 0);
+    CHECK(sim_config_word(0) == 0x3FF0u && sim_config_word(n - 1u) == 0x3FF0u + (n - 1u));
 
     /* Row erase at the User ID address erases only the User IDs (spec 3.2.3). */
     CHECK(pic_write(dev, PIC_REGION_FLASH, 0u, &flash_word, 1u) == PIC_OK);
@@ -416,9 +417,9 @@ static void test_bad_arguments_send_nothing(void)
     CHECK(pic_read(dev, PIC_REGION_FLASH, dev->flash_words, w, 1u) ==
           PIC_ERR_RANGE); /* past this device's flash */
     CHECK(pic_write(dev, PIC_REGION_USERID, 0u, w, 5u) == PIC_ERR_RANGE); /* past the 4 User IDs */
-    CHECK(pic_write(dev, PIC_REGION_CONFIG, 0u, w, 6u) ==
-          PIC_ERR_RANGE); /* past the 5 config words */
-    CHECK(pic_write(dev, PIC_REGION_CONFIG, 5u, w, 1u) == PIC_ERR_RANGE);
+    CHECK(pic_write(dev, PIC_REGION_CONFIG, 0u, w, dev->config_count + 1u) ==
+          PIC_ERR_RANGE); /* past the config words */
+    CHECK(pic_write(dev, PIC_REGION_CONFIG, dev->config_count, w, 1u) == PIC_ERR_RANGE);
     CHECK(pic_write(dev, PIC_REGION_EEPROM, dev->eeprom_bytes, w, 1u) ==
           PIC_ERR_RANGE); /* past the EEPROM */
     CHECK(pic_read(dev, PIC_REGION_EEPROM, 1u, w, 0xFFFFFFFFu) ==
