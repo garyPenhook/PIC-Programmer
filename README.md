@@ -214,7 +214,8 @@ Erase first: programming only turns 1s into 0s.
 The API reads the device ID, revision ID, the five DCI values and, as the read-only region
 `dia`, the Device Information Area: the factory-set Microchip Unique Identifier, the
 temperature-indicator calibration and the Fixed Voltage Reference readings in mV. The window
-is 8100h to 813Fh on the p16_8bit parts (64 words), 2C 0000h to 2C 003Fh on the PIC18-Q parts
+is 8100h to 811Fh on the p16_8bit parts (the 32 words the specs define; the mapped window
+runs to 813Fh), 2C 0000h to 2C 003Fh on the PIC18-Q parts
 and 3F 0000h to 3F 003Fh on the K42 (32 words each); the PIC18F2X/4XQ10 has none. It is not
 code-protected, but a part with ICSPDIS set cannot be entered at all. Only the PIC16F17146
 layout has been exercised end to end (PC simulator); no real silicon yet. Which words mean

@@ -10,11 +10,11 @@ def words_for(device, **at):
     return words
 
 
-def test_every_protocol_has_a_window_matching_the_firmware():
-    # src/proto: dia_words is 64 (p16_8bit, 8100h-813Fh), 32 (p18_8bit, 2C 0000h-2C 003Fh and
-    # p18_k42, 3F 0000h-3F 003Fh) and 0 (p18_q10).
+def test_host_table_has_the_window_sizes_the_firmware_uses():
+    # Literal copy of src/proto dia_words: 32 for p16_8bit (8100h-811Fh), p18_8bit and p18_k42,
+    # 0 for p18_q10. The end-to-end tests read the p16 window from the firmware itself.
     sizes = {d.protocol: d.size("dia") for d in devices.load()}
-    assert sizes == {"p16_8bit": 64, "p18_8bit": 32, "p18_q10": 0, "p18_k42": 32}
+    assert sizes == {"p16_8bit": 32, "p18_8bit": 32, "p18_q10": 0, "p18_k42": 32}
 
 
 def test_dia_is_readable_but_not_a_writable_region():
@@ -36,6 +36,14 @@ def test_standard_layout_on_a_pic16_and_a_pic18q():
         assert "TSLR1  0112" in text and "TSHR3  0117" in text  # words 18 and 23
         assert "FVRA1X  1024 mV" in text and "FVRA4X  4096 mV" in text
         assert "FVRC4X  " in text  # word 29
+
+
+def test_blank_calibration_words_are_not_shown_as_measurements():
+    device = devices.find("PIC16F17146")
+    words = words_for(device, w24=0x3FFF, w18=0x3FFF)
+    text = "\n".join(dia.decode(device, words))
+    assert "FVRA1X  not programmed" in text and "TSLR1  not programmed" in text
+    assert "16383" not in text
 
 
 def test_programmed_external_id_is_shown():

@@ -87,6 +87,12 @@ static int is_word_region(pic_region_t region)
     return region == PIC_REGION_FLASH || region == PIC_REGION_USERID || region == PIC_REGION_DIA;
 }
 
+/* The word regions that can be programmed or erased: not the read-only DIA. */
+static int is_writable_word_region(pic_region_t region)
+{
+    return region == PIC_REGION_FLASH || region == PIC_REGION_USERID;
+}
+
 /* The run of Configuration Bytes holding cell `offset`: its first address and how many cells
  * (from `offset`) follow it consecutively. */
 static uint32_t config_run(const pic_device_t *dev, size_t offset, size_t *left)
@@ -230,7 +236,7 @@ static pic_status_t p18_write(const pic_device_t *dev, pic_region_t region, uint
 {
     uint16_t mask = mask_of(region);
     /* Words take up to 75 us; EEPROM and configuration bytes up to 11 ms. */
-    uint32_t wait = is_word_region(region) ? T_PROG_FLASH_US : T_PROG_NVM_US;
+    uint32_t wait = is_writable_word_region(region) ? T_PROG_FLASH_US : T_PROG_NVM_US;
 
     /* Only word-at-a-time parts (WLSIZ = 0) are handled. */
     if (region == PIC_REGION_DIA || dev->latch_words != 0u) { /* the DIA is read only */
@@ -259,8 +265,7 @@ static pic_status_t p18_bulk_erase(const pic_device_t *dev, uint8_t regions)
 
 static pic_status_t p18_row_erase(const pic_device_t *dev, pic_region_t region, uint32_t offset)
 {
-    /* spec 3.1.3.6: program memory and User ID only */
-    if (!is_word_region(region) || region == PIC_REGION_DIA) {
+    if (!is_writable_word_region(region)) { /* spec 3.1.3.6: program memory and User ID only */
         return PIC_ERR_UNSUPPORTED;
     }
     load_pc(address_of(dev, region, offset)); /* the low bits of the address are ignored */

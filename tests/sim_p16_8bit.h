@@ -34,7 +34,7 @@ void sim_set_flash_word(uint32_t index, uint16_t value);
 uint16_t sim_userid_word(uint32_t index);
 uint16_t sim_config_word(uint32_t index);
 uint8_t sim_eeprom_byte(uint32_t index);
-/* The model's Device Information Area word (8100h + index, 64 words); fixed, as on silicon. */
+/* The model's Device Information Area word (8100h + index, 32 words); fixed, as on silicon. */
 uint16_t sim_dia_word(uint32_t index);
 
 #endif

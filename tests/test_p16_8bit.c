@@ -438,7 +438,7 @@ static void test_bad_arguments_send_nothing(void)
     pic_exit(dev);
 }
 
-#define DIA_WORDS 64u
+#define DIA_WORDS 32u
 
 static void test_device_information_area(void)
 {

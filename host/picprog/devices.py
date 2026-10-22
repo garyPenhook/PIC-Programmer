@@ -14,11 +14,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 REGIONS = ("flash", "userid", "config", "eeprom")
 READ_REGIONS = REGIONS + ("dia",)
-# Words in each protocol's DIA window (src/proto: dia_words). The PIC16 window is 8100h to
-# 813Fh (DS40002266B 2.3); the PIC18-Q window is 2C 0000h to 2C 003Fh (DS40002214G 9.2) and the
+# Words in each protocol's DIA window (src/proto: dia_words). The PIC16 words are 8100h to
+# 811Fh (DS40002266B Table 2-2; the mapped window runs to 813Fh); the PIC18-Q window is 2C 0000h to 2C 003Fh (DS40002214G 9.2) and the
 # K42's 3F 0000h to 3F 003Fh (DS40001919G 5.7), 16-bit words at two addresses each. The
 # PIC18F2X/4XQ10 has none.
-DIA_WORDS = {"p16_8bit": 64, "p18_8bit": 32, "p18_q10": 0, "p18_k42": 32}
+DIA_WORDS = {"p16_8bit": 32, "p18_8bit": 32, "p18_q10": 0, "p18_k42": 32}
 
 
 def _shared_file(packaged, in_repo):

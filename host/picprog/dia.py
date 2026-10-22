@@ -36,7 +36,7 @@ class Layout:
 
 
 # PIC16F171XX, F181XX, F131XX, F132XX, F175XX and every p18_8bit part: MUI0-8, MUI9 reserved,
-# EUI0-7, TSLR1-3, TSHR1-3, FVRA1X-4X, FVRC1X-4X.
+# EUI0-7, TSLR1-3, TSHR1-3, FVRA and FVRC for the 1x, 2x and 4x settings.
 STANDARD = Layout((0, 9), (10, 8), _temperature(18, "TSLR", "low") + _temperature(21, "TSHR", "high"), _fvr(24, 27))
 # PIC16F152XX (DS40002149B Table 2-2): no temperature indicator data, ADC FVR only.
 F152 = Layout((0, 9), (10, 8), [], _fvr(24, 27, ()))
@@ -80,8 +80,10 @@ def decode(device, words):
     if layout.temperature:
         lines.append("temperature indicator (raw):")
         for name, index, meaning in layout.temperature:
-            lines.append(f"  {name}  {words[index]:0{width}X}  {meaning}")
+            value = "not programmed" if words[index] == blank else f"{words[index]:0{width}X}"
+            lines.append(f"  {name}  {value}  {meaning}")
     lines.append("fixed voltage reference:")
     for name, index, meaning in layout.fvr:
-        lines.append(f"  {name}  {words[index]} mV  {meaning}")
+        value = "not programmed" if words[index] == blank else f"{words[index]} mV"
+        lines.append(f"  {name}  {value}  {meaning}")
     return lines

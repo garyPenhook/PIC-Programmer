@@ -192,10 +192,10 @@ static void test_read_eeprom_cells_are_bytes(void)
 
 static void test_read_dia_returns_the_factory_words(void)
 {
-    uint16_t dia[64];
+    uint16_t dia[32];
     char expected[1024] = "";
 
-    for (uint32_t i = 0; i < 64u; i++) {
+    for (uint32_t i = 0; i < 32u; i++) {
         dia[i] = sim_dia_word(i);
     }
     send_line("PROBE");
@@ -204,7 +204,7 @@ static void test_read_dia_returns_the_factory_words(void)
     expected_chunk(expected, sizeof expected, 24u, dia + 24, 2u);
     strcat(expected, "OK 18\n");
     TEST_ASSERT_EQUAL_STRING(expected, stub_uart_output());
-    send_line("READ dia 60 5"); /* the window is 64 words */
+    send_line("READ dia 28 5"); /* the window is 32 words */
     TEST_ASSERT_EQUAL_STRING("ERR -2 range outside region\n", stub_uart_output());
     TEST_ASSERT_EQUAL_INT(0, sim_in_program_mode());
     TEST_ASSERT_EQUAL_UINT32(0u, sim_violations());
@@ -216,6 +216,8 @@ static void test_dia_is_read_only_and_never_reaches_the_target(void)
 
     send_line("PROBE");
     t0 = sim_time_us();
+    send_line("WRITE dia 0 0"); /* even an empty write is refused */
+    TEST_ASSERT_EQUAL_STRING("ERR -4 not supported by this device\n", stub_uart_output());
     send_line("WRITE dia 0 4");
     TEST_ASSERT_EQUAL_STRING("ERR -4 not supported by this device\n", stub_uart_output());
     send_line("ERASE dia");

@@ -33,7 +33,7 @@
 #define ADDR_REVID  0x8005u
 #define ADDR_DEVID  0x8006u
 #define ADDR_CONFIG 0x8007u
-#define ADDR_DIA    0x8100u /* 8100h to 813Fh, read only (Table 2-2) */
+#define ADDR_DIA    0x8100u /* read only; Table 2-2 defines 8100h to 811Fh (32 words) */
 #define ADDR_DCI    0x8200u
 #define ADDR_EEPROM 0xF000u
 
@@ -256,7 +256,7 @@ const pic_proto_t pic_proto_p16_8bit = {
     .read_revision_id = p16_read_revision_id,
     .read_dci = p16_read_dci,
     .cell_mask = mask_of,
-    .dia_words = 64u,
+    .dia_words = 32u, /* the mapped window runs to 813Fh; only these words are defined */
     .read = p16_read,
     .write = p16_write,
     .bulk_erase = p16_bulk_erase,

@@ -355,24 +355,24 @@ def test_a_timeout_on_another_command_points_at_status(monkeypatch, capsys):
 
 def test_dia_words_come_from_the_part(target):
     programmer.connect(target)
-    words = target.read("dia", 0, 64)
+    words = target.read("dia", 0, 32)
     assert words[:3] == [0x0A01, 0x0B02, 0x0C03]       # MUI0 to MUI2 of the simulator
     assert words[10:18] == [0x3FFF] * 8                  # EUI not programmed
     assert words[24:30] == [1024, 2048, 4096] * 2        # FVR readings
     with pytest.raises(LinkError, match="range"):
-        target.read("dia", 60, 5)                        # past the 64-word window
+        target.read("dia", 28, 5)                        # past the 32-word window
 
 
 def test_dia_is_read_only_and_survives_an_erase(target):
     programmer.connect(target)
-    before = target.read("dia", 0, 64)
+    before = target.read("dia", 0, 32)
     for call in (lambda: target.write("dia", 0, [1]), lambda: target.erase("dia"),
                  lambda: target.erase_row("dia", 0), lambda: target.blank("dia")):
         with pytest.raises(LinkError, match="not supported"):
             call()
     target.erase("ALL")
-    assert target.read("dia", 0, 64) == before
-    assert target.crc("dia", 0, 64) == target.crc("dia", 0, 64)  # the CRC command accepts it
+    assert target.read("dia", 0, 32) == before
+    assert target.crc("dia", 0, 32) == target.crc("dia", 0, 32)  # the CRC command accepts it
 
 
 def test_dia_is_not_part_of_a_dump(target):
@@ -396,12 +396,7 @@ def test_command_line_dia(target, monkeypatch, capsys):
     assert cli.main(["dia", "--raw"]) == 0
     out = capsys.readouterr().out
     assert "000000: 0A01 0B02 0C03 0D04 0E05 0F06 1007 1108" in out
-    assert "000038: " in out                             # 64 words, eight per row
+    assert "000018: " in out and "000020: " not in out   # 32 words, eight per row
     assert cli.main(["read", "dia", "0", "2"]) == 0
     assert "000000: 0A01 0B02" in capsys.readouterr().out
 
-
-@pytest.mark.parametrize("target", ["30E1"], indirect=True)
-def test_the_whole_device_table_agrees_on_the_p16_window(target):
-    # The firmware reads 64 words for every p16_8bit row; the host's table says the same.
-    assert devices.find("PIC16F17146").size("dia") == 64

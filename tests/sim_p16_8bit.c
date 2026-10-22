@@ -12,12 +12,11 @@
 
 #define KEY 0x4D434850u
 
-#define DIA_WORDS 64u
+#define DIA_WORDS 32u
 
-/* Device Information Area, 8100h to 813Fh, laid out as DS40002266B Table 2-2: MUI0 to MUI8,
+/* Device Information Area, 8100h to 811Fh, laid out as DS40002266B Table 2-2: MUI0 to MUI8,
  * one reserved word, EUI0 to EUI7 (not programmed: blank), TSLR1 to 3, TSHR1 to 3, FVRA1X to
- * FVRA4X, FVRC1X to FVRC4X (mV), two reserved words. The values are the model's own. The
- * window past 811Fh is not defined by the spec; the model reads it as 0. */
+ * FVRA4X, FVRC1X to FVRC4X (mV), two reserved words. The values are the model's own. */
 static const uint16_t dia[DIA_WORDS] = {
     0x0A01u, 0x0B02u, 0x0C03u, 0x0D04u, 0x0E05u, 0x0F06u, 0x1007u, 0x1108u, 0x1209u, /* MUI */
     0x0000u,                                                                         /* MUI9 */

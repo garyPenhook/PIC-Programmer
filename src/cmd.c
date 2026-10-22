@@ -768,12 +768,12 @@ static void do_session(char *argv[ARG_MAX], session_kind_t kind)
         reply_error("bad-argument");
         return;
     }
-    if (count == 0u) {
-        out_str("OK 0\n");
-        return;
-    }
     if (kind == SESSION_WRITE && region == PIC_REGION_DIA) { /* read only: no session */
         reply_status(PIC_ERR_UNSUPPORTED);
+        return;
+    }
+    if (count == 0u) {
+        out_str("OK 0\n");
         return;
     }
     if (!range_ok(region, offset, count)) {
