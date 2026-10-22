@@ -154,6 +154,18 @@ def test_boren_00_means_opposite_things_on_the_two_families():
         assert any(l.strip().startswith("BOREN") and expect in l for l in lines), name
 
 
+def test_config_decode_f17576_has_no_zcd_and_five_words():
+    # DS40002540B 6.1-6.5: five words, no ZCD bit (the F171XX has one), BOREN 00 = BOR enabled.
+    from picprog import configbits
+    dev = devices.find("PIC16F17576")
+    fields = configbits.fields_for(dev)
+    assert {f.word for f in fields} == {1, 2, 3, 4, 5}
+    assert not any(f.name == "ZCD" for f in fields)
+    lines, warnings = configbits.decode(dev, _words(dev, LVP=0, CP=0, BOREN=0b00))
+    assert any(l.strip().startswith("BOREN") and "BOR enabled" in l for l in lines)
+    assert any("LVP" in w for w in warnings) and any(w.startswith("CONFIG5 CP") for w in warnings)
+
+
 def test_wdtcps_ranges():
     from picprog import configbits
     dev = devices.find("PIC16F13276")

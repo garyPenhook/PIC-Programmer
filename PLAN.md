@@ -40,7 +40,8 @@ in its address map), and give it a simulator, a test program, and a line in
 |---|---|---|---|
 | `p16_8bit` | **PIC16F171XX** (all 14 parts in the table; first targets) | DS40002266B, local | **Implemented** |
 | `p16_8bit` | **PIC16F131XX** (PIC16F13113/14/15, 13123/24/25, 13143/44/45: 9 parts, no EEPROM) | DS40002500B, downloaded to `docs/f13145/` | **Implemented**, simulator only. Its NVM time limits are larger than the F171XX's, so `p16_8bit.c` waits for the larger of the two (timing table in the source) |
-| `p16_8bit` | **PIC16F132XX** (PIC16F13214/15/24/25/26/44/45/46/54/55/56/74/75/76: 14 parts, 7 Configuration Words, 256-byte EEPROM) | DS40002646A, downloaded to `docs/f13276/` | **Implemented**, simulator only. Bulk erase is up to 40 ms, so the shared waits now cover it. PIC16F17576 still needs rows |
+| `p16_8bit` | **PIC16F132XX** (PIC16F13214/15/24/25/26/44/45/46/54/55/56/74/75/76: 14 parts, 7 Configuration Words, 256-byte EEPROM) | DS40002646A, downloaded to `docs/f13276/` | **Implemented**, simulator only. Bulk erase is up to 40 ms, so the shared waits now cover it |
+| `p16_8bit` | **PIC16F175XX** (PIC16F17524/25/26/44/45/46/54/55/56/74/75/76: 12 parts, 5 Configuration Words, 128-byte EEPROM on the x4/x5, 256 on the x6) | DS40002540B and data sheet DS40002614A, downloaded to `docs/f17576/` | **Implemented**, simulator only. Same command set; its NVM time limits equal the F132XX's, so the shared waits already cover them |
 | `p18_8bit` | PIC18-Q41 (all 6 parts in the table) | Q41 data sheet DS40002214; Q24/Q41/Q43 programming specs via the Microchip MCP | Implemented |
 | `p18_8bit` | PIC18-Q20, Q24, Q43 | Programming specs via the Microchip MCP | Protocol present; **rows needed**. Q24 has 13 configuration bytes whose addresses "do not increment sequentially" (Q24 spec 2.4), so the config region needs an address list, not just a count, before Q24 can be added |
 | `p18_q10` | PIC18F24/25/26/27Q10, PIC18F45/46/47Q10 (all 7) | DS40001874H (`docs/q10/`), data sheets DS40001945, DS40001996, DS40002043 | Implemented and tested against a simulator only; **not yet run on silicon** |
@@ -145,10 +146,10 @@ Both:
    `verify`, with the DCI checked against `data/pic_devices.csv`. Tested end to end against
    the firmware's command layer built for the PC. To do: confirm the PIC16 EEPROM and
    PIC18 word placement in MPLAB hex files; decode Configuration Words: done for every row in the device table (`picprog config`, table
-   `data/pic_config_bits.csv` from DS40002266B, DS40002500B, DS40002646A, DS40001874H and DS40002143F Appendix B; `write` warns before setting
+   `data/pic_config_bits.csv` from DS40002266B, DS40002500B, DS40002646A, DS40002540B, DS40001874H and DS40002143F Appendix B; `write` warns before setting
    ICSPDIS, LVP = 0 or code protection; the Q41's reserved tenth byte is not decoded; see
    "Program extraction"); read the DIA (needs a read-only region in `pic.h` first).
-6. **M6:** more rows for the existing protocols (PIC16F13145 and 13276 families done; 17576 left; PIC18-Q20,
+6. **M6:** more rows for the existing protocols (PIC16F13145, 13276 and 17576 families done; PIC18-Q20,
    Q43; Q24 after the config address list), then new protocols for PIC10, PIC12, older
    PIC16 and older PIC18, once their programming specs are in the project.
 7. **M7:** high-voltage entry (MCLR 7.9 to 9.0 V) to recover parts with LVP = 0.

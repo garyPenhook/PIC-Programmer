@@ -114,7 +114,22 @@ static void geometry(uint32_t *user_rows, uint32_t *eeprom_bytes)
         *user_rows = 256u;
         *eeprom_bytes = 256u;
         break;
-    default: /* x26 x46 x56 x76 */
+    case 0x3115u:
+    case 0x3116u:
+    case 0x3117u:
+    case 0x3118u: /* PIC16F175x4: 4 KW, 128-byte EEPROM (DS40002540B Tables 2-1, 2-3) */
+        *user_rows = 128u;
+        *eeprom_bytes = 128u;
+        break;
+    case 0x3119u:
+    case 0x311Au:
+    case 0x311Bu:
+    case 0x311Cu: /* PIC16F175x5: 8 KW, 128-byte EEPROM */
+        *user_rows = 256u;
+        *eeprom_bytes = 128u;
+        break;
+    default: /* x26 x46 x56 x76 of the F131XX/F132XX/F171XX, and PIC16F175x6 (IDs 311Dh to
+              * 3120h): 16 KW, 256-byte EEPROM */
         *user_rows = 512u;
         *eeprom_bytes = 256u;
         break;

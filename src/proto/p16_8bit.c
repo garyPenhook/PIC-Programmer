@@ -3,9 +3,9 @@
  *
  * Source: "PIC16F171XX Family Programming Specification" DS40002266B (a copy is in
  * ~/Documents/Microchip/PIC/16F17146/). Section numbers below refer to that document.
- * The PIC16F13145, PIC16F13276 and PIC16F17576 programming specifications describe the
- * same Load Data for NVM command; their devices still need their own rows (IDs and
- * geometry from their documents) before they are supported.
+ * The PIC16F13145, PIC16F13276 and PIC16F17576 programming specifications (DS40002500B,
+ * DS40002646A, DS40002540B) describe the same command set; each family's devices have their
+ * own rows in the device table.
  *
  * Memory is word addressed, 14 bits per word. Flash is written one row at a time through
  * write latches; Configuration Words and User IDs are written one word at a time; the data
@@ -38,10 +38,11 @@
 
 /*
  * NVM timing, in microseconds. The specs give maximums (Table 4-1); each value below is
- * beyond the largest of the three families' limits, so one set serves every p16_8bit row.
+ * beyond the largest of the four families' limits, so one set serves every p16_8bit row.
  *
  *                                 PIC16F171XX    PIC16F131XX    PIC16F132XX   used here
  *                                 DS40002266B    DS40002500B    DS40002646A
+ *                                 (PIC16F175XX, DS40002540B Table 4-1, has the F132XX's limits)
  *   mode entry hold (TENTH)       >= 250 us      >= 250 us      >= 250 us     1 ms
  *   row erase (TERAR)             <= 2.8 ms      <= 9 ms        <= 10 ms      11 ms
  *   program flash (TPINT)         <= 2.8 ms      <= 7 ms        <= 8 ms       9 ms

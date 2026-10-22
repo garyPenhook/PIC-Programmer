@@ -4,7 +4,7 @@
 # devices:  device name glob(s), '|' separated. word: 1-based (CONFIGn). hi/lo: bit range.
 # values:   'bits=text' entries joined by '|'. bits is 0/1/x digits or a range lo-hi (binary).
 # warn:     'bits=message': shown when the field reads that value.
-# PIC16F132XX: DS40002646A 6.1-6.7.  PIC16F131XX: DS40002500B 6.1-6.5.  PIC16F171XX: DS40002266B 6.1-6.5.
+# PIC16F132XX: DS40002646A 6.1-6.7.  PIC16F131XX: DS40002500B 6.1-6.5.  PIC16F171XX: DS40002266B 6.1-6.5.  PIC16F175XX: DS40002540B 6.1-6.5.
 # PIC18F2X/4XQ10: DS40001874H Table B-4, B-1 to B-11 (word n = CONFIGnL in bits 7:0, CONFIGnH in bits 15:8).
 # PIC18-Q41: DS40002143F 6.1-6.9 (CONFIG1-9; the tenth byte, 30 0009h, is reserved and not decoded).
 # The spec's WDTCWS table lists value 111 on the 110 row; 110 is read as window 100% open, as for 111.
@@ -43,6 +43,36 @@ PIC16F132*,6,0,0,ICSPDIS,ICSP and debugging interface,1=fully enabled|0=fully di
 PIC16F132*,7,13,13,CLBSU,CLB configuration at start-up,1=not configured automatically|0=configured automatically,
 PIC16F132*,7,12,12,CPUHALT,CPU halt,1=CPU runs normally after loading CLB/SFR image|0=CPU halts after Reset,
 PIC16F132*,7,7,0,CLBSA,CLB configuration start address (high byte),,
+PIC16F175*,1,13,13,FCMEN,Fail-Safe Clock Monitor,1=enabled|0=disabled,
+PIC16F175*,1,12,12,VDDAR,VDD analog range calibration,1=2.3-5.5 V|0=1.8-3.6 V,
+PIC16F175*,1,11,11,CSWEN,Clock switch,1=NOSC/NDIV writable|0=NOSC/NDIV locked,
+PIC16F175*,1,8,8,CLKOUTEN,Clock out,1=CLKOUT disabled (I/O)|0=FOSC/4 on CLKOUT,
+PIC16F175*,1,6,4,RSTOSC,Power-up oscillator (NOSC/COSC),"111=EXTOSC per FEXTOSC|110=HFINTOSC 1 MHz (FRQ 4 MHz, CDIV 4:1)|101=LFINTOSC|100=SOSC|011=reserved|010=EXTOSC with 4x PLL|001=HFINTOSC 16 MHz|000=HFINTOSC 32 MHz",
+PIC16F175*,1,2,0,FEXTOSC,External oscillator mode,111=ECH (16 MHz and higher)|110=reserved|101=ECL (below 16 MHz)|100=oscillator not enabled|011=reserved|010=HS crystal above 4 MHz|001=XT crystal 100 kHz to 4 MHz|000=LP crystal 32 kHz,
+PIC16F175*,2,13,13,DEBUG,Background debugger (tools manage this; keep 1),1=disabled|0=enabled,
+PIC16F175*,2,12,12,STVREN,Stack overflow/underflow reset,1=reset enabled|0=reset disabled,
+PIC16F175*,2,11,11,PPS1WAY,PPSLOCKED one-way set,1=PPSLOCKED can be set once|0=PPSLOCKED can be set and cleared,
+PIC16F175*,2,9,9,BORV,Brown-out voltage,1=VBOR 1.9 V|0=VBOR 2.65 V,
+PIC16F175*,2,8,8,DACAUTOEN,DAC buffer range select,1=set by REFRNG in DACxCON|0=automatic,
+PIC16F175*,2,7,6,BOREN,Brown-out Reset enable,"11=BOR disabled|10=BOR on while running, off in Sleep (SBOREN ignored)|01=BOR per SBOREN|00=BOR enabled (SBOREN ignored)",
+PIC16F175*,2,5,5,LPBOREN,Low-power BOR,1=disabled|0=enabled,
+PIC16F175*,2,2,1,PWRTS,Power-up Timer,11=PWRT disabled|10=PWRT 64 ms|01=PWRT 16 ms|00=PWRT 1 ms,
+PIC16F175*,2,0,0,MCLRE,MCLR pin (applies only when LVP = 0; with LVP = 1 the pin is always MCLR),1=MCLR|0=port-defined function,
+PIC16F175*,3,13,11,WDTCCS,WDT clock (no effect when WDTE = 00),111=software control|010=SOSC|011-110=reserved|001=31.25 kHz MFINTOSC|000=31.0 kHz LFINTOSC,
+PIC16F175*,3,10,8,WDTCWS,WDT window,"111=window 100% open, software controls WINDOW|110=window 100% open|101=delay 25%, window 75%|100=delay 37.5%, window 62.5%|011=delay 50%, window 50%, keyed access required|010=delay 62.5%, window 37.5%|001=delay 75%, window 25%|000=delay 87.5%, window 12.5%",
+PIC16F175*,3,6,5,WDTE,WDT mode,"11=enabled always|10=enabled while awake, suspended in Sleep|01=enabled by SEN in WDTCON0|00=disabled",
+PIC16F175*,3,4,0,WDTCPS,WDT period,"11111=1:65536 (2 s), software controls WDTPS|10011-11110=1:32 (1 ms)|10010=1:8388608 (256 s)|10001=1:4194304 (128 s)|10000=1:2097152 (64 s)|01111=1:1048576 (32 s)|01110=1:524288 (16 s)|01101=1:262144 (8 s)|01100=1:131072 (4 s)|01011=1:65536 (2 s)|01010=1:32768 (1 s)|01001=1:16384 (512 ms)|01000=1:8192 (256 ms)|00111=1:4096 (128 ms)|00110=1:2048 (64 ms)|00101=1:1024 (32 ms)|00100=1:512 (16 ms)|00011=1:256 (8 ms)|00010=1:128 (4 ms)|00001=1:64 (2 ms)|00000=1:32 (1 ms)",
+PIC16F175*,4,13,13,LVP,Low-voltage programming,1=enabled (MCLR is always MCLR)|0=off: high voltage on MCLR needed to program,0=LVP cleared: only high voltage on MCLR can program the part afterwards (this tool has no high-voltage entry yet)
+PIC16F175*,4,11,11,WRTSAF,SAF write protection (when SAFEN = 0),1=not protected|0=protected; cleared only by bulk erase,
+PIC16F175*,4,10,10,WRTD,Data EEPROM write protection,1=not protected|0=protected; cleared only by bulk erase,
+PIC16F175*,4,9,9,WRTC,Configuration registers write protection,1=not protected|0=protected; cleared only by bulk erase,
+PIC16F175*,4,8,8,WRTB,Boot block write protection (when BBEN = 0),1=not protected|0=protected; cleared only by bulk erase,
+PIC16F175*,4,7,7,WRTAPP,Application block write protection,1=not protected|0=protected; cleared only by bulk erase,
+PIC16F175*,4,4,4,SAFEN,Storage area flash,1=disabled|0=enabled,
+PIC16F175*,4,3,3,BBEN,Boot block,1=disabled|0=enabled,
+PIC16F175*,4,2,0,BBSIZE,Boot block size (changeable only while BBEN = 1),111=boot block ends 01FFh (512 words) when BBEN = 0|110=ends 03FFh (1024 words) when BBEN = 0|101=ends 07FFh (2048 words) when BBEN = 0|100=ends 0FFFh (4096 words) when BBEN = 0|011=ends 1FFFh (8192 words) when BBEN = 0|000-010=ends 3FFFh when BBEN = 0 (capped at half the flash),
+PIC16F175*,5,1,1,CPD,Data EEPROM code protection,1=off|0=on,0=code protection on: it can only be removed by a bulk erase
+PIC16F175*,5,0,0,CP,Program flash code protection,1=off|0=on,0=code protection on: it can only be removed by a bulk erase
 PIC16F131*,1,13,13,FCMEN,Fail-Safe Clock Monitor,1=enabled|0=disabled,
 PIC16F131*,1,12,12,VDDAR,VDD analog range calibration,1=2.3-5.5 V|0=1.8-3.6 V,
 PIC16F131*,1,11,11,CSWEN,Clock switch,1=NOSC/NDIV writable|0=NOSC/NDIV locked,
