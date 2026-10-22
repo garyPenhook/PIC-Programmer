@@ -5,6 +5,8 @@
 # values:   'bits=text' entries joined by '|'. bits is 0/1/x digits or a range lo-hi (binary).
 # warn:     'bits=message': shown when the field reads that value.
 # PIC16F132XX: DS40002646A 6.1-6.7.  PIC16F131XX: DS40002500B 6.1-6.5.  PIC16F171XX: DS40002266B 6.1-6.5.
+# PIC18F2X/4XQ10: DS40001874H Table B-4, B-1 to B-11 (word n = CONFIGnL in bits 7:0, CONFIGnH in bits 15:8).
+# The spec's WDTCWS table lists value 111 on the 110 row; 110 is read as window 100% open, as for 111.
 devices,word,hi,lo,name,description,values,warn
 PIC16F132*,1,13,13,FCMEN,Fail-Safe Clock Monitor,1=enabled|0=disabled,
 PIC16F132*,1,12,12,VDDAR,VDD analog range calibration,1=2.3-5.5 V|0=1.8-3.6 V,
@@ -99,3 +101,46 @@ PIC16F171*,4,3,3,BBEN,Boot block,1=disabled|0=enabled,
 PIC16F171*,4,2,0,BBSIZE,Boot block size (changeable only while BBEN = 1),111=boot block ends 01FFh (512 words) when BBEN = 0|110=ends 03FFh (1024 words) when BBEN = 0|101=ends 07FFh (2048 words) when BBEN = 0|100=ends 0FFFh (4096 words) when BBEN = 0|011=ends 1FFFh (8192 words) when BBEN = 0|000-010=ends 3FFFh when BBEN = 0 (capped at half the flash),
 PIC16F171*,5,1,1,CPD,Data EEPROM code protection,1=off|0=on,0=code protection on: it can only be removed by a bulk erase
 PIC16F171*,5,0,0,CP,Program flash code protection,1=off|0=on,0=code protection on: it can only be removed by a bulk erase
+PIC18F??Q10,1,6,4,RSTOSC,Power-up oscillator (COSC),"111=EXTOSC per FEXTOSC (factory default)|110=HFINTOSC 4 MHz, CDIV 4:1|101=LFINTOSC|100=SOSC|011=reserved|010=EXTOSC with 4x PLL|001=reserved|000=HFINTOSC 64 MHz, CDIV 1:1",
+PIC18F??Q10,1,2,0,FEXTOSC,External oscillator mode,111=EC above 8 MHz (factory default)|110=EC 500 kHz to 8 MHz|101=EC below 500 kHz|100=oscillator not enabled|011=reserved|010=HS crystal above 8 MHz|001=XT crystal 500 kHz to 8 MHz|000=LP crystal 32.768 kHz,
+PIC18F??Q10,1,13,13,FCMEN,Fail-Safe Clock Monitor,1=enabled|0=disabled,
+PIC18F??Q10,1,11,11,CSWEN,Clock switch,1=NOSC/NDIV writable|0=NOSC/NDIV locked,
+PIC18F??Q10,1,8,8,CLKOUTEN,Clock out (only with EC or no external oscillator),1=CLKOUT disabled|0=FOSC/4 on OSC2,
+PIC18F??Q10,2,7,6,BOREN,Brown-out Reset enable,"11=BOR enabled (SBOREN ignored)|10=BOR on while running, off in Sleep|01=BOR per SBOREN|00=BOR disabled",
+PIC18F??Q10,2,5,5,LPBOREN,Low-power BOR,1=disabled|0=enabled,
+PIC18F??Q10,2,1,1,PWRTE,Power-up Timer,1=disabled|0=enabled,
+PIC18F??Q10,2,0,0,MCLRE,MCLR pin (applies only when LVP = 0; with LVP = 1 the pin is always MCLR),1=MCLR|0=port-defined function,
+PIC18F??Q10,2,15,15,XINST,Extended instruction set,1=disabled (legacy mode)|0=enabled,
+PIC18F??Q10,2,13,13,DEBUG,Background debugger (tools manage this; keep 1),1=disabled|0=enabled,
+PIC18F??Q10,2,12,12,STVREN,Stack overflow/underflow reset,1=reset enabled|0=reset disabled,
+PIC18F??Q10,2,11,11,PPS1WAY,PPSLOCK one-way set,1=PPSLOCK can be cleared and set once|0=PPSLOCK can be set and cleared repeatedly,
+PIC18F??Q10,2,10,10,ZCDDIS,Zero-cross detect,1=disabled; enable with ZCDSEN|0=always enabled,
+PIC18F??Q10,2,9,8,BORV,Brown-out voltage,11=VBOR 1.90 V|10=VBOR 2.45 V|01=VBOR 2.7 V|00=VBOR 2.85 V,
+PIC18F??Q10,3,6,5,WDTE,WDT mode,"11=enabled always|10=enabled while awake, suspended in Sleep|01=enabled by SWDTEN in WDTCON0|00=disabled",
+PIC18F??Q10,3,4,0,WDTCPS,WDT period,"11111=1:65536 (2 s), software controls WDTPS|10011-11110=1:32 (1 ms)|10010=1:8388608 (256 s)|10001=1:4194304 (128 s)|10000=1:2097152 (64 s)|01111=1:1048576 (32 s)|01110=1:524288 (16 s)|01101=1:262144 (8 s)|01100=1:131072 (4 s)|01011=1:65536 (2 s)|01010=1:32768 (1 s)|01001=1:16384 (512 ms)|01000=1:8192 (256 ms)|00111=1:4096 (128 ms)|00110=1:2048 (64 ms)|00101=1:1024 (32 ms)|00100=1:512 (16 ms)|00011=1:256 (8 ms)|00010=1:128 (4 ms)|00001=1:64 (2 ms)|00000=1:32 (1 ms)",
+PIC18F??Q10,3,13,11,WDTCCS,WDT clock (ignored when WDTE = 00),111=software control|010-110=reserved (defaults to LFINTOSC)|001=31.25 kHz MFINTOSC|000=31.0 kHz LFINTOSC,
+PIC18F??Q10,3,10,8,WDTCWS,WDT window,"111=window 100% open, software controls WINDOW|110=window 100% open|101=delay 25%, window 75%|100=delay 37.5%, window 62.5%|011=delay 50%, window 50%, keyed access required|010=delay 62.5%, window 37.5%|001=delay 75%, window 25%|000=delay 87.5%, window 12.5%",
+PIC18F??Q10,4,0,0,WRT0,"User NVM self-write protection, block 0 (block layout: spec Table 2-1)",1=not protected|0=protected,
+PIC18F??Q10,4,1,1,WRT1,"User NVM self-write protection, block 1 (block layout: spec Table 2-1)",1=not protected|0=protected,
+PIC18F??Q10,4,2,2,WRT2,"User NVM self-write protection, block 2 (block layout: spec Table 2-1)",1=not protected|0=protected,
+PIC18F??Q10,4,3,3,WRT3,"User NVM self-write protection, block 3 (block layout: spec Table 2-1)",1=not protected|0=protected,
+PIC18F??Q10,4,4,4,WRT4,"User NVM self-write protection, block 4 (block layout: spec Table 2-1)",1=not protected|0=protected,
+PIC18F??Q10,4,5,5,WRT5,"User NVM self-write protection, block 5 (block layout: spec Table 2-1)",1=not protected|0=protected,
+PIC18F??Q10,4,6,6,WRT6,"User NVM self-write protection, block 6 (block layout: spec Table 2-1)",1=not protected|0=protected,
+PIC18F??Q10,4,7,7,WRT7,"User NVM self-write protection, block 7 (block layout: spec Table 2-1)",1=not protected|0=protected,
+PIC18F??Q10,4,13,13,LVP,Low-voltage programming,1=enabled (MCLR is always MCLR)|0=off: high voltage on MCLR needed to program,0=LVP cleared: only high voltage on MCLR can program the part afterwards (this tool has no high-voltage entry yet)
+PIC18F??Q10,4,12,12,SCANE,Scanner module,1=available (SCANMD enables it)|0=not available,
+PIC18F??Q10,4,10,10,WRTD,Data EEPROM write protection,1=not protected|0=protected,
+PIC18F??Q10,4,9,9,WRTB,Boot block write protection,1=not protected|0=protected,
+PIC18F??Q10,4,8,8,WRTC,Configuration register write protection,1=not protected|0=protected,
+PIC18F??Q10,5,1,1,CPD,Data NVM code protection,1=off|0=on,0=code protection on: it can only be removed by a bulk erase
+PIC18F??Q10,5,0,0,CP,User NVM program memory code protection,1=off|0=on,0=code protection on: it can only be removed by a bulk erase
+PIC18F??Q10,6,0,0,EBTR0,"Table read protection, block 0 (block layout: spec Table 2-1)",1=not protected|0=protected from table reads in other blocks,
+PIC18F??Q10,6,1,1,EBTR1,"Table read protection, block 1 (block layout: spec Table 2-1)",1=not protected|0=protected from table reads in other blocks,
+PIC18F??Q10,6,2,2,EBTR2,"Table read protection, block 2 (block layout: spec Table 2-1)",1=not protected|0=protected from table reads in other blocks,
+PIC18F??Q10,6,3,3,EBTR3,"Table read protection, block 3 (block layout: spec Table 2-1)",1=not protected|0=protected from table reads in other blocks,
+PIC18F??Q10,6,4,4,EBTR4,"Table read protection, block 4 (block layout: spec Table 2-1)",1=not protected|0=protected from table reads in other blocks,
+PIC18F??Q10,6,5,5,EBTR5,"Table read protection, block 5 (block layout: spec Table 2-1)",1=not protected|0=protected from table reads in other blocks,
+PIC18F??Q10,6,6,6,EBTR6,"Table read protection, block 6 (block layout: spec Table 2-1)",1=not protected|0=protected from table reads in other blocks,
+PIC18F??Q10,6,7,7,EBTR7,"Table read protection, block 7 (block layout: spec Table 2-1)",1=not protected|0=protected from table reads in other blocks,
+PIC18F??Q10,6,9,9,EBTRB,Boot block table read protection,1=not protected|0=protected from table reads in other blocks,

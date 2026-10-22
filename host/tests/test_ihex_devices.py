@@ -95,7 +95,7 @@ def test_bridge_open_and_close_parse_the_replies():
 def _words(dev, **fields):
     """Configuration Words of `dev` with every named field set; all other bits stay 1."""
     from picprog import configbits
-    words = [0x3FFF] * dev.size("config")
+    words = [dev.cell_mask("flash")] * dev.size("config")
     for fld in configbits.fields_for(dev):
         if fld.name in fields:
             mask = ((1 << (fld.hi - fld.lo + 1)) - 1) << fld.lo
@@ -107,8 +107,8 @@ def test_every_config_word_of_every_table_row_is_decoded():
     from picprog import configbits
     for dev in devices.load():
         fields = configbits.fields_for(dev)
-        if dev.protocol != "p16_8bit":
-            continue  # PIC18 rows are not transcribed yet
+        if dev.protocol == "p18_8bit":
+            continue  # PIC18-Q41 is not transcribed yet
         assert {f.word for f in fields} == set(range(1, dev.size("config") + 1)), dev.name
         for f in fields:
             assert f.values or f.name == "CLBSA", (dev.name, f.name)
@@ -119,7 +119,7 @@ def test_config_fields_do_not_overlap_and_fit_14_bits():
     for dev in devices.load():
         used = {}
         for f in configbits.fields_for(dev):
-            assert 0 <= f.lo <= f.hi <= 13, (dev.name, f.name)
+            assert 0 <= f.lo <= f.hi <= (13 if dev.protocol == "p16_8bit" else 15), (dev.name, f.name)
             for bit in range(f.lo, f.hi + 1):
                 assert (f.word, bit) not in used, (dev.name, f.name, used[(f.word, bit)])
                 used[(f.word, bit)] = f.name
@@ -176,3 +176,15 @@ def test_picprog_config_decodes_a_hex_file_without_a_programmer(tmp_path, capsys
     assert "permanently disabled" in out.err and "LVP cleared" in out.err
     assert cli.main(["config", "--device", "PIC18F16Q41", str(path)]) == 1  # no table yet
     assert "no Configuration Word table" in capsys.readouterr().err
+
+
+def test_config_decode_q10():
+    from picprog import configbits
+    dev = devices.find("PIC18F46Q10")
+    lines, warnings = configbits.decode(dev, _words(dev, LVP=0, CP=0, BOREN=0b00, WRT3=0, BORV=0b10))
+    text = "\n".join(lines)
+    assert "CONFIG6 = 0xFFFF" in text and "CONFIG7" not in text
+    assert "BOR disabled" in text and "VBOR 2.45 V" in text
+    assert any("LVP" in w for w in warnings) and any(w.startswith("CONFIG5 CP") for w in warnings)
+    assert sum("WRT3" in l and "protected" in l and "not" not in l for l in lines) == 1
+    assert configbits.decode(dev, _words(dev))[1] == []
