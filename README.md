@@ -46,7 +46,7 @@ Verified on hardware by reading registers over SWD: `RCC_CR = 0x03000500` (PLL o
 The Nucleo acts as an ICSP programmer. **First targets: PIC16F17146 and PIC16F17124**
 (both in the PIC16F171XX family). The PIC16F13113/14/15, 13123/24/25 and 13143/44/45, the fourteen
 PIC16F13214 to PIC16F13276 parts, the twelve
-PIC16F17524 to PIC16F17576 parts, the fourteen PIC16F15213 to PIC16F15276 parts, the fourteen PIC16F18114 to PIC16F18176 parts and the
+PIC16F17524 to PIC16F17576 parts, the sixteen PIC18(L)F26 to PIC18(L)F57K42 parts, the fourteen PIC16F15213 to PIC16F15276 parts, the fourteen PIC16F18114 to PIC16F18176 parts and the
 PIC18F04/05/06/14/15/16Q41, PIC18F04/05/06/14/15/16Q40, PIC18F04/05/06/14/15/16Q20, the seven PIC18F24/25/26/45/46/55/56Q24, the nine PIC18F24/25/26/44/45/46/54/55/56Q71, the twelve PIC18F26/27/46/47/56/57Q83 and Q84 parts and the nine PIC18F25/26/27/45/46/47/55/56/57Q43 parts are also in the device table, and the plan covers PIC10, PIC12 and all of PIC16 and PIC18. `PLAN.md` has the
 scope, sources, assumptions and milestones.
 
@@ -108,6 +108,11 @@ Layers:
     the fixed nibble of its revision ID), 16-bit Configuration Words, a Bulk Erase with no
     payload whose region set follows the PC (flash+config, flash+User ID+config, or EEPROM
     only; other sets are rejected), and different timing.
+  - `p18_k42.c`: the PIC18(L)F26/27/45/46/47/55/56/57K42 command set (40001886B). The
+    `p16_8bit` Load Data / Begin Programming commands on byte-addressed PIC18 memory: a DCI at
+    3F FF00h (latch size in bytes), flash written a 64-word row at a time through the write
+    latches, 16-bit Configuration Words, EEPROM at 31 0000h, and a Bulk Erase whose region set
+    follows the PC as on the Q10.
 - `include/cmd.h`, `src/cmd.c`, `include/uart.h`, `src/uart.c`: the serial command
   interface (see "Serial commands" below). `uart.c` is a polled USART2 driver and the only
   hardware-specific part; `cmd.c` is plain C and runs on the PC in the tests.
@@ -123,11 +128,11 @@ Layers:
   clock (its interrupt stays off), so they stay correct at 64 MHz or the 16 MHz fallback.
 - `tests/`: each protocol run on the PC against a simulated device that also checks every
   wait the spec requires, once for every table row that uses the protocol (14 PIC16F171XX
-  parts, 9 PIC16F131XX parts, 14 PIC16F132XX parts, 14 PIC16F152XX parts, 14 PIC16F181XX parts, 12 PIC16F175XX parts, 6 PIC18-Q41 parts, 6 PIC18-Q40 parts, 6 PIC18-Q20 parts, 7 PIC18-Q24 parts, 9 PIC18-Q71 parts, 12 PIC18-Q83/Q84 parts, 9 PIC18-Q43 parts, 7 PIC18F2X/4XQ10 parts). The simulators hold their own memory sizes, copied from the
+  parts, 9 PIC16F131XX parts, 14 PIC16F132XX parts, 14 PIC16F152XX parts, 14 PIC16F181XX parts, 12 PIC16F175XX parts, 6 PIC18-Q41 parts, 6 PIC18-Q40 parts, 6 PIC18-Q20 parts, 7 PIC18-Q24 parts, 9 PIC18-Q71 parts, 12 PIC18-Q83/Q84 parts, 9 PIC18-Q43 parts, 7 PIC18F2X/4XQ10 parts, 16 PIC18(L)F K42 parts). The simulators hold their own memory sizes, copied from the
   spec, and the tests compare the part's DCI with its table row, so a wrong size in the
   CSV fails the tests. Run `tests/run_tests.sh`.
 
-At boot `main()` probes the target once, trying `p16_8bit`, `p18_8bit` and `p18_q10` in that order.
+At boot `main()` probes the target once, trying `p16_8bit`, `p18_8bit`, `p18_q10` and `p18_k42` in that order.
 Read the result over SWD: `g_pic_status` is 0 when a part was found, else the `PIC_ERR_*` code saying why not. `g_pic_device` points at the matching table row (`print
 *g_pic_device` in GDB shows its name and geometry) or is NULL, and `g_pic_device_id` and
 `g_pic_revision_id` hold the IDs (addresses in the map file). A PIC16F17146 should read

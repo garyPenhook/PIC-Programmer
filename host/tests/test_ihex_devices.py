@@ -158,6 +158,30 @@ def test_p18_q10_layout_follows_the_programming_spec():
     assert devices.cells_to_image(dev, "config", 0, [0x29A7]) == {0x300000: 0xA7, 0x300001: 0x29}
 
 
+def test_p18_k42_layout_follows_the_programming_spec():
+    dev = devices.find("PIC18LF47K42")
+    # 40001886B Table 2-1 and 3.4: User IDs from 200000h, Configuration Words from 300000h (1L,
+    # 1H, 2L, ...), data EEPROM from 310000h, device ID at 3FFFFEh.
+    assert dev.layout.cell_hex_bytes("config", 4) == (0x300008, 0x300009)
+    assert dev.layout.cell_hex_bytes("eeprom", 1) == (0x310001, None)
+    assert dev.layout.cell_hex_bytes("userid", 7) == (0x20000E, 0x20000F)
+    assert dev.layout.cell_mask("config") == 0xFFFF and dev.layout.cell_mask("eeprom") == 0xFF
+    assert dev.size("config") == 5 and dev.size("userid") == 8 and dev.size("eeprom") == 1024
+
+
+def test_config_decode_k42():
+    from picprog import configbits
+    # BORV 11 means 2.45 V on the F parts and 1.90 V on the LF parts (40001886B Register B-4).
+    for name, expect in (("PIC18F26K42", "2.45 V"), ("PIC18LF26K42", "1.90 V")):
+        dev = devices.find(name)
+        lines, warnings = configbits.decode(dev, _words(dev))
+        assert expect in "\n".join(lines), name
+        assert warnings == []
+    dev = devices.find("PIC18F26K42")
+    lines, warnings = configbits.decode(dev, _words(dev, LVP=0, CP=0))
+    assert any("LVP" in w for w in warnings) and any("CP" in w for w in warnings)
+
+
 def test_image_to_cells_masks_values_and_reports_strays():
     dev = devices.find("PIC16F17146")
     image = devices.cells_to_image(dev, "flash", 4, [0x1234, 0x3FFF])
@@ -231,7 +255,7 @@ def test_config_fields_do_not_overlap_and_fit_14_bits():
     for dev in devices.load():
         used = {}
         for f in configbits.fields_for(dev):
-            assert 0 <= f.lo <= f.hi <= {"p16_8bit": 13, "p18_8bit": 7, "p18_q10": 15}[dev.protocol], (dev.name, f.name)
+            assert 0 <= f.lo <= f.hi <= {"p16_8bit": 13, "p18_8bit": 7, "p18_q10": 15, "p18_k42": 15}[dev.protocol], (dev.name, f.name)
             for bit in range(f.lo, f.hi + 1):
                 assert (f.word, bit) not in used, (dev.name, f.name, used[(f.word, bit)])
                 used[(f.word, bit)] = f.name

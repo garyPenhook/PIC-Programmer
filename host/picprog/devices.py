@@ -166,7 +166,8 @@ class P18Q10Layout:
         return address, address + 1
 
 
-LAYOUTS = {"p16_8bit": P16Layout(), "p18_8bit": P18Layout(), "p18_q10": P18Q10Layout()}
+LAYOUTS = {"p16_8bit": P16Layout(), "p18_8bit": P18Layout(), "p18_q10": P18Q10Layout(),
+           "p18_k42": P18Q10Layout()}
 
 
 def load(path=CSV_PATH):

@@ -10,7 +10,7 @@ trap 'rm -rf "$out"' EXIT
 flags="-std=c11 -Wall -Wextra -Werror -Wshadow -Wconversion -Iinclude -Itests"
 
 python3 tools/gen_devices.py data/pic_devices.csv "$out/pic_devices.c"
-core="src/pic.c src/proto/icsp8.c src/proto/p16_8bit.c src/proto/p18_8bit.c src/proto/p18_q10.c $out/pic_devices.c"
+core="src/pic.c src/proto/icsp8.c src/proto/p16_8bit.c src/proto/p18_8bit.c src/proto/p18_q10.c src/proto/p18_k42.c $out/pic_devices.c"
 
 gcc $flags $core tests/sim_p16_8bit.c tests/test_p16_8bit.c -o "$out/test_p16_8bit"
 "$out/test_p16_8bit"
@@ -18,6 +18,9 @@ gcc $flags $core tests/sim_p16_8bit.c tests/test_p16_8bit.c -o "$out/test_p16_8b
 gcc $flags $core tests/sim_p18_8bit.c tests/test_p18_8bit.c -o "$out/test_p18_8bit"
 
 gcc $flags $core tests/sim_p18_q10.c tests/test_p18_q10.c -o "$out/test_p18_q10"
+
+gcc $flags $core tests/sim_p18_k42.c tests/test_p18_k42.c -o "$out/test_p18_k42"
+"$out/test_p18_k42"
 "$out/test_p18_q10"
 "$out/test_p18_8bit"
 

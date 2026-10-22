@@ -10,6 +10,7 @@ static const pic_proto_t *const protocols[] = {
     &pic_proto_p16_8bit,
     &pic_proto_p18_8bit,
     &pic_proto_p18_q10,
+    &pic_proto_p18_k42,
 };
 
 const pic_device_t *pic_find_device(const pic_proto_t *proto, uint16_t device_id)

@@ -59,4 +59,12 @@ extern const pic_proto_t pic_proto_p18_8bit;
  */
 extern const pic_proto_t pic_proto_p18_q10;
 
+/*
+ * 8-bit command set of the PIC18(L)F26/27/45/46/47/55/56/57K42 (40001886B): the p16_8bit
+ * Load Data / Begin Programming commands on the PIC18's byte-addressed memory, with a DCI,
+ * row-latch flash writes, 16-bit Configuration Words and a Bulk Erase that picks what it
+ * erases from the PC.
+ */
+extern const pic_proto_t pic_proto_p18_k42;
+
 #endif

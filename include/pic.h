@@ -62,7 +62,7 @@ typedef enum {
     PIC_REGION_EEPROM
 } pic_region_t;
 
-/* Bulk Erase region bits. Both 8-bit-command protocols use this payload layout. */
+/* Bulk Erase region bits. The p16_8bit and p18_8bit protocols use this payload layout; p18_q10 and p18_k42 choose from the PC. */
 #define PIC_ERASE_EEPROM (1u << 0)
 #define PIC_ERASE_FLASH  (1u << 1)
 #define PIC_ERASE_USERID (1u << 2)

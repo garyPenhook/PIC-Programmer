@@ -18,7 +18,7 @@ from picprog import devices  # noqa: E402
 from picprog.link import Link  # noqa: E402
 
 FLAGS = ["-std=c11", "-Wall", "-Wextra", "-Werror", "-Wshadow", "-Wconversion"]
-SOURCES = ["src/pic.c", "src/proto/icsp8.c", "src/proto/p16_8bit.c", "src/proto/p18_8bit.c", "src/proto/p18_q10.c",
+SOURCES = ["src/pic.c", "src/proto/icsp8.c", "src/proto/p16_8bit.c", "src/proto/p18_8bit.c", "src/proto/p18_q10.c", "src/proto/p18_k42.c",
            "src/cmd.c", "src/ui.c", "src/oled.c", "src/selftest.c", "src/bridge.c",
            "tests/sim_p16_8bit.c", "tests/stub_board.c",
            "tests/stub_icsp_lines.c", "tests/stub_i2c.c",

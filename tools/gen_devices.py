@@ -27,6 +27,11 @@ PROTOCOLS = {
     # 0x300000 (to 0x30000B), EEPROM bytes from 0x310000 (up to 0x3103FF).
     "p18_q10": {"latches": False, "flash_words": 0x100000, "userid_words": 0x80,
                 "config_count": 6, "eeprom_bytes": 0x400},
+    # Byte addresses (40001886B Table 2-1): flash words below 0x200000, eight User ID words
+    # from 0x200000, five 16-bit Configuration Words from 0x300000 (to 0x300009), EEPROM
+    # bytes from 0x310000 (up to 0x3103FF). Flash is written through row latches.
+    "p18_k42": {"latches": True, "flash_words": 0x100000, "userid_words": 8,
+                "config_count": 5, "eeprom_bytes": 0x400},
 }
 COLUMNS = ("name", "protocol", "device_id", "flash_words", "erase_words", "latch_words",
            "userid_words", "config_count", "eeprom_bytes", "config_map", "source")
