@@ -88,6 +88,24 @@ def test_p18_q24_config_decode():
     assert [w for w in warnings if "ICSPDIS" in w]
 
 
+def test_p18_q40_matches_the_q41_layout():
+    dev = devices.find("PIC18F16Q40")
+    # DS40002185B Figure 2-1: 32 KW of flash, 512 bytes of EEPROM, Configuration Bytes at 30 0000h-30 0009h.
+    assert dev.size("config") == 10 and dev.size("eeprom") == 512 and dev.size("flash") == 32768
+    assert dev.device_id == 0x75A0
+    assert dev.config_name(9) == "CONFIG9"
+
+
+def test_p18_q40_config_decode():
+    from picprog import configbits
+    dev = devices.find("PIC18F05Q40")
+    words = [0xFF] * 10
+    words[8] = 0xFE  # CONFIG9 = CP: code protection on
+    lines, warnings = configbits.decode(dev, words)
+    assert any(line.startswith("CONFIG9 = 0xFE") for line in lines)
+    assert [w for w in warnings if "CP" in w]
+
+
 def test_p18_q71_has_eleven_contiguous_config_bytes():
     dev = devices.find("PIC18F46Q71")
     # DS40002306D Figure 2-1: Configuration Bytes at 30 0000h-30 000Ah, 256 bytes of EEPROM.
@@ -199,7 +217,7 @@ def test_every_config_word_of_every_table_row_is_decoded():
         fields = configbits.fields_for(dev)
         # PIC18-Q has 10 Configuration Bytes with one reserved: the tenth (30 0009h) on
         # the Q41, the ninth (30 0008h) on the Q43.
-        reserved = {10} if "Q41" in dev.name else {9} if "Q43" in dev.name else set()
+        reserved = {10} if "Q41" in dev.name or "Q40" in dev.name else {9} if "Q43" in dev.name else set()
         expected = set(range(1, dev.size("config") + 1)) - reserved
         assert {f.word for f in fields} == expected, dev.name
         for f in fields:

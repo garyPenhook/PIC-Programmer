@@ -55,7 +55,7 @@ static struct {
     uint32_t eeprom_bytes;
     uint16_t flash[MAX_FLASH_WORDS];
     uint16_t userid[USERID_WORDS];
-    uint32_t config_count; /* Q41/Q43: 10 bytes in a row; Q71: 11; Q84: 35; Q20 and Q24: 13, with gaps */
+    uint32_t config_count; /* Q40/Q41/Q43: 10 bytes in a row; Q71: 11; Q84: 35; Q20 and Q24: 13, with gaps */
     int config_q24;        /* Q24 address map (DS40002503 8.6) instead of Q20's (DS40002327D 6.14) */
     int config_q20;        /* Q20 address map; neither flag set means contiguous from 30 0000h */
     uint8_t config[CONFIG_SPAN];
@@ -181,9 +181,17 @@ void sim_reset(void)
         s.eeprom_bytes = 1024u;
         s.config_count = 35u;
         break; /* PIC18F27/47/57Q83/84 */
+    case 0x7640u:
+    case 0x7620u:
+        s.user_pages = 64u;
+        break; /* PIC18F04/14Q40, DS40002185B Table 2-1 */
+    case 0x7600u:
+    case 0x75E0u:
+        s.user_pages = 128u;
+        break; /* PIC18F05/15Q40 */
     default:
         s.user_pages = 256u;
-        break; /* PIC18F06/16Q41 */
+        break; /* PIC18F06/16Q41 and PIC18F06/16Q40 */
     }
     for (size_t i = 0; i < FLASH_WORDS; i++)
         s.flash[i] = 0xFFFFu;
