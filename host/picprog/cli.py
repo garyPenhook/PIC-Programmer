@@ -2,7 +2,7 @@
 import argparse
 import sys
 
-from . import devices, ihex, programmer
+from . import configbits, devices, ihex, programmer
 from .link import Link, LinkError, LinkTimeout
 
 DEFAULT_PORT = "/dev/ttyACM0"
@@ -34,6 +34,14 @@ def progress(region, done, total):
 def warn(messages):
     for message in messages:
         print(f"warning: {message}", file=sys.stderr)
+
+
+def config_warnings(device, image):
+    """What the hex file's Configuration Words would do that cannot be undone or that
+    locks the part (code protection, ICSPDIS, LVP off)."""
+    cells, _ = devices.image_to_cells(device, image)
+    words = [cells["config"].get(i) for i in range(device.size("config"))]
+    return configbits.decode(device, words)[1]
 
 
 def cmd_probe(link, args):
@@ -83,11 +91,31 @@ def cmd_write(link, args):
     device = programmer.connect(link)
     with open(args.file) as f:
         image = ihex.parse(f.read())
+    warn(config_warnings(device, image))  # before anything is written
     warnings = programmer.program(link, device, image, erase=not args.no_erase,
                                   verify=not args.no_verify,
                                   progress=None if args.quiet else progress)
     warn(warnings)
     print(f"{device.name}: programmed{'' if args.no_verify else ' and verified'}")
+
+
+def cmd_config(link, args):
+    """Decode the Configuration Words of a hex file (no programmer needed with --device) or
+    of the connected part."""
+    if args.file:
+        device = devices.find(args.device) if args.device else programmer.connect(link)
+        with open(args.file) as f:
+            cells, _ = devices.image_to_cells(device, ihex.parse(f.read()))
+        words = [cells["config"].get(i) for i in range(device.size("config"))]
+    else:
+        device = programmer.connect(link)
+        words = link.read("config", 0, device.size("config"))
+    lines, warnings = configbits.decode(device, words)
+    if not lines:
+        raise LinkError(f"{device.name} has no Configuration Word table yet")
+    print(f"{device.name}")
+    print("\n".join(lines))
+    warn(warnings)
 
 
 def cmd_crc(link, args):
@@ -252,6 +280,11 @@ def main(argv=None):
     p.add_argument("file")
     p.set_defaults(run=cmd_verify)
 
+    p = sub.add_parser("config", help="decode the Configuration Words of the part or a hex file")
+    p.add_argument("file", nargs="?", help="hex file to decode instead of reading the part")
+    p.add_argument("--device", help="part name, to decode a hex file without a programmer")
+    p.set_defaults(run=cmd_config)
+
     p = sub.add_parser("crc", help="compare the target with an Intel HEX file by CRC-32")
     p.add_argument("file")
     p.set_defaults(run=cmd_crc)
@@ -278,7 +311,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     link = None
     try:
-        link = open_link(args)
+        if not (args.command == "config" and args.file and args.device):
+            link = open_link(args)  # decoding a file for a named part needs no programmer
         args.run(link, args)
     except LinkTimeout as e:
         print(f"picprog: {e}", file=sys.stderr)

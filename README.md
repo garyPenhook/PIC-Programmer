@@ -297,6 +297,8 @@ picprog read flash 0 32          # print cells
 picprog dci                      # Device Configuration Information
 picprog crc firmware.hex         # compare by CRC-32, without reading the data back
 picprog blank                    # check every region is erased (or: blank flash)
+picprog config                   # decode the part's Configuration Words field by field
+picprog config --device PIC16F13276 firmware.hex   # the same for a hex file, no programmer needed
 picprog selftest                 # check the ICSP wiring for shorts and stuck lines
 picprog power off                # switch the target supply (needs the switch, docs/hookup.md)
 picprog vdd                      # target VDD and the programmer's VDDA

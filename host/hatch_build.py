@@ -11,6 +11,7 @@ from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
 SHARED = {
     os.path.join("..", "data", "pic_devices.csv"): "picprog/data/pic_devices.csv",
+    os.path.join("..", "data", "pic_config_bits.csv"): "picprog/data/pic_config_bits.csv",
     os.path.join("..", "tools", "gen_devices.py"): "picprog/data/gen_devices.py",
 }
 

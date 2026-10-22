@@ -90,3 +90,89 @@ def test_bridge_open_and_close_parse_the_replies():
     assert stream.written == b"BRIDGE 9600\n"
     assert link.bridge_close() == (b"last words", 7)
     assert stream.written.endswith(BRIDGE_EXIT)
+
+
+def _words(dev, **fields):
+    """Configuration Words of `dev` with every named field set; all other bits stay 1."""
+    from picprog import configbits
+    words = [0x3FFF] * dev.size("config")
+    for fld in configbits.fields_for(dev):
+        if fld.name in fields:
+            mask = ((1 << (fld.hi - fld.lo + 1)) - 1) << fld.lo
+            words[fld.word - 1] = (words[fld.word - 1] & ~mask) | (fields[fld.name] << fld.lo)
+    return words
+
+
+def test_every_config_word_of_every_table_row_is_decoded():
+    from picprog import configbits
+    for dev in devices.load():
+        fields = configbits.fields_for(dev)
+        if dev.protocol != "p16_8bit":
+            continue  # PIC18 rows are not transcribed yet
+        assert {f.word for f in fields} == set(range(1, dev.size("config") + 1)), dev.name
+        for f in fields:
+            assert f.values or f.name == "CLBSA", (dev.name, f.name)
+
+
+def test_config_fields_do_not_overlap_and_fit_14_bits():
+    from picprog import configbits
+    for dev in devices.load():
+        used = {}
+        for f in configbits.fields_for(dev):
+            assert 0 <= f.lo <= f.hi <= 13, (dev.name, f.name)
+            for bit in range(f.lo, f.hi + 1):
+                assert (f.word, bit) not in used, (dev.name, f.name, used[(f.word, bit)])
+                used[(f.word, bit)] = f.name
+
+
+def test_value_tables_cover_every_value():
+    from picprog import configbits
+    for f in configbits.load():
+        if f.values:
+            for v in range(1 << (f.hi - f.lo + 1)):
+                assert f.lookup(f.values, v) is not None, (f.devices, f.name, v)
+
+
+def test_config_decode_f13276():
+    from picprog import configbits
+    dev = devices.find("PIC16F13276")
+    lines, warnings = configbits.decode(dev, _words(dev, LVP=0, ICSPDIS=0, CP=0, BOREN=0b00))
+    text = "\n".join(lines)
+    assert "CONFIG7" in text and "CONFIG6" in text
+    assert "BOREN" in text and "BOR enabled (SBOREN ignored)" in text  # DS40002646A 6.2
+    assert any("ICSPDIS" in w for w in warnings) and any("LVP" in w for w in warnings)
+    assert any(w.startswith("CONFIG5 CP") for w in warnings)
+    assert configbits.decode(dev, _words(dev))[1] == []  # erased words warn about nothing
+
+
+def test_boren_00_means_opposite_things_on_the_two_families():
+    # DS40002500B 6.2: 00 = BOR disabled.  DS40002646A 6.2: 00 = BOR enabled.
+    from picprog import configbits
+    for name, expect in (("PIC16F13145", "BOR disabled"), ("PIC16F13276", "BOR enabled")):
+        dev = devices.find(name)
+        lines, _ = configbits.decode(dev, _words(dev, BOREN=0))
+        assert any(l.strip().startswith("BOREN") and expect in l for l in lines), name
+
+
+def test_wdtcps_ranges():
+    from picprog import configbits
+    dev = devices.find("PIC16F13276")
+    f = next(x for x in configbits.fields_for(dev) if x.name == "WDTCPS")
+    assert f.lookup(f.values, 0b11111).startswith("1:65536")
+    assert f.lookup(f.values, 0b10100).startswith("1:32")
+    assert f.lookup(f.values, 0b01011).startswith("1:65536 (2 s)")
+
+
+def test_picprog_config_decodes_a_hex_file_without_a_programmer(tmp_path, capsys):
+    from picprog import cli
+    dev = devices.find("PIC16F13276")
+    words = _words(dev, ICSPDIS=0, LVP=0)
+    image = devices.cells_to_image(dev, "config", 0, words)
+    path = tmp_path / "cfg.hex"
+    path.write_text(ihex.to_text(image))
+    assert cli.main(["config", "--device", "PIC16F13276", str(path)]) == 0
+    out = capsys.readouterr()
+    assert "CONFIG7 = 0x3FFF" in out.out and "ICSPDIS" in out.out
+    assert "permanently disabled" in out.err and "LVP cleared" in out.err
+    assert cli.main(["config", "--device", "PIC18F16Q41", str(path)]) == 1  # no table yet
+    assert "no Configuration Word table" in capsys.readouterr().err
