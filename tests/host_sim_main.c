@@ -4,13 +4,19 @@
  * host tool's tests (host/tests) can drive the real command parser end to end.
  *
  * Usage: host_sim [device id in hex, default 30E1]
+ *
+ * Built with -DSIM_HEADER='"sim_<protocol>.h"' and the matching tests/sim_<protocol>.c to
+ * run another protocol's model (host/tests/conftest.py builds one binary per protocol).
  */
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "cmd.h"
 #include "platform.h"
-#include "sim_p16_8bit.h"
+#ifndef SIM_HEADER
+#define SIM_HEADER "sim_p16_8bit.h"
+#endif
+#include SIM_HEADER
 #include "uart.h"
 
 void uart_init(void)

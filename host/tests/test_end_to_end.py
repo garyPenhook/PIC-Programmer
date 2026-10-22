@@ -400,3 +400,39 @@ def test_command_line_dia(target, monkeypatch, capsys):
     assert cli.main(["read", "dia", "0", "2"]) == 0
     assert "000000: 0A01 0B02" in capsys.readouterr().out
 
+
+
+def round_trip_image(device):
+    """A pattern touching the start and end of flash and the writable regions, bits cleared
+    so every cell differs from blank (a blank cell would hide a lost write)."""
+    flash = device.size("flash")
+    mask = device.cell_mask("flash")
+    image = {}
+    image.update(devices.cells_to_image(device, "flash", 0, [0x1234 & mask, 0x0F0F & mask]))
+    image.update(devices.cells_to_image(device, "flash", flash - 2, [0x2AAA & mask, 0x1555 & mask]))
+    for region, base in (("userid", 0x11), ("eeprom", 0x5A)):
+        size = device.size(region)
+        if size:
+            mask = device.cell_mask(region)
+            cells = [(base + i) & mask for i in range(min(size, 4))]
+            image.update(devices.cells_to_image(device, region, 0, cells))
+    return image
+
+
+@pytest.mark.parametrize("device", devices.load(), ids=lambda d: d.name)
+def test_program_then_dump_round_trip_for_every_table_row(host_sim_builds, device):
+    """Program a pattern and dump it back, for each part in the table, against the model of
+    its protocol. The pattern's flash, User ID and EEPROM cells must come back unchanged."""
+    from conftest import spawn_target
+    proc, link = spawn_target(host_sim_builds(device.protocol), f"{device.device_id:04X}")
+    try:
+        assert programmer.connect(link).name == device.name
+        image = round_trip_image(device)
+        programmer.program(link, device, image)
+        dumped, _ = programmer.dump(link, device)
+        for address, byte in image.items():
+            assert dumped[address] == byte, f"{device.name} {address:#x}"
+        assert ihex.parse(ihex.to_text(dumped)) == dumped
+    finally:
+        proc.stdin.close()
+        proc.wait(timeout=5)

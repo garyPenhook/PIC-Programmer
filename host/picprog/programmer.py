@@ -14,7 +14,12 @@ def connect(link, table_path=devices.CSV_PATH):
     device = devices.find(name, table_path)
     if device.device_id != device_id:
         raise LinkError(f"{name}: device ID 0x{device_id:04X}, table says 0x{device.device_id:04X}")
-    dci = link.dci()
+    try:
+        dci = link.dci()
+    except LinkError as err:
+        if err.code == -4:  # PIC_ERR_UNSUPPORTED: p18_q10 parts have no DCI to check against
+            return device
+        raise
     if (dci["erase_words"] != device.erase_words or dci["latch_words"] != device.latch_words
             or dci["user_rows"] * dci["erase_words"] != device.flash_words
             or dci["eeprom_bytes"] != device.size("eeprom")):

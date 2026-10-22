@@ -163,9 +163,12 @@ Both:
      (unique ID, temperature-indicator calibration, FVR readings). Windows: 8100h to 811Fh on
      p16_8bit, 2C 0000h to 2C 003Fh on p18_8bit, 3F 0000h to 3F 003Fh on p18_k42, none on
      p18_q10. Simulator tests only; untested on silicon.
+   - Done: a program-then-dump round trip for every table row, against the simulator of its
+     protocol (`host/tests`, one `host_sim` build per protocol). It found that `picprog` could
+     not connect to the p18_q10 parts, which have no DCI; the DCI cross-check is now skipped
+     for them.
    - To do: confirm the PIC16 EEPROM and PIC18 word placement in MPLAB-produced hex files
-     (needs such a file); add a dump round trip for each table row, not only the PIC16F17146
-     ("Program extraction", item 7).
+     (needs such a file).
 6. **M6:** more rows for the existing protocols (PIC16F13145, 13276, 15276, 18176 and 17576 families, PIC18-Q20, Q24, Q40, Q43, Q71, Q83 and Q84 done), plus the new p18_k42 protocol (done). Older families are out of scope.
 7. **M7:** high-voltage entry (MCLR 7.9 to 9.0 V) to recover parts with LVP = 0.
 8. **M8:** seed a bootloader over ICSP (see "Bootloaders"). Needs M3 (real silicon) and

@@ -20,23 +20,38 @@ from picprog.link import Link  # noqa: E402
 FLAGS = ["-std=c11", "-Wall", "-Wextra", "-Werror", "-Wshadow", "-Wconversion"]
 SOURCES = ["src/pic.c", "src/proto/icsp8.c", "src/proto/p16_8bit.c", "src/proto/p18_8bit.c", "src/proto/p18_q10.c", "src/proto/p18_k42.c",
            "src/cmd.c", "src/ui.c", "src/oled.c", "src/selftest.c", "src/bridge.c",
-           "tests/sim_p16_8bit.c", "tests/stub_board.c",
+           "tests/stub_board.c",
            "tests/stub_icsp_lines.c", "tests/stub_i2c.c",
            "tests/host_sim_main.c"]
 
 
 @pytest.fixture(scope="session")
-def host_sim(tmp_path_factory):
-    """Path of the built PC firmware."""
+def host_sim_builds(tmp_path_factory):
+    """Build of the PC firmware per protocol, made on first use: protocol -> binary path."""
     out = tmp_path_factory.mktemp("host_sim")
     table = out / "pic_devices.c"
     subprocess.run([sys.executable, os.path.join(ROOT, "tools", "gen_devices.py"),
                     devices.CSV_PATH, str(table)], check=True)
-    binary = out / "host_sim"
-    subprocess.run(["gcc", *FLAGS, "-Iinclude", "-Itests",
-                    *[os.path.join(ROOT, s) for s in SOURCES], str(table), "-o", str(binary)],
-                   check=True, cwd=ROOT)
-    return str(binary)
+    builds = {}
+
+    def build(protocol):
+        if protocol not in builds:
+            sim = {"p16_8bit": "p16_8bit", "p18_8bit": "p18_8bit", "p18_q10": "p18_q10",
+                   "p18_k42": "p18_k42"}[protocol]
+            binary = out / f"host_sim_{protocol}"
+            subprocess.run(["gcc", *FLAGS, "-Iinclude", "-Itests", f'-DSIM_HEADER="sim_{sim}.h"',
+                            *[os.path.join(ROOT, s) for s in SOURCES],
+                            os.path.join(ROOT, "tests", f"sim_{sim}.c"), str(table),
+                            "-o", str(binary)], check=True, cwd=ROOT)
+            builds[protocol] = str(binary)
+        return builds[protocol]
+    return build
+
+
+@pytest.fixture(scope="session")
+def host_sim(host_sim_builds):
+    """Path of the built PC firmware (the PIC16F171XX model)."""
+    return host_sim_builds("p16_8bit")
 
 
 class PipeStream:
@@ -59,6 +74,12 @@ class PipeStream:
 
     def flush(self):
         self.proc.stdin.flush()
+
+
+def spawn_target(binary, device_id):
+    proc = subprocess.Popen([binary, device_id], stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE, bufsize=0)
+    return proc, Link(PipeStream(proc))
 
 
 @pytest.fixture
