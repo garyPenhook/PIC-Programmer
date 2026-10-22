@@ -107,9 +107,9 @@ def test_every_config_word_of_every_table_row_is_decoded():
     from picprog import configbits
     for dev in devices.load():
         fields = configbits.fields_for(dev)
-        if dev.protocol == "p18_8bit":
-            continue  # PIC18-Q41 is not transcribed yet
-        assert {f.word for f in fields} == set(range(1, dev.size("config") + 1)), dev.name
+        # PIC18-Q41 has 10 Configuration Bytes, but the tenth (30 0009h) is reserved.
+        named = dev.size("config") - (1 if dev.protocol == "p18_8bit" else 0)
+        assert {f.word for f in fields} == set(range(1, named + 1)), dev.name
         for f in fields:
             assert f.values or f.name == "CLBSA", (dev.name, f.name)
 
@@ -119,7 +119,7 @@ def test_config_fields_do_not_overlap_and_fit_14_bits():
     for dev in devices.load():
         used = {}
         for f in configbits.fields_for(dev):
-            assert 0 <= f.lo <= f.hi <= (13 if dev.protocol == "p16_8bit" else 15), (dev.name, f.name)
+            assert 0 <= f.lo <= f.hi <= {"p16_8bit": 13, "p18_8bit": 7, "p18_q10": 15}[dev.protocol], (dev.name, f.name)
             for bit in range(f.lo, f.hi + 1):
                 assert (f.word, bit) not in used, (dev.name, f.name, used[(f.word, bit)])
                 used[(f.word, bit)] = f.name
@@ -174,8 +174,8 @@ def test_picprog_config_decodes_a_hex_file_without_a_programmer(tmp_path, capsys
     out = capsys.readouterr()
     assert "CONFIG7 = 0x3FFF" in out.out and "ICSPDIS" in out.out
     assert "permanently disabled" in out.err and "LVP cleared" in out.err
-    assert cli.main(["config", "--device", "PIC18F16Q41", str(path)]) == 1  # no table yet
-    assert "no Configuration Word table" in capsys.readouterr().err
+    assert cli.main(["config", "--device", "PIC18F16Q41", str(path)]) == 0
+    assert "CONFIG1: not present" in capsys.readouterr().out  # a PIC16 hex has no Q41 config bytes
 
 
 def test_config_decode_q10():
@@ -188,3 +188,21 @@ def test_config_decode_q10():
     assert any("LVP" in w for w in warnings) and any(w.startswith("CONFIG5 CP") for w in warnings)
     assert sum("WRT3" in l and "protected" in l and "not" not in l for l in lines) == 1
     assert configbits.decode(dev, _words(dev))[1] == []
+
+
+def test_config_decode_q41():
+    from picprog import configbits
+    dev = devices.find("PIC18F16Q41")
+    words = [0xFF] * dev.size("config")
+    fields = {f.name: f for f in configbits.fields_for(dev)}
+    for name, value in (("LVP", 0), ("CP", 0), ("MVECEN", 0), ("BORV", 0b01)):
+        f = fields[name]
+        mask = ((1 << (f.hi - f.lo + 1)) - 1) << f.lo
+        words[f.word - 1] = (words[f.word - 1] & ~mask) | (value << f.lo)
+    assert words[3] == 0xDD and words[8] == 0xFE  # LVP bit 5, BORV 01; CP bit 0
+    lines, warnings = configbits.decode(dev, words)
+    text = "\n".join(lines)
+    assert "CONFIG9 = 0xFE" in text and "CONFIG10" not in text
+    assert "legacy interrupt behaviour" in text and "VBOR 2.7 V" in text
+    assert any("LVP" in w for w in warnings) and any(w.startswith("CONFIG9 CP") for w in warnings)
+    assert configbits.decode(dev, [0xFF] * dev.size("config"))[1] == []

@@ -71,12 +71,13 @@ def decode(device, words):
     """
     lines, warnings = [], []
     fields = fields_for(device)
+    digits = (device.cell_mask("config").bit_length() + 3) // 4  # 4 for 14/16-bit cells, 2 for bytes
     for number in sorted({fld.word for fld in fields}):
         word = words[number - 1] if number <= len(words) else None
         if word is None:
             lines.append(f"CONFIG{number}: not present")
             continue
-        lines.append(f"CONFIG{number} = 0x{word:04X}")
+        lines.append(f"CONFIG{number} = 0x{word:0{digits}X}")
         for fld in (x for x in fields if x.word == number):
             value = fld.extract(word)
             width = fld.hi - fld.lo + 1

@@ -144,9 +144,9 @@ Both:
    `probe`, `id`, `dci`, `read`, `dump`, `erase`, `write` (bulk erase, program, verify) and
    `verify`, with the DCI checked against `data/pic_devices.csv`. Tested end to end against
    the firmware's command layer built for the PC. To do: confirm the PIC16 EEPROM and
-   PIC18 word placement in MPLAB hex files; decode Configuration Words: done for all PIC16 rows and the PIC18F2X/4XQ10 (`picprog config`, table
-   `data/pic_config_bits.csv` from DS40002266B, DS40002500B, DS40002646A and DS40001874H Appendix B; `write` warns before setting
-   ICSPDIS, LVP = 0 or code protection), still to do for PIC18-Q41, whose data sheet DS40002214 is not on disk (see
+   PIC18 word placement in MPLAB hex files; decode Configuration Words: done for every row in the device table (`picprog config`, table
+   `data/pic_config_bits.csv` from DS40002266B, DS40002500B, DS40002646A, DS40001874H and DS40002143F Appendix B; `write` warns before setting
+   ICSPDIS, LVP = 0 or code protection; the Q41's reserved tenth byte is not decoded; see
    "Program extraction"); read the DIA (needs a read-only region in `pic.h` first).
 6. **M6:** more rows for the existing protocols (PIC16F13145 and 13276 families done; 17576 left; PIC18-Q20,
    Q43; Q24 after the config address list), then new protocols for PIC10, PIC12, older
