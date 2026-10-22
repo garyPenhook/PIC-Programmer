@@ -30,6 +30,11 @@
 #define ADDR_FLASH  0x000000u
 #define ADDR_USERID 0x200000u
 #define ADDR_CONFIG 0x300000u
+/* PIC18-Q20 has 13 Configuration Bytes that do not increment sequentially (DS40002327D 2.4,
+ * 6.14): the first 11 are at 30 0000h-30 000Ah, then CONFIG14 at 30 0018h and CONFIG9 at
+ * 30 0019h. The Q41 and Q43 have 10, contiguous, so any larger count means the split map. */
+#define CONFIG_SPLIT_AT 11u
+#define ADDR_CONFIG_HI  0x300018u
 #define ADDR_EEPROM 0x380000u
 #define ADDR_DCI    0x3C0000u
 #define ADDR_REVID  0x3FFFFCu
@@ -70,18 +75,38 @@ static int is_word_region(pic_region_t region)
     return region == PIC_REGION_FLASH || region == PIC_REGION_USERID;
 }
 
-static uint32_t address_of(pic_region_t region, uint32_t offset)
+static int config_is_split(const pic_device_t *dev)
+{
+    return dev->config_count > CONFIG_SPLIT_AT;
+}
+
+static uint32_t address_of(const pic_device_t *dev, pic_region_t region, uint32_t offset)
 {
     switch (region) {
     case PIC_REGION_USERID:
         return ADDR_USERID + 2u * offset;
     case PIC_REGION_CONFIG:
+        if (config_is_split(dev) && offset >= CONFIG_SPLIT_AT) {
+            return ADDR_CONFIG_HI + (offset - CONFIG_SPLIT_AT);
+        }
         return ADDR_CONFIG + offset;
     case PIC_REGION_EEPROM:
         return ADDR_EEPROM + offset;
     default:
         return ADDR_FLASH + 2u * offset;
     }
+}
+
+/* How many of `count` items from `offset` sit at consecutive addresses (the PC auto-increments
+ * only within a run; a new run needs its own Load PC). */
+static size_t run_length(const pic_device_t *dev, pic_region_t region, size_t offset,
+                         size_t count)
+{
+    if (region == PIC_REGION_CONFIG && config_is_split(dev) && offset < CONFIG_SPLIT_AT &&
+        count > CONFIG_SPLIT_AT - offset) {
+        return CONFIG_SPLIT_AT - offset;
+    }
+    return count;
 }
 
 static uint16_t mask_of(pic_region_t region)
@@ -147,13 +172,19 @@ static pic_status_t p18_read(const pic_device_t *dev, pic_region_t region, uint3
                              uint16_t *buf, size_t count)
 {
     uint16_t mask = mask_of(region);
-    (void)dev;
-    load_pc(address_of(region, offset));
-    for (size_t i = 0; i < count; i++) {
-        pic_status_t st = read_item(i + 1u < count ? CMD_READ_INC : CMD_READ, mask, &buf[i]);
-        if (st != PIC_OK) {
-            return st;
+    size_t done = 0;
+
+    while (done < count) {
+        size_t run = run_length(dev, region, offset + done, count - done);
+
+        load_pc(address_of(dev, region, (uint32_t)(offset + done)));
+        for (size_t i = 0; i < run; i++) {
+            pic_status_t st = read_item(i + 1u < run ? CMD_READ_INC : CMD_READ, mask, &buf[done + i]);
+            if (st != PIC_OK) {
+                return st;
+            }
         }
+        done += run;
     }
     return PIC_OK;
 }
@@ -169,9 +200,14 @@ static pic_status_t p18_write(const pic_device_t *dev, pic_region_t region, uint
     if (dev->latch_words != 0u) {
         return PIC_ERR_UNSUPPORTED;
     }
-    load_pc(address_of(region, offset));
-    for (size_t i = 0; i < count; i++) {
-        program_item(buf[i] & mask, i + 1u < count, wait);
+    for (size_t done = 0; done < count;) {
+        size_t run = run_length(dev, region, offset + done, count - done);
+
+        load_pc(address_of(dev, region, (uint32_t)(offset + done)));
+        for (size_t i = 0; i < run; i++) {
+            program_item(buf[done + i] & mask, i + 1u < run, wait);
+        }
+        done += run;
     }
     return PIC_OK;
 }
@@ -187,11 +223,10 @@ static pic_status_t p18_bulk_erase(const pic_device_t *dev, uint8_t regions)
 
 static pic_status_t p18_row_erase(const pic_device_t *dev, pic_region_t region, uint32_t offset)
 {
-    (void)dev;
     if (!is_word_region(region)) { /* spec 3.1.3.6: program memory and User ID only */
         return PIC_ERR_UNSUPPORTED;
     }
-    load_pc(address_of(region, offset)); /* the low bits of the address are ignored */
+    load_pc(address_of(dev, region, offset)); /* the low bits of the address are ignored */
     icsp8_command(CMD_PAGE_ERASE);
     icsp_delay_us(T_ERASE_US);
     return PIC_OK;

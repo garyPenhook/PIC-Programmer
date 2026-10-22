@@ -75,9 +75,9 @@ def decode(device, words):
     for number in sorted({fld.word for fld in fields}):
         word = words[number - 1] if number <= len(words) else None
         if word is None:
-            lines.append(f"CONFIG{number}: not present")
+            lines.append(f"{device.config_name(number)}: not present")
             continue
-        lines.append(f"CONFIG{number} = 0x{word:0{digits}X}")
+        lines.append(f"{device.config_name(number)} = 0x{word:0{digits}X}")
         for fld in (x for x in fields if x.word == number):
             value = fld.extract(word)
             width = fld.hi - fld.lo + 1
@@ -86,5 +86,5 @@ def decode(device, words):
             lines.append(f"  {fld.name:<10s} [{bits:>4s}] = {value:0{width}b}  {meaning}")
             warning = fld.lookup(fld.warns, value)
             if warning:
-                warnings.append(f"CONFIG{number} {fld.name}: {warning}")
+                warnings.append(f"{device.config_name(number)} {fld.name}: {warning}")
     return lines, warnings

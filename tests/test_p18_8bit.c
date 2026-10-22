@@ -359,6 +359,27 @@ static void test_eeprom_config_and_userid(void)
     CHECK(sim_bad_commands() == 0u);
 }
 
+/* A run of Configuration Bytes that crosses the Q20's address gap (11 to 12) must reload the PC. */
+static void test_config_run_across_the_end(void)
+{
+    uint16_t out[4] = {0xA1u, 0xB2u, 0xC3u, 0xD4u};
+    uint16_t back[4] = {0};
+    uint32_t first = dev->config_count - 4u;
+
+    fresh();
+    CHECK(pic_enter(dev) == PIC_OK);
+    CHECK(pic_write(dev, PIC_REGION_CONFIG, first, out, 4u) == PIC_OK);
+    for (uint32_t i = 0; i < 4u; i++) {
+        CHECK(sim_config_byte(first + i) == out[i]);
+    }
+    CHECK(pic_read(dev, PIC_REGION_CONFIG, first, back, 4u) == PIC_OK);
+    CHECK(memcmp(out, back, sizeof out) == 0);
+    CHECK(pic_verify(dev, PIC_REGION_CONFIG, first, out, 4u, NULL) == PIC_OK);
+    pic_exit(dev);
+    CHECK(sim_violations() == 0u);
+    CHECK(sim_bad_commands() == 0u);
+}
+
 static void test_bad_arguments_send_nothing(void)
 {
     uint16_t many[33] = {0};
@@ -424,6 +445,7 @@ int main(void)
         test_programming_only_clears_bits();
         test_page_erase_only_affects_one_page();
         test_eeprom_config_and_userid();
+        test_config_run_across_the_end();
         test_bad_arguments_send_nothing();
         test_exit_releases_target();
     }

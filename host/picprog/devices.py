@@ -44,12 +44,19 @@ class Device:
         self.sizes = {"flash": row["flash_words"], "userid": row["userid_words"],
                       "config": row["config_count"], "eeprom": row["eeprom_bytes"]}
         self.layout = LAYOUTS[self.protocol]
+        if self.protocol == "p18_8bit" and row["config_count"] > P18Q20Layout.split_at:
+            self.layout = P18Q20Layout()  # 13 Configuration Bytes in a split address map
 
     def size(self, region):
         return self.sizes[region]
 
     def cell_mask(self, region):
         return self.layout.cell_mask(region)
+
+    def config_name(self, position):
+        """The register name of Configuration cell `position` (1-based)."""
+        namer = getattr(self.layout, "config_name", None)
+        return namer(position) if namer else f"CONFIG{position}"
 
     def blank(self, region):
         """The value an erased cell reads back as (all bits the cell stores set)."""
@@ -103,6 +110,27 @@ class P18Layout:
             address = self.bases[region] + 2 * offset
             return address, address + 1
         return self.bases[region] + offset, None
+
+
+class P18Q20Layout(P18Layout):
+    """p18_8bit parts with 13 Configuration Bytes: the PIC18-Q20 (DS40002327D 2.4, 6.14).
+
+    The first 11 bytes are at 30 0000h-30 000Ah; the last two are CONFIG14 at 30 0018h and
+    CONFIG9 at 30 0019h, as in src/proto/p18_8bit.c. Cell n of the config region is the n-th
+    byte in that order, so config_name() gives the register name of each position.
+    """
+    split_at = 11
+    high_base = 0x300018
+    names = ("CONFIG1", "CONFIG2", "CONFIG3", "CONFIG4", "CONFIG5", "CONFIG6", "CONFIG7",
+             "CONFIG8", "CONFIG10", "CONFIG11", "CONFIG12", "CONFIG14", "CONFIG9")
+
+    def cell_hex_bytes(self, region, offset):
+        if region == "config" and offset >= self.split_at:
+            return self.high_base + offset - self.split_at, None
+        return super().cell_hex_bytes(region, offset)
+
+    def config_name(self, position):
+        return self.names[position - 1]
 
 
 class P18Q10Layout:

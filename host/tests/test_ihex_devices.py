@@ -38,6 +38,31 @@ def test_p18_layout_is_byte_addressed():
     assert dev.layout.cell_hex_bytes("eeprom", 1) == (0x380001, None)
 
 
+def test_p18_q20_config_bytes_are_split_in_the_address_map():
+    dev = devices.find("PIC18F16Q20")
+    # DS40002327D 2.4 and 6.14: CONFIG1-8, CONFIG10-12 at 300000h-30000Ah, then CONFIG14 at
+    # 300018h and CONFIG9 at 300019h.
+    assert dev.size("config") == 13
+    assert dev.layout.cell_hex_bytes("config", 10) == (0x30000A, None)
+    assert dev.layout.cell_hex_bytes("config", 11) == (0x300018, None)
+    assert dev.layout.cell_hex_bytes("config", 12) == (0x300019, None)
+    assert [dev.config_name(n) for n in (8, 9, 12, 13)] == ["CONFIG8", "CONFIG10", "CONFIG14", "CONFIG9"]
+    cells, unused = devices.image_to_cells(dev, {0x300019: 0x7F, 0x30000B: 0x00})
+    assert cells["config"] == {12: 0x7F} and unused == [0x30000B]
+    assert devices.find("PIC18F16Q41").config_name(9) == "CONFIG9"
+
+
+def test_p18_q20_config_decode():
+    from picprog import configbits
+    dev = devices.find("PIC18F04Q20")
+    words = [0xFF] * 13
+    words[11] = 0xFE  # CONFIG14: SAFLOCK cleared
+    lines, warnings = configbits.decode(dev, words)
+    assert any(line.startswith("CONFIG14 = 0xFE") for line in lines)
+    assert any(line.startswith("CONFIG9 = 0xFF") for line in lines)
+    assert [w for w in warnings if "SAFLOCK" in w] and warnings[0].startswith("CONFIG14 SAFLOCK")
+
+
 def test_p18_q10_layout_follows_the_programming_spec():
     dev = devices.find("PIC18F27Q10")
     # DS40001874H Figure 2-1 and 3.4: Configuration Words from 300000h, two addresses each

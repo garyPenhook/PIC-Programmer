@@ -8,6 +8,7 @@
 # PIC18F2X/4XQ10: DS40001874H Table B-4, B-1 to B-11 (word n = CONFIGnL in bits 7:0, CONFIGnH in bits 15:8).
 # PIC18-Q41: DS40002143F 6.1-6.9 (CONFIG1-9; the tenth byte, 30 0009h, is reserved and not decoded).
 # PIC18-Q43: DS40002079E 6.1-6.10 (CONFIG1-8 and CONFIG10 = CP; the ninth byte, 30 0008h, is reserved and not decoded).
+# PIC18-Q20: DS40002327D 6.1-6.13. The 13 Configuration Bytes are numbered by position in the address map (30 0000h-30 000Ah, 30 0018h, 30 0019h): positions 9 to 13 are CONFIG10, CONFIG11, CONFIG12, CONFIG14 and CONFIG9 (host/picprog/devices.py).
 # The spec's WDTCWS table lists value 111 on the 110 row; 110 is read as window 100% open, as for 111.
 devices,word,hi,lo,name,description,values,warn
 PIC16F132*,1,13,13,FCMEN,Fail-Safe Clock Monitor,1=enabled|0=disabled,
@@ -242,3 +243,40 @@ PIC18F??Q43,8,2,2,WRTD,Data EEPROM write protection,1=not protected|0=protected;
 PIC18F??Q43,8,1,1,WRTC,Configuration register write protection,1=not protected|0=protected; cleared only by bulk erase,
 PIC18F??Q43,8,0,0,WRTB,Boot block write protection (when BBEN = 0),1=not protected|0=protected; cleared only by bulk erase,
 PIC18F??Q43,10,0,0,CP,Program flash and data EEPROM code protection,1=off|0=on,0=code protection on: it can only be removed by a bulk erase
+PIC18F??Q20,1,6,4,RSTOSC,Power-up oscillator (COSC),"111=EXTOSC per FEXTOSC|110=HFINTOSC 4 MHz, CDIV 4:1|101=LFINTOSC|100=SOSC|011=reserved|010=EXTOSC with 4x PLL|001=reserved|000=HFINTOSC 64 MHz, CDIV 1:1",
+PIC18F??Q20,1,2,0,FEXTOSC,External oscillator mode,111=ECH above 8 MHz|110=ECM 500 kHz to 8 MHz|101=ECL below 500 kHz|100=oscillator not enabled|011=HS crystal up to 32 MHz|010=HS crystal up to 24 MHz|001=HS crystal up to 16 MHz|000=HS crystal up to 8 MHz,
+PIC18F??Q20,2,7,7,FCMENS,"Fail-Safe Clock Monitor, secondary crystal",1=enabled|0=disabled,
+PIC18F??Q20,2,6,6,FCMENP,"Fail-Safe Clock Monitor, primary crystal",1=enabled|0=disabled,
+PIC18F??Q20,2,5,5,FCMEN,Fail-Safe Clock Monitor,1=enabled|0=disabled,
+PIC18F??Q20,2,3,3,CSWEN,Clock switch,1=NOSC/NDIV writable|0=NOSC/NDIV locked,
+PIC18F??Q20,2,2,2,BBEN,Boot block,1=disabled|0=enabled,
+PIC18F??Q20,2,1,1,PR1WAY,PRLOCKED one-way set,1=PRLOCKED can be cleared and set once|0=PRLOCKED can be set and cleared repeatedly,
+PIC18F??Q20,2,0,0,CLKOUTEN,"Clock out (ignored with HS, XT, LP)",1=CLKOUT disabled (I/O on OSC2)|0=FOSC/4 on OSC2,
+PIC18F??Q20,3,7,6,BOREN,Brown-out Reset enable,"11=BOR enabled (SBOREN ignored)|10=BOR on while running, off in Sleep|01=BOR per SBOREN|00=BOR disabled",
+PIC18F??Q20,3,5,5,LPBOREN,Low-power BOR,1=disabled|0=enabled,
+PIC18F??Q20,3,4,4,IVT1WAY,IVTLOCK one-way set,1=IVTLOCK can be cleared and set once|0=IVTLOCK can be set and cleared repeatedly,
+PIC18F??Q20,3,3,3,MVECEN,Multivector interrupts,1=enabled (vector table)|0=legacy interrupt behaviour,
+PIC18F??Q20,3,2,1,PWRTS,Power-up Timer,11=PWRT disabled|10=PWRT 64 ms|01=PWRT 16 ms|00=PWRT 1 ms,
+PIC18F??Q20,3,0,0,MCLRE,MCLR pin (applies only when LVP = 0; with LVP = 1 the pin is always MCLR),1=MCLR|0=port-defined function,
+PIC18F??Q20,4,7,7,XINST,Extended instruction set,1=disabled (legacy mode)|0=enabled,
+PIC18F??Q20,4,6,6,DEBUG,Background debugger (tools manage this; keep 1),1=disabled|0=enabled,
+PIC18F??Q20,4,5,5,LVP,Low-voltage programming,1=enabled (MCLR is always MCLR)|0=off: high voltage on MCLR needed to program,0=LVP cleared: only high voltage on MCLR can program the part afterwards (this tool has no high-voltage entry yet)
+PIC18F??Q20,4,4,4,STVREN,Stack overflow/underflow reset,1=reset enabled|0=reset disabled,
+PIC18F??Q20,4,3,3,PPS1WAY,PPSLOCKED one-way set,1=PPSLOCKED can be set once|0=PPSLOCKED can be set and cleared,
+PIC18F??Q20,4,1,0,BORV,Brown-out voltage,11=VBOR 1.90 V|10=VBOR 2.45 V|01=VBOR 2.7 V|00=VBOR 2.85 V,
+PIC18F??Q20,5,6,5,WDTE,WDT mode,"11=enabled always|10=enabled while awake, suspended in Sleep|01=enabled by SEN in WDTCON0|00=disabled",
+PIC18F??Q20,5,4,0,WDTCPS,WDT period,"11111=1:65536 (2 s), software controls WDTPS|10011-11110=1:32 (1 ms)|10010=1:8388608 (256 s)|10001=1:4194304 (128 s)|10000=1:2097152 (64 s)|01111=1:1048576 (32 s)|01110=1:524288 (16 s)|01101=1:262144 (8 s)|01100=1:131072 (4 s)|01011=1:65536 (2 s)|01010=1:32768 (1 s)|01001=1:16384 (512 ms)|01000=1:8192 (256 ms)|00111=1:4096 (128 ms)|00110=1:2048 (64 ms)|00101=1:1024 (32 ms)|00100=1:512 (16 ms)|00011=1:256 (8 ms)|00010=1:128 (4 ms)|00001=1:64 (2 ms)|00000=1:32 (1 ms)",
+PIC18F??Q20,6,5,3,WDTCCS,WDT clock (no effect when WDTE = 00),111=software control|011-110=reserved|010=SOSC|001=31.25 kHz MFINTOSC|000=31.0 kHz LFINTOSC,
+PIC18F??Q20,6,2,0,WDTCWS,WDT window,"111=window 100% open, software controls WINDOW|110=window 100% open|101=delay 25%, window 75%|100=delay 37.5%, window 62.5%|011=delay 50%, window 50%, keyed access required|010=delay 62.5%, window 37.5%|001=delay 75%, window 25%|000=delay 87.5%, window 12.5%",
+PIC18F??Q20,7,1,1,VDDIO3MD,VDDIO3 operating range,1=standard 1.62 V to 5.5 V|0=low voltage 0.95 V to 1.62 V,
+PIC18F??Q20,7,0,0,VDDIO2MD,VDDIO2 operating range,1=standard 1.62 V to 5.5 V|0=low voltage 0.95 V to 1.62 V,
+PIC18F??Q20,8,7,0,BBSIZE,Boot block size (changeable only while BBEN = 1),"xxxxxxxx=with BBEN = 0 the boot block ends at 00 xxFFh, xx being this value",
+PIC18F??Q20,9,7,7,WRTAPP,Application block write protection,1=not protected|0=protected; cleared only by bulk erase,
+PIC18F??Q20,9,3,3,WRTSAF,SAF write protection (when SAFSZ is not 0xFF),1=not protected|0=protected; cleared only by bulk erase,
+PIC18F??Q20,9,2,2,WRTD,Data EEPROM write protection,1=not protected|0=protected; cleared only by bulk erase,
+PIC18F??Q20,9,1,1,WRTC,Configuration register write protection,1=not protected|0=protected; cleared only by bulk erase,
+PIC18F??Q20,9,0,0,WRTB,Boot block write protection (when BBEN = 0),1=not protected|0=protected; cleared only by bulk erase,
+PIC18F??Q20,10,0,0,CP,Program flash code protection,1=off|0=on,0=code protection on: it can only be removed by a bulk erase
+PIC18F??Q20,11,0,0,CPD,Data EEPROM code protection,1=off|0=on,0=code protection on: it can only be removed by a bulk erase
+PIC18F??Q20,12,0,0,SAFLOCK,Storage Area Flash lock,"1=SAF lock disabled|0=SAF locked: SAFSZ bits can only be cleared, never erased","0=SAFLOCK cleared: one-way, it cannot be set again, not even by a bulk erase"
+PIC18F??Q20,13,7,0,SAFSZ,Storage Area Flash size (DS40002327D Table 6-3),11111111=SAF disabled|11111110=last 128 words of flash|1111110x=last 256 words|111110xx=last 384 words|11110xxx=last 512 words|1110xxxx=last 640 words|110xxxxx=last 768 words|10xxxxxx=last 896 words|0xxxxxxx=last 1024 words,

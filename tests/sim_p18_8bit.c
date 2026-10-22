@@ -13,7 +13,8 @@
 #define ERASE_WORDS      128u
 #define ERASE_PAGE_BYTES (2u * ERASE_WORDS)
 #define USERID_WORDS     32u
-#define CONFIG_BYTES     10u
+#define CONFIG_SPAN      0x1Au /* Q20: 30 0000h-30 0019h */
+#define CONFIG_SPLIT_AT  11u   /* Q20: CONFIG14 and CONFIG9 sit at 30 0018h and 30 0019h */
 #define MAX_EEPROM_BYTES 1024u
 #define REVISION_ID      0xA041u /* revision B1, data sheet 8.7.2 tip */
 
@@ -55,7 +56,8 @@ static struct {
     uint32_t eeprom_bytes;
     uint16_t flash[MAX_FLASH_WORDS];
     uint16_t userid[USERID_WORDS];
-    uint8_t config[CONFIG_BYTES];
+    uint32_t config_count; /* Q41/Q43: 10 bytes in a row; Q20: 13, with a gap (DS40002327D 6.14) */
+    uint8_t config[CONFIG_SPAN];
     uint8_t eeprom[MAX_EEPROM_BYTES];
 } s;
 
@@ -69,6 +71,7 @@ void sim_reset(void)
     memset(&s, 0, sizeof s);
     s.mclr = 1;
     s.eeprom_bytes = 512u; /* Q41: EESIZ, Table 9-3 */
+    s.config_count = 10u;
     switch (g_device_id) { /* URSIZ, Table 9-3 (Q41); Table 2-1 of DS40002079E (Q43) */
     case 0x7540u:
     case 0x7520u:
@@ -96,6 +99,24 @@ void sim_reset(void)
         s.user_pages = 512u;
         s.eeprom_bytes = 1024u;
         break; /* PIC18F27/47/57Q43 */
+    case 0x7AE0u:
+    case 0x7AC0u:
+        s.user_pages = 64u;
+        s.eeprom_bytes = 256u;
+        s.config_count = 13u;
+        break; /* PIC18F04/14Q20, DS40002327D Table 2-1 */
+    case 0x7AA0u:
+    case 0x7A80u:
+        s.user_pages = 128u;
+        s.eeprom_bytes = 256u;
+        s.config_count = 13u;
+        break; /* PIC18F05/15Q20 */
+    case 0x7A60u:
+    case 0x7A40u:
+        s.user_pages = 256u;
+        s.eeprom_bytes = 256u;
+        s.config_count = 13u;
+        break; /* PIC18F06/16Q20 */
     default:
         s.user_pages = 256u;
         break; /* PIC18F06/16Q41 */
@@ -152,9 +173,30 @@ void sim_set_eeprom_byte(uint32_t i, uint8_t v)
 {
     s.eeprom[i] = v;
 }
+/* Address offset from 30 0000h of Configuration Byte i, as the part's address map has it. */
+static uint32_t config_offset(uint32_t i)
+{
+    return s.config_count > CONFIG_SPLIT_AT && i >= CONFIG_SPLIT_AT ? 0x18u + (i - CONFIG_SPLIT_AT)
+                                                                  : i;
+}
+
+/* The Configuration Byte at address pc, or NULL if the part has none there. */
+static uint8_t *config_at(uint32_t pc)
+{
+    if (pc < 0x300000u || pc >= 0x300000u + CONFIG_SPAN) {
+        return NULL;
+    }
+    for (uint32_t i = 0; i < s.config_count; i++) {
+        if (config_offset(i) == pc - 0x300000u) {
+            return &s.config[pc - 0x300000u];
+        }
+    }
+    return NULL;
+}
+
 uint8_t sim_config_byte(uint32_t i)
 {
-    return i < CONFIG_BYTES ? s.config[i] : 0u;
+    return i < s.config_count ? s.config[config_offset(i)] : 0u;
 }
 
 /* The device must not see clocks before this much virtual time has passed. */
@@ -174,9 +216,9 @@ static uint32_t mem_read(uint32_t pc, uint32_t *step)
         return s.flash[pc / 2u];
     if (pc >= 0x200000u && pc < 0x200000u + 2u * USERID_WORDS)
         return s.userid[(pc - 0x200000u) / 2u];
-    if (pc >= 0x300000u && pc < 0x300000u + CONFIG_BYTES) {
+    if (config_at(pc) != NULL) {
         *step = 1u;
-        return s.config[pc - 0x300000u];
+        return *config_at(pc);
     }
     if (pc >= 0x380000u && pc < 0x380000u + s.eeprom_bytes) {
         *step = 1u;
@@ -217,8 +259,8 @@ static void mem_program(uint32_t pc, uint32_t value, uint32_t *step, uint32_t *w
     }
     *step = 1u;
     *wait = W_NVM;
-    if (pc >= 0x300000u && pc < 0x300000u + CONFIG_BYTES) {
-        s.config[pc - 0x300000u] &= (uint8_t)value;
+    if (config_at(pc) != NULL) {
+        *config_at(pc) &= (uint8_t)value;
         return;
     }
     if (pc >= 0x380000u && pc < 0x380000u + s.eeprom_bytes) {

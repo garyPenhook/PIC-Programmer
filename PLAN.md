@@ -44,7 +44,8 @@ in its address map), and give it a simulator, a test program, and a line in
 | `p16_8bit` | **PIC16F175XX** (PIC16F17524/25/26/44/45/46/54/55/56/74/75/76: 12 parts, 5 Configuration Words, 128-byte EEPROM on the x4/x5, 256 on the x6) | DS40002540B and data sheet DS40002614A, downloaded to `docs/f17576/` | **Implemented**, simulator only. Same command set; its NVM time limits equal the F132XX's, so the shared waits already cover them |
 | `p18_8bit` | PIC18-Q41 (all 6 parts in the table) | Q41 data sheet DS40002214; Q24/Q41/Q43 programming specs via the Microchip MCP | Implemented |
 | `p18_8bit` | **PIC18-Q43** (PIC18F25/26/27/45/46/47/55/56/57Q43: 9 parts, 1024-byte EEPROM, Configuration Byte 9 reserved and CP in byte 10) | DS40002079E, data sheet DS40002147, downloaded to `docs/q43/` | **Implemented**, simulator only. Same timing limits as the Q41 |
-| `p18_8bit` | PIC18-Q20, Q24 | Programming specs via the Microchip MCP | Protocol present; **rows needed**. Q24 has 13 configuration bytes whose addresses "do not increment sequentially" (Q24 spec 2.4), so the config region needs an address list, not just a count, before Q24 can be added |
+| `p18_8bit` | **PIC18-Q20** (PIC18F04/05/06/14/15/16Q20: 6 parts, 256-byte EEPROM, 13 Configuration Bytes) | DS40002327D, data sheet DS40002387, downloaded to `docs/q20/` | **Implemented**, simulator only. Same command set and timing limits as the Q41. The Configuration Bytes sit at 30 0000h-30 000Ah, 30 0018h (CONFIG14) and 30 0019h (CONFIG9); `p18_8bit.c` and the host layout treat any `config_count` above 11 as this split map, and read or write a run that crosses the gap with a second Load PC |
+| `p18_8bit` | PIC18-Q24 | Programming spec via the Microchip MCP | Protocol present; **rows needed**. Its configuration bytes also "do not increment sequentially" (Q24 spec 2.4); the address list must be checked against the Q24 register summary, since the split map above is Q20's |
 | `p18_q10` | PIC18F24/25/26/27Q10, PIC18F45/46/47Q10 (all 7) | DS40001874H (`docs/q10/`), data sheets DS40001945, DS40001996, DS40002043 | Implemented and tested against a simulator only; **not yet run on silicon** |
 | ? | Baseline PIC10/12/16F5x, older mid-range PIC16, older PIC18F (452, 2620, 4550, 8722), J-series (45J10), K-series (K22, K42, ...) | Not found | **Need the specs** |
 
@@ -113,7 +114,7 @@ PIC18-Q:
    PIC18-Q figures are images the search tool did not return as text.
 7. 8-bit items (EEPROM, config bytes) are assumed right-aligned.
 8. Bulk Erase is sent without loading a PC first.
-9. Only the Q41 and Q43 parts are in the device table, so the probe does not recognise another
+9. Only the Q20, Q41 and Q43 parts are in the device table, so the probe does not recognise another
    Q-series part.
 
 Both:
@@ -150,8 +151,7 @@ Both:
    `data/pic_config_bits.csv` from DS40002266B, DS40002500B, DS40002646A, DS40002540B, DS40001874H and DS40002143F Appendix B; `write` warns before setting
    ICSPDIS, LVP = 0 or code protection; the Q41's reserved tenth byte is not decoded; see
    "Program extraction"); read the DIA (needs a read-only region in `pic.h` first).
-6. **M6:** more rows for the existing protocols (PIC16F13145, 13276 and 17576 families done; PIC18-Q20,
-   Q43; Q24 after the config address list), then new protocols for PIC10, PIC12, older
+6. **M6:** more rows for the existing protocols (PIC16F13145, 13276 and 17576 families, PIC18-Q20 and Q43 done; Q24 next), then new protocols for PIC10, PIC12, older
    PIC16 and older PIC18, once their programming specs are in the project.
 7. **M7:** high-voltage entry (MCLR 7.9 to 9.0 V) to recover parts with LVP = 0.
 8. **M8:** seed a bootloader over ICSP (see "Bootloaders"). Needs M3 (real silicon) and
