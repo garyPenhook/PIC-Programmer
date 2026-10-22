@@ -63,6 +63,31 @@ def test_p18_q20_config_decode():
     assert [w for w in warnings if "SAFLOCK" in w] and warnings[0].startswith("CONFIG14 SAFLOCK")
 
 
+def test_p18_q24_config_bytes_follow_the_register_summary():
+    dev = devices.find("PIC18F26Q24")
+    # DS40002503 8.6: CONFIG1-7 at 300000h-300006h, CONFIG9-11 at 300008h-30000Ah, CONFIG13 at
+    # 300018h, CONFIG8 at 300019h, CONFIG12 at 30001Ch.
+    assert dev.size("config") == 13 and dev.size("eeprom") == 512 and dev.size("flash") == 32768
+    addresses = [dev.layout.cell_hex_bytes("config", n)[0] for n in range(13)]
+    assert addresses == [0x300000 + a for a in (0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 0x18, 0x19, 0x1C)]
+    assert [dev.config_name(n) for n in range(1, 14)] == [
+        "CONFIG1", "CONFIG2", "CONFIG3", "CONFIG4", "CONFIG5", "CONFIG6", "CONFIG7", "CONFIG9",
+        "CONFIG10", "CONFIG11", "CONFIG13", "CONFIG8", "CONFIG12"]
+    cells, unused = devices.image_to_cells(dev, {0x30001C: 0x7E, 0x300007: 0x00})
+    assert cells["config"] == {12: 0x7E} and unused == [0x300007]
+
+
+def test_p18_q24_config_decode():
+    from picprog import configbits
+    dev = devices.find("PIC18F45Q24")
+    words = [0xFF] * 13
+    words[12] = 0xFE  # CONFIG12: ICSPDIS cleared
+    lines, warnings = configbits.decode(dev, words)
+    assert any(line.startswith("CONFIG12 = 0xFE") for line in lines)
+    assert any(line.startswith("CONFIG8 = 0xFF") for line in lines)
+    assert [w for w in warnings if "ICSPDIS" in w]
+
+
 def test_p18_q10_layout_follows_the_programming_spec():
     dev = devices.find("PIC18F27Q10")
     # DS40001874H Figure 2-1 and 3.4: Configuration Words from 300000h, two addresses each

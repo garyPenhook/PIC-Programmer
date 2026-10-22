@@ -13,8 +13,7 @@
 #define ERASE_WORDS      128u
 #define ERASE_PAGE_BYTES (2u * ERASE_WORDS)
 #define USERID_WORDS     32u
-#define CONFIG_SPAN      0x1Au /* Q20: 30 0000h-30 0019h */
-#define CONFIG_SPLIT_AT  11u   /* Q20: CONFIG14 and CONFIG9 sit at 30 0018h and 30 0019h */
+#define CONFIG_SPAN      0x1Du /* Q24: 30 0000h-30 001Ch */
 #define MAX_EEPROM_BYTES 1024u
 #define REVISION_ID      0xA041u /* revision B1, data sheet 8.7.2 tip */
 
@@ -56,7 +55,8 @@ static struct {
     uint32_t eeprom_bytes;
     uint16_t flash[MAX_FLASH_WORDS];
     uint16_t userid[USERID_WORDS];
-    uint32_t config_count; /* Q41/Q43: 10 bytes in a row; Q20: 13, with a gap (DS40002327D 6.14) */
+    uint32_t config_count; /* Q41/Q43: 10 bytes in a row; Q20 and Q24: 13, with gaps */
+    int config_q24;        /* Q24 address map (DS40002503 8.6) instead of Q20's (DS40002327D 6.14) */
     uint8_t config[CONFIG_SPAN];
     uint8_t eeprom[MAX_EEPROM_BYTES];
 } s;
@@ -117,6 +117,25 @@ void sim_reset(void)
         s.eeprom_bytes = 256u;
         s.config_count = 13u;
         break; /* PIC18F06/16Q20 */
+    case 0x78A0u:
+        s.user_pages = 64u;
+        s.config_count = 13u;
+        s.config_q24 = 1;
+        break; /* PIC18F24Q24, DS40002414C Table 2-1 */
+    case 0x78C0u:
+    case 0x7940u:
+    case 0x7960u:
+        s.user_pages = 128u;
+        s.config_count = 13u;
+        s.config_q24 = 1;
+        break; /* PIC18F25/45/55Q24 */
+    case 0x78E0u:
+    case 0x7900u:
+    case 0x7920u:
+        s.user_pages = 256u;
+        s.config_count = 13u;
+        s.config_q24 = 1;
+        break; /* PIC18F26/46/56Q24 */
     default:
         s.user_pages = 256u;
         break; /* PIC18F06/16Q41 */
@@ -176,8 +195,13 @@ void sim_set_eeprom_byte(uint32_t i, uint8_t v)
 /* Address offset from 30 0000h of Configuration Byte i, as the part's address map has it. */
 static uint32_t config_offset(uint32_t i)
 {
-    return s.config_count > CONFIG_SPLIT_AT && i >= CONFIG_SPLIT_AT ? 0x18u + (i - CONFIG_SPLIT_AT)
-                                                                  : i;
+    static const uint8_t q24[13] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+                                    0x08, 0x09, 0x0A, 0x18, 0x19, 0x1C};
+
+    if (s.config_q24) {
+        return q24[i];
+    }
+    return s.config_count > 11u && i >= 11u ? 0x18u + (i - 11u) : i;
 }
 
 /* The Configuration Byte at address pc, or NULL if the part has none there. */

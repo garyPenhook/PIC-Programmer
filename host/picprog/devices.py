@@ -44,8 +44,8 @@ class Device:
         self.sizes = {"flash": row["flash_words"], "userid": row["userid_words"],
                       "config": row["config_count"], "eeprom": row["eeprom_bytes"]}
         self.layout = LAYOUTS[self.protocol]
-        if self.protocol == "p18_8bit" and row["config_count"] > P18Q20Layout.split_at:
-            self.layout = P18Q20Layout()  # 13 Configuration Bytes in a split address map
+        if row["config_map"]:
+            self.layout = P18SplitConfigLayout(row["config_map"])
 
     def size(self, region):
         return self.sizes[region]
@@ -112,25 +112,35 @@ class P18Layout:
         return self.bases[region] + offset, None
 
 
-class P18Q20Layout(P18Layout):
-    """p18_8bit parts with 13 Configuration Bytes: the PIC18-Q20 (DS40002327D 2.4, 6.14).
+class P18SplitConfigLayout(P18Layout):
+    """p18_8bit parts whose Configuration Bytes do not increment sequentially.
 
-    The first 11 bytes are at 30 0000h-30 000Ah; the last two are CONFIG14 at 30 0018h and
-    CONFIG9 at 30 0019h, as in src/proto/p18_8bit.c. Cell n of the config region is the n-th
-    byte in that order, so config_name() gives the register name of each position.
+    config_map 1 is the PIC18-Q20 (DS40002327D 2.4, 6.14): 11 bytes at 30 0000h-30 000Ah, then
+    CONFIG14 at 30 0018h and CONFIG9 at 30 0019h. config_map 2 is the PIC18-Q24 (DS40002503
+    8.6): 30 0000h-30 0006h, CONFIG9-11 at 30 0008h-30 000Ah, CONFIG13 and CONFIG8 at 30 0018h
+    and 30 0019h, CONFIG12 at 30 001Ch. Same tables as config_map in src/proto/p18_8bit.c.
+    Cell n of the config region is the n-th byte in address order, so config_name() gives the
+    register name of each position.
     """
-    split_at = 11
-    high_base = 0x300018
-    names = ("CONFIG1", "CONFIG2", "CONFIG3", "CONFIG4", "CONFIG5", "CONFIG6", "CONFIG7",
-             "CONFIG8", "CONFIG10", "CONFIG11", "CONFIG12", "CONFIG14", "CONFIG9")
+    # config_map -> ((register name, address from 30 0000h) for each cell)
+    maps = {
+        1: tuple((f"CONFIG{n}", a) for n, a in
+                 zip((1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 14, 9), tuple(range(11)) + (0x18, 0x19))),
+        2: tuple((f"CONFIG{n}", a) for n, a in
+                 zip((1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 13, 8, 12),
+                     tuple(range(7)) + (8, 9, 10, 0x18, 0x19, 0x1C))),
+    }
+
+    def __init__(self, config_map):
+        self.cells = self.maps[config_map]
 
     def cell_hex_bytes(self, region, offset):
-        if region == "config" and offset >= self.split_at:
-            return self.high_base + offset - self.split_at, None
+        if region == "config":
+            return self.bases["config"] + self.cells[offset][1], None
         return super().cell_hex_bytes(region, offset)
 
     def config_name(self, position):
-        return self.names[position - 1]
+        return self.cells[position - 1][0]
 
 
 class P18Q10Layout:

@@ -29,8 +29,11 @@ PROTOCOLS = {
                 "config_count": 6, "eeprom_bytes": 0x400},
 }
 COLUMNS = ("name", "protocol", "device_id", "flash_words", "erase_words", "latch_words",
-           "userid_words", "config_count", "eeprom_bytes", "source")
+           "userid_words", "config_count", "eeprom_bytes", "config_map", "source")
 U16 = ("erase_words", "latch_words", "userid_words", "config_count", "eeprom_bytes")
+# config_map -> the number of Configuration Bytes that map holds (None = any, one run).
+# Keep in step with the run tables in src/proto/p18_8bit.c and host/picprog/devices.py.
+CONFIG_MAPS = {0: None, 1: 13, 2: 13}
 
 
 def fail(path, line, msg):
@@ -60,7 +63,7 @@ def load(path):
         row = dict(zip(COLUMNS, (x.strip() for x in fields)))
         try:
             row["device_id"] = int(row["device_id"], 16)
-            for key in ("flash_words",) + U16:
+            for key in ("flash_words", "config_map") + U16:
                 row[key] = int(row[key], 10)
         except ValueError as e:
             fail(path, line, str(e))
@@ -81,6 +84,12 @@ def load(path):
         for key in ("flash_words", "userid_words", "config_count", "eeprom_bytes"):
             if row[key] > proto[key]:
                 fail(path, line, f"{key} {row[key]} is more than {row['protocol']} can address ({proto[key]})")
+        if row["config_map"] not in CONFIG_MAPS:
+            fail(path, line, f"unknown config_map {row['config_map']}")
+        if row["config_map"] and row["protocol"] != "p18_8bit":
+            fail(path, line, "only p18_8bit has a Configuration Byte map other than 0")
+        if CONFIG_MAPS[row["config_map"]] not in (None, row["config_count"]):
+            fail(path, line, f"config_map {row['config_map']} holds {CONFIG_MAPS[row['config_map']]} bytes")
         if row["flash_words"] <= 0:
             fail(path, line, "flash_words must be positive")
         if row["erase_words"] == 0 or row["flash_words"] % row["erase_words"]:
@@ -114,7 +123,8 @@ def emit(rows, out):
                     f".device_id = 0x{r['device_id']:04X}u,\n"
                     f"      .flash_words = {r['flash_words']}u, .erase_words = {r['erase_words']}u, "
                     f".latch_words = {r['latch_words']}u, .userid_words = {r['userid_words']}u,\n"
-                    f"      .config_count = {r['config_count']}u, .eeprom_bytes = {r['eeprom_bytes']}u }},\n")
+                    f"      .config_count = {r['config_count']}u, .eeprom_bytes = {r['eeprom_bytes']}u,\n"
+                    f"      .config_map = {r['config_map']}u }},\n")
         f.write("};\n\nconst size_t pic_device_count = sizeof pic_devices / sizeof pic_devices[0];\n")
 
 

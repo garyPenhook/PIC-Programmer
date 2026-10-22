@@ -359,7 +359,7 @@ static void test_eeprom_config_and_userid(void)
     CHECK(sim_bad_commands() == 0u);
 }
 
-/* A run of Configuration Bytes that crosses the Q20's address gap (11 to 12) must reload the PC. */
+/* A run of Configuration Bytes that crosses a gap in the address map (Q20: 10 to 11; Q24: 9 to 10 and 11 to 12) must reload the PC. */
 static void test_config_run_across_the_end(void)
 {
     uint16_t out[4] = {0xA1u, 0xB2u, 0xC3u, 0xD4u};

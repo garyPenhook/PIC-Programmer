@@ -30,11 +30,21 @@
 #define ADDR_FLASH  0x000000u
 #define ADDR_USERID 0x200000u
 #define ADDR_CONFIG 0x300000u
-/* PIC18-Q20 has 13 Configuration Bytes that do not increment sequentially (DS40002327D 2.4,
- * 6.14): the first 11 are at 30 0000h-30 000Ah, then CONFIG14 at 30 0018h and CONFIG9 at
- * 30 0019h. The Q41 and Q43 have 10, contiguous, so any larger count means the split map. */
-#define CONFIG_SPLIT_AT 11u
-#define ADDR_CONFIG_HI  0x300018u
+/* Configuration Bytes do not always increment sequentially. The device table's config_map picks
+ * the layout; each entry is the first cell of a run and the low byte of its address from
+ * 30 0000h. Cell numbers count in address order, so the last run ends at config_count.
+ *   0: one run (Q41 and Q43, 10 bytes)
+ *   1: PIC18-Q20 (DS40002327D 2.4, 6.14): 30 0000h-30 000Ah, 30 0018h, 30 0019h
+ *   2: PIC18-Q24 (DS40002503 8.6): 30 0000h-30 0006h, 30 0008h-30 000Ah, 30 0018h, 30 0019h,
+ *      30 001Ch
+ * host/picprog/devices.py and tests/sim_p18_8bit.c carry the same tables. */
+typedef struct {
+    uint8_t first_cell;
+    uint8_t address;
+} config_run_t;
+
+static const config_run_t config_map_q20[] = {{0u, 0x00u}, {11u, 0x18u}};
+static const config_run_t config_map_q24[] = {{0u, 0x00u}, {7u, 0x08u}, {10u, 0x18u}, {12u, 0x1Cu}};
 #define ADDR_EEPROM 0x380000u
 #define ADDR_DCI    0x3C0000u
 #define ADDR_REVID  0x3FFFFCu
@@ -75,21 +85,41 @@ static int is_word_region(pic_region_t region)
     return region == PIC_REGION_FLASH || region == PIC_REGION_USERID;
 }
 
-static int config_is_split(const pic_device_t *dev)
+/* The run of Configuration Bytes holding cell `offset`: its first address and how many cells
+ * (from `offset`) follow it consecutively. */
+static uint32_t config_run(const pic_device_t *dev, size_t offset, size_t *left)
 {
-    return dev->config_count > CONFIG_SPLIT_AT;
+    const config_run_t *runs = NULL;
+    size_t n = 0u;
+    size_t i = 0u;
+
+    if (dev->config_map == 1u) {
+        runs = config_map_q20;
+        n = sizeof config_map_q20 / sizeof config_map_q20[0];
+    } else if (dev->config_map == 2u) {
+        runs = config_map_q24;
+        n = sizeof config_map_q24 / sizeof config_map_q24[0];
+    }
+    if (n == 0u) {
+        *left = dev->config_count - offset;
+        return ADDR_CONFIG + (uint32_t)offset;
+    }
+    while (i + 1u < n && offset >= runs[i + 1u].first_cell) {
+        i++;
+    }
+    *left = (i + 1u < n ? runs[i + 1u].first_cell : dev->config_count) - offset;
+    return ADDR_CONFIG + runs[i].address + (uint32_t)(offset - runs[i].first_cell);
 }
 
 static uint32_t address_of(const pic_device_t *dev, pic_region_t region, uint32_t offset)
 {
+    size_t left;
+
     switch (region) {
     case PIC_REGION_USERID:
         return ADDR_USERID + 2u * offset;
     case PIC_REGION_CONFIG:
-        if (config_is_split(dev) && offset >= CONFIG_SPLIT_AT) {
-            return ADDR_CONFIG_HI + (offset - CONFIG_SPLIT_AT);
-        }
-        return ADDR_CONFIG + offset;
+        return config_run(dev, offset, &left);
     case PIC_REGION_EEPROM:
         return ADDR_EEPROM + offset;
     default:
@@ -102,9 +132,11 @@ static uint32_t address_of(const pic_device_t *dev, pic_region_t region, uint32_
 static size_t run_length(const pic_device_t *dev, pic_region_t region, size_t offset,
                          size_t count)
 {
-    if (region == PIC_REGION_CONFIG && config_is_split(dev) && offset < CONFIG_SPLIT_AT &&
-        count > CONFIG_SPLIT_AT - offset) {
-        return CONFIG_SPLIT_AT - offset;
+    size_t left;
+
+    if (region == PIC_REGION_CONFIG) {
+        (void)config_run(dev, offset, &left);
+        return count < left ? count : left;
     }
     return count;
 }

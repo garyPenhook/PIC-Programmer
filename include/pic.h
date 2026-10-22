@@ -81,6 +81,7 @@ typedef struct {
     uint16_t userid_words;
     uint16_t config_count; /* Configuration Words (PIC16) or bytes (PIC18) */
     uint16_t eeprom_bytes; /* 0 = no EEPROM */
+    uint8_t config_map;    /* PIC18 Configuration Byte placement; see p18_8bit.c (0 = contiguous) */
     uint32_t flash_words;
 } pic_device_t;
 
