@@ -4,7 +4,7 @@ Goal: the Nucleo-G071RB drives the ICSP pins of a target PIC so it can identify,
 erase, program and verify it.
 
 - **First and test targets: PIC16F17146 and PIC16F17124** (PIC16F171XX family).
-- **Scope: PIC10, PIC12 and all of PIC16 and PIC18.**
+- **Scope: the current PIC16 and PIC18 families that use the 8-bit-command ICSP protocols.** Older families (baseline PIC10/12/16F5x, older mid-range PIC16 such as PIC16F153xx, older PIC18F, J-series, PIC18-K22/K83) are out of scope and get no protocol work.
 
 Rule for this project: every PIC fact must come from a Microchip document (the Microchip
 MCP server, or a PDF on disk). Where no source can be found, the family stays unsupported
@@ -15,7 +15,7 @@ PIC16F17146, whose documents are already in `~/Documents/Microchip/PIC/16F17146/
 
 ## Structure: protocols plus a device table
 
-The target range is PIC10, PIC12 and all of PIC16 and PIC18: hundreds of parts. They fall
+The target range is the current PIC16 and PIC18 families (see Scope): many parts. They fall
 into a few programming protocols (command sets), and within a protocol the parts differ
 only in data: device ID, memory sizes, row size, number of Configuration Words. So:
 
@@ -53,7 +53,7 @@ in its address map), and give it a simulator, a test program, and a line in
 | `p18_8bit` | **PIC18-Q83 and Q84** (PIC18F26/27/46/47/56/57Q83 and Q84: 12 parts, 1024-byte EEPROM, 32 or 64 KW of flash, 35 contiguous Configuration Bytes) | Spec 40002137D (no DS number on the PDF), data sheets DS40002213F (Q84) and DS40002265 (Q83), downloaded to `docs/q84/` and `docs/q83/` | **Implemented**, simulator only. Same command set, DCI layout and timing limits as the Q41 (Table 4-1). The 35 bytes are CONFIG1-11 plus six four-byte CRC-on-boot registers shown raw: the data sheet's register definitions and its summary disagree on their byte order. The spec's Figure 2-1 puts the 32 User ID words at 20 0000h-20 001Fh (only 16 words at two bytes each); the data sheet says 20 0000h-20 003Fh, which is what the table assumes |
 | `p18_q10` | PIC18F24/25/26/27Q10, PIC18F45/46/47Q10 (all 7) | DS40001874H (`docs/q10/`), data sheets DS40001945, DS40001996, DS40002043 | Implemented and tested against a simulator only; **not yet run on silicon** |
 | `p18_k42` | **PIC18(L)F26/27/45/46/47/55/56/57K42** (16 parts, F and LF; 64-word rows, 256 or 1024 bytes of EEPROM, 5 Configuration Words) | Spec 40001886B (no DS number on the PDF), data sheet DS40001919G, downloaded to `docs/k42/` | **Implemented**, simulator only. A protocol of its own: the `p16_8bit` Load Data / Begin Programming commands on PIC18 byte addresses, a DCI (WLSIZ is in bytes), row-latch flash writes, 16-bit Configuration Words, PC-selected Bulk Erase (Table 3-2). Row erase covers flash only; the User ID needs a bulk erase. Timing limits are Table 3-3 (bulk erase 25.2 ms, program 2.8 ms, Config and EEPROM 5.6 ms). BORV differs between F and LF parts. The LF parts must not be powered above 3.6 V (Table 3-3: 1.8 to 3.6 V for LF, 2.3 to 5.5 V for F) |
-| ? | Baseline PIC10/12/16F5x, older mid-range PIC16, older PIC18F (452, 2620, 4550, 8722), J-series (45J10), K-series (K22, K42, ...) | Not found | **Need the specs** |
+| - | Baseline PIC10/12/16F5x, older mid-range PIC16, older PIC18F (452, 2620, 4550, 8722), J-series (45J10), K-series other than K42 | - | **Out of scope** |
 
 Their data sheets are on disk (`~/Projects`, `~/Documents/Microchip/PIC/datasheets/`) but
 a data sheet does not hold the programming algorithm. To add those families, put each
@@ -157,8 +157,7 @@ Both:
    `data/pic_config_bits.csv` from DS40002266B, DS40002500B, DS40002646A, DS40002540B, DS40001874H and DS40002143F Appendix B; `write` warns before setting
    ICSPDIS, LVP = 0 or code protection; the Q41's reserved tenth byte is not decoded; see
    "Program extraction"); read the DIA (needs a read-only region in `pic.h` first).
-6. **M6:** more rows for the existing protocols (PIC16F13145, 13276, 15276, 18176 and 17576 families, PIC18-Q20, Q24, Q40, Q43, Q71, Q83 and Q84 done), then new protocols for PIC10, PIC12, older
-   PIC16 and older PIC18, once their programming specs are in the project.
+6. **M6:** more rows for the existing protocols (PIC16F13145, 13276, 15276, 18176 and 17576 families, PIC18-Q20, Q24, Q40, Q43, Q71, Q83 and Q84 done), plus the new p18_k42 protocol (done). Older families are out of scope.
 7. **M7:** high-voltage entry (MCLR 7.9 to 9.0 V) to recover parts with LVP = 0.
 8. **M8:** seed a bootloader over ICSP (see "Bootloaders"). Needs M3 (real silicon) and
    the Intel HEX parser from M5.

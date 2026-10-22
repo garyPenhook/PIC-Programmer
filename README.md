@@ -47,7 +47,7 @@ The Nucleo acts as an ICSP programmer. **First targets: PIC16F17146 and PIC16F17
 (both in the PIC16F171XX family). The PIC16F13113/14/15, 13123/24/25 and 13143/44/45, the fourteen
 PIC16F13214 to PIC16F13276 parts, the twelve
 PIC16F17524 to PIC16F17576 parts, the sixteen PIC18(L)F26 to PIC18(L)F57K42 parts, the fourteen PIC16F15213 to PIC16F15276 parts, the fourteen PIC16F18114 to PIC16F18176 parts and the
-PIC18F04/05/06/14/15/16Q41, PIC18F04/05/06/14/15/16Q40, PIC18F04/05/06/14/15/16Q20, the seven PIC18F24/25/26/45/46/55/56Q24, the nine PIC18F24/25/26/44/45/46/54/55/56Q71, the twelve PIC18F26/27/46/47/56/57Q83 and Q84 parts and the nine PIC18F25/26/27/45/46/47/55/56/57Q43 parts are also in the device table, and the plan covers PIC10, PIC12 and all of PIC16 and PIC18. `PLAN.md` has the
+PIC18F04/05/06/14/15/16Q41, PIC18F04/05/06/14/15/16Q40, PIC18F04/05/06/14/15/16Q20, the seven PIC18F24/25/26/45/46/55/56Q24, the nine PIC18F24/25/26/44/45/46/54/55/56Q71, the twelve PIC18F26/27/46/47/56/57Q83 and Q84 parts and the nine PIC18F25/26/27/45/46/47/55/56/57Q43 parts are also in the device table, and the plan covers the current PIC16 and PIC18 families (older families are out of scope). `PLAN.md` has the
 scope, sources, assumptions and milestones.
 
 Full wiring, with a schematic, is in [`docs/hookup.md`](docs/hookup.md).
