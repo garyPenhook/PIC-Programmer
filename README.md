@@ -364,6 +364,8 @@ tests/run_tests.sh
 Builds with the PC compiler, not the ARM toolchain. The host tool's tests (pytest) run the
 firmware's command layer compiled for the PC (`tests/host_sim_main.c`) in front of the
 simulated PIC, so they go through the real serial protocol end to end.
+The PC firmware is built once per protocol, each against that protocol's simulator, and a
+program-then-dump round trip runs for every row of `data/pic_devices.csv`.
 
 ### Flash
 
