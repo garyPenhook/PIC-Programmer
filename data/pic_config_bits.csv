@@ -4,7 +4,7 @@
 # devices:  device name glob(s), '|' separated. word: 1-based (CONFIGn). hi/lo: bit range.
 # values:   'bits=text' entries joined by '|'. bits is 0/1/x digits or a range lo-hi (binary).
 # warn:     'bits=message': shown when the field reads that value.
-# PIC16F132XX: DS40002646A 6.1-6.7.  PIC16F131XX: DS40002500B 6.1-6.5.  PIC16F171XX: DS40002266B 6.1-6.5.  PIC16F175XX: DS40002540B 6.1-6.5.
+# PIC16F132XX: DS40002646A 6.1-6.7.  PIC16F131XX: DS40002500B 6.1-6.5.  PIC16F171XX: DS40002266B 6.1-6.5.  PIC16F175XX: DS40002540B 6.1-6.5.  PIC16F152XX: DS40002149B 6.1-6.5 (CONFIG3 is reserved and not decoded).
 # PIC18F2X/4XQ10: DS40001874H Table B-4, B-1 to B-11 (word n = CONFIGnL in bits 7:0, CONFIGnH in bits 15:8).
 # PIC18-Q41 and Q40: DS40002143F and DS40002185B 6.1-6.9 (identical CONFIG1-9; the tenth byte, 30 0009h, is reserved and not decoded).
 # PIC18-Q43: DS40002079E 6.1-6.10 (CONFIG1-8 and CONFIG10 = CP; the ninth byte, 30 0008h, is reserved and not decoded).
@@ -106,6 +106,27 @@ PIC16F131*,4,4,4,SAFEN,Storage area flash,1=disabled|0=enabled,
 PIC16F131*,4,3,3,BBEN,Boot block,1=disabled|0=enabled,
 PIC16F131*,4,2,0,BBSIZE,Boot block size (changeable only while BBEN = 1),111=boot block ends 01FFh (512 words) when BBEN = 0|110=ends 03FFh (1024 words) when BBEN = 0|101=ends 07FFh (2048 words) when BBEN = 0|100=ends 0FFFh (4096 words) when BBEN = 0|011=ends 1FFFh (8192 words) when BBEN = 0|000-010=ends 3FFFh when BBEN = 0 (capped at half the flash),
 PIC16F131*,5,0,0,CP,Program flash code protection,1=off|0=on,0=code protection on: it can only be removed by a bulk erase
+PIC16F152*,1,12,12,VDDAR,VDD analog range calibration,1=2.3-5.5 V|0=1.8-3.6 V,
+PIC16F152*,1,8,8,CLKOUTEN,Clock out,1=CLKOUT disabled (I/O)|0=FOSC/4 on CLKOUT,
+PIC16F152*,1,5,4,RSTOSC,Power-up oscillator (COSC),"11=EXTOSC per FEXTOSC|10=HFINTOSC 1 MHz|01=LFINTOSC|00=HFINTOSC 32 MHz",
+PIC16F152*,1,1,0,FEXTOSC,External oscillator mode,11=ECH (16 MHz and higher)|10=ECL (below 16 MHz)|01=oscillator not enabled|00=reserved,
+PIC16F152*,2,13,13,DEBUG,Background debugger (tools manage this; keep 1),1=disabled|0=enabled,
+PIC16F152*,2,12,12,STVREN,Stack overflow/underflow reset,1=reset enabled|0=reset disabled,
+PIC16F152*,2,11,11,PPS1WAY,PPSLOCKED one-way set,1=PPSLOCKED can be set once|0=PPSLOCKED can be set and cleared,
+PIC16F152*,2,9,9,BORV,Brown-out voltage,1=VBOR 1.9 V|0=VBOR 2.85 V,
+PIC16F152*,2,7,6,BOREN,Brown-out Reset enable,"11=BOR enabled (SBOREN ignored)|10=BOR on while running, off in Sleep (SBOREN ignored)|01=BOR per SBOREN|00=BOR disabled",
+PIC16F152*,2,4,3,WDTE,WDT mode,"11=enabled always|10=enabled while awake, suspended in Sleep|01=enabled by SEN in WDTCON|00=disabled",
+PIC16F152*,2,2,1,PWRTS,Power-up Timer,11=PWRT disabled|10=PWRT 64 ms|01=PWRT 16 ms|00=PWRT 1 ms,
+PIC16F152*,2,0,0,MCLRE,MCLR pin (applies only when LVP = 0; with LVP = 1 the pin is always MCLR),1=MCLR|0=port-defined function,
+PIC16F152*,4,13,13,LVP,Low-voltage programming,1=enabled (MCLR is always MCLR)|0=off: high voltage on MCLR needed to program,0=LVP cleared: only high voltage on MCLR can program the part afterwards (this tool has no high-voltage entry yet)
+PIC16F152*,4,11,11,WRTSAF,SAF write protection (when SAFEN = 0),1=not protected|0=protected; cleared only by bulk erase,
+PIC16F152*,4,9,9,WRTC,Configuration registers write protection,1=not protected|0=protected; cleared only by bulk erase,
+PIC16F152*,4,8,8,WRTB,Boot block write protection (when BBEN = 0),1=not protected|0=protected; cleared only by bulk erase,
+PIC16F152*,4,7,7,WRTAPP,Application block write protection,1=not protected|0=protected; cleared only by bulk erase,
+PIC16F152*,4,4,4,SAFEN,Storage area flash,1=disabled|0=enabled,
+PIC16F152*,4,3,3,BBEN,Boot block,1=disabled|0=enabled,
+PIC16F152*,4,2,0,BBSIZE,Boot block size (changeable only while BBEN = 1),111=boot block ends 01FFh (512 words) when BBEN = 0|110=ends 03FFh (1024 words) when BBEN = 0|101=ends 07FFh (2048 words) when BBEN = 0|100=ends 0FFFh (4096 words) when BBEN = 0|011=ends 1FFFh (8192 words) when BBEN = 0|000-010=ends 3FFFh when BBEN = 0 (capped at half the flash),
+PIC16F152*,5,0,0,CP,Program flash code protection,1=off|0=on,0=code protection on: it can only be removed by a bulk erase
 PIC16F171*,1,13,13,FCMEN,Fail-Safe Clock Monitor,1=enabled|0=disabled,
 PIC16F171*,1,12,12,VDDAR,VDD analog range calibration,1=2.3-5.5 V|0=1.8-3.6 V,
 PIC16F171*,1,11,11,CSWEN,Clock switch,1=NOSC/NDIV writable|0=NOSC/NDIV locked,

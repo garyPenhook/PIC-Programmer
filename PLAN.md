@@ -42,6 +42,7 @@ in its address map), and give it a simulator, a test program, and a line in
 | `p16_8bit` | **PIC16F131XX** (PIC16F13113/14/15, 13123/24/25, 13143/44/45: 9 parts, no EEPROM) | DS40002500B, downloaded to `docs/f13145/` | **Implemented**, simulator only. Its NVM time limits are larger than the F171XX's, so `p16_8bit.c` waits for the larger of the two (timing table in the source) |
 | `p16_8bit` | **PIC16F132XX** (PIC16F13214/15/24/25/26/44/45/46/54/55/56/74/75/76: 14 parts, 7 Configuration Words, 256-byte EEPROM) | DS40002646A, downloaded to `docs/f13276/` | **Implemented**, simulator only. Bulk erase is up to 40 ms, so the shared waits now cover it |
 | `p16_8bit` | **PIC16F175XX** (PIC16F17524/25/26/44/45/46/54/55/56/74/75/76: 12 parts, 5 Configuration Words, 128-byte EEPROM on the x4/x5, 256 on the x6) | DS40002540B and data sheet DS40002614A, downloaded to `docs/f17576/` | **Implemented**, simulator only. Same command set; its NVM time limits equal the F132XX's, so the shared waits already cover them |
+| `p16_8bit` | **PIC16F152XX** (PIC16F15213/14/23/24/25/43/44/45/54/55/56/74/75/76: 14 parts, 5 Configuration Words, no EEPROM, CONFIG3 reserved) | DS40002149B, data sheet DS40002195, downloaded to `docs/f152xx/` | **Implemented**, simulator only. Same command set (Table 3-1) and shorter NVM limits than the F131XX/F132XX (Table 4-1), so the shared waits already cover it |
 | `p18_8bit` | PIC18-Q41 (all 6 parts in the table) | Q41 data sheet DS40002214; Q24/Q41/Q43 programming specs via the Microchip MCP | Implemented |
 | `p18_8bit` | **PIC18-Q43** (PIC18F25/26/27/45/46/47/55/56/57Q43: 9 parts, 1024-byte EEPROM, Configuration Byte 9 reserved and CP in byte 10) | DS40002079E, data sheet DS40002147, downloaded to `docs/q43/` | **Implemented**, simulator only. Same timing limits as the Q41 |
 | `p18_8bit` | **PIC18-Q20** (PIC18F04/05/06/14/15/16Q20: 6 parts, 256-byte EEPROM, 13 Configuration Bytes) | DS40002327D, data sheet DS40002387, downloaded to `docs/q20/` | **Implemented**, simulator only. Same command set and timing limits as the Q41. The Configuration Bytes sit at 30 0000h-30 000Ah, 30 0018h (CONFIG14) and 30 0019h (CONFIG9); `p18_8bit.c` and the host layout treat any `config_count` above 11 as this split map, and read or write a run that crosses the gap with a second Load PC |
@@ -154,7 +155,7 @@ Both:
    `data/pic_config_bits.csv` from DS40002266B, DS40002500B, DS40002646A, DS40002540B, DS40001874H and DS40002143F Appendix B; `write` warns before setting
    ICSPDIS, LVP = 0 or code protection; the Q41's reserved tenth byte is not decoded; see
    "Program extraction"); read the DIA (needs a read-only region in `pic.h` first).
-6. **M6:** more rows for the existing protocols (PIC16F13145, 13276 and 17576 families, PIC18-Q20, Q24, Q40, Q43, Q71, Q83 and Q84 done), then new protocols for PIC10, PIC12, older
+6. **M6:** more rows for the existing protocols (PIC16F13145, 13276, 15276 and 17576 families, PIC18-Q20, Q24, Q40, Q43, Q71, Q83 and Q84 done), then new protocols for PIC10, PIC12, older
    PIC16 and older PIC18, once their programming specs are in the project.
 7. **M7:** high-voltage entry (MCLR 7.9 to 9.0 V) to recover parts with LVP = 0.
 8. **M8:** seed a bootloader over ICSP (see "Bootloaders"). Needs M3 (real silicon) and

@@ -217,7 +217,9 @@ def test_every_config_word_of_every_table_row_is_decoded():
         fields = configbits.fields_for(dev)
         # PIC18-Q has 10 Configuration Bytes with one reserved: the tenth (30 0009h) on
         # the Q41, the ninth (30 0008h) on the Q43.
-        reserved = {10} if "Q41" in dev.name or "Q40" in dev.name else {9} if "Q43" in dev.name else set()
+        # PIC16F152XX: CONFIG3 is reserved (DS40002149B 6.3).
+        reserved = ({10} if "Q41" in dev.name or "Q40" in dev.name else {9} if "Q43" in dev.name
+                    else {3} if dev.name.startswith("PIC16F152") else set())
         expected = set(range(1, dev.size("config") + 1)) - reserved
         assert {f.word for f in fields} == expected, dev.name
         for f in fields:

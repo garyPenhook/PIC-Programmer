@@ -82,6 +82,32 @@ static void geometry(uint32_t *user_rows, uint32_t *eeprom_bytes)
         *user_rows = 256u;
         *eeprom_bytes = 0u;
         break;
+    case 0x30E3u:
+    case 0x30E4u:
+    case 0x30E5u: /* PIC16F152x3: 2 KW, no EEPROM (DS40002149B Tables 2-1, 2-3) */
+        *user_rows = 64u;
+        *eeprom_bytes = 0u;
+        break;
+    case 0x30E6u:
+    case 0x30E7u:
+    case 0x30E8u:
+    case 0x30F0u:
+    case 0x30EEu: /* PIC16F152x4: 4 KW */
+        *user_rows = 128u;
+        *eeprom_bytes = 0u;
+        break;
+    case 0x30E9u:
+    case 0x30EAu:
+    case 0x30EFu:
+    case 0x30EDu: /* PIC16F152x5: 8 KW */
+        *user_rows = 256u;
+        *eeprom_bytes = 0u;
+        break;
+    case 0x30EBu:
+    case 0x30ECu: /* PIC16F152x6: 16 KW */
+        *user_rows = 512u;
+        *eeprom_bytes = 0u;
+        break;
     case 0x30DBu:
     case 0x30DCu:
     case 0x30DDu:
