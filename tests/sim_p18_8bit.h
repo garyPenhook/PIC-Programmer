@@ -34,5 +34,7 @@ uint16_t sim_userid_word(uint32_t index);
 uint8_t sim_eeprom_byte(uint32_t index);
 void sim_set_eeprom_byte(uint32_t index, uint8_t value);
 uint8_t sim_config_byte(uint32_t index);
+/* The model's Device Information Area word (2C 0000h + 2 * index, 32 words); fixed. */
+uint16_t sim_dia_word(uint32_t index);
 
 #endif

@@ -29,6 +29,7 @@
 /* Byte addresses (Q41 data sheet memory map). */
 #define ADDR_FLASH  0x000000u
 #define ADDR_USERID 0x200000u
+#define ADDR_DIA    0x2C0000u /* 2C 0000h to 2C 003Fh, read only: 32 words */
 #define ADDR_CONFIG 0x300000u
 /* Configuration Bytes do not always increment sequentially. The device table's config_map picks
  * the layout; each entry is the first cell of a run and the low byte of its address from
@@ -79,10 +80,11 @@ static void program_item(uint32_t value, int inc, uint32_t wait_us)
     icsp_delay_us(wait_us);
 }
 
-/* Flash and User ID hold 16-bit words at even addresses; config and EEPROM hold bytes. */
+/* Flash, User ID and the DIA hold 16-bit words at even addresses; config and EEPROM hold
+ * bytes. */
 static int is_word_region(pic_region_t region)
 {
-    return region == PIC_REGION_FLASH || region == PIC_REGION_USERID;
+    return region == PIC_REGION_FLASH || region == PIC_REGION_USERID || region == PIC_REGION_DIA;
 }
 
 /* The run of Configuration Bytes holding cell `offset`: its first address and how many cells
@@ -118,6 +120,8 @@ static uint32_t address_of(const pic_device_t *dev, pic_region_t region, uint32_
     switch (region) {
     case PIC_REGION_USERID:
         return ADDR_USERID + 2u * offset;
+    case PIC_REGION_DIA:
+        return ADDR_DIA + 2u * offset;
     case PIC_REGION_CONFIG:
         return config_run(dev, offset, &left);
     case PIC_REGION_EEPROM:
@@ -229,7 +233,7 @@ static pic_status_t p18_write(const pic_device_t *dev, pic_region_t region, uint
     uint32_t wait = is_word_region(region) ? T_PROG_FLASH_US : T_PROG_NVM_US;
 
     /* Only word-at-a-time parts (WLSIZ = 0) are handled. */
-    if (dev->latch_words != 0u) {
+    if (region == PIC_REGION_DIA || dev->latch_words != 0u) { /* the DIA is read only */
         return PIC_ERR_UNSUPPORTED;
     }
     for (size_t done = 0; done < count;) {
@@ -255,7 +259,8 @@ static pic_status_t p18_bulk_erase(const pic_device_t *dev, uint8_t regions)
 
 static pic_status_t p18_row_erase(const pic_device_t *dev, pic_region_t region, uint32_t offset)
 {
-    if (!is_word_region(region)) { /* spec 3.1.3.6: program memory and User ID only */
+    /* spec 3.1.3.6: program memory and User ID only */
+    if (!is_word_region(region) || region == PIC_REGION_DIA) {
         return PIC_ERR_UNSUPPORTED;
     }
     load_pc(address_of(dev, region, offset)); /* the low bits of the address are ignored */
@@ -272,6 +277,7 @@ const pic_proto_t pic_proto_p18_8bit = {
     .read_revision_id = p18_read_revision_id,
     .read_dci = p18_read_dci,
     .cell_mask = mask_of,
+    .dia_words = 32u,
     .read = p18_read,
     .write = p18_write,
     .bulk_erase = p18_bulk_erase,

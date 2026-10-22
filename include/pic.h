@@ -17,6 +17,7 @@
  *   flash, User ID   one program word per cell (14 bits on PIC16, 16 bits on PIC18)
  *   config           one Configuration Word (PIC16) or configuration byte (PIC18) per cell
  *   EEPROM           one byte per cell, in the low 8 bits
+ *   DIA              one word per cell (14 bits on PIC16, 16 bits on PIC18); read only
  * Each protocol maps this onto its own native addresses, so callers never need to know
  * whether a family is word or byte addressed.
  *
@@ -59,7 +60,16 @@ typedef enum {
     PIC_REGION_FLASH = 0,
     PIC_REGION_USERID,
     PIC_REGION_CONFIG,
-    PIC_REGION_EEPROM
+    PIC_REGION_EEPROM,
+    /*
+     * Device Information Area: the factory-set Microchip Unique Identifier, calibration for
+     * the temperature indicator and the Fixed Voltage Reference readings. Read only: it
+     * cannot be written or erased, so pic_write() and pic_row_erase() return
+     * PIC_ERR_UNSUPPORTED for it (even for an offset outside it) and no bulk erase mask names
+     * it. Not code-protected. Its size is 0 on a family without one, so reads there return
+     * PIC_ERR_RANGE. Last in the enum so the writable regions keep their numbers.
+     */
+    PIC_REGION_DIA
 } pic_region_t;
 
 /* Bulk Erase region bits. The p16_8bit and p18_8bit protocols use this payload layout; p18_q10 and p18_k42 choose from the PC. */
@@ -149,7 +159,8 @@ pic_status_t pic_read_dci(const pic_device_t *dev, pic_dci_t *dci);
  * the row unchanged. Code protection makes protected memory read back as zeros.
  *
  * Errors: PIC_ERR_ARG (NULL dev or buf, unknown region), PIC_ERR_RANGE, PIC_ERR_ALIGN,
- * PIC_ERR_UNSUPPORTED, PIC_ERR_PROTOCOL (reads). A count of 0 succeeds without checks
+ * PIC_ERR_UNSUPPORTED (also: pic_write() to the read-only DIA), PIC_ERR_PROTOCOL (reads). A
+ * count of 0 succeeds without checks
  * beyond dev and region. After PIC_ERR_PROTOCOL from pic_read, buf is partly filled and
  * must be discarded.
  */
@@ -170,7 +181,7 @@ pic_status_t pic_verify(const pic_device_t *dev, pic_region_t region, uint32_t o
  * Erase. Bulk takes PIC_ERASE_*; PIC_ERR_UNSUPPORTED if it names a region the device does
  * not have (for example EEPROM on a part with none). PIC_ERASE_ALL is the exception: it
  * erases every region the device has. Row erase works on flash and User ID
- * only (PIC_ERR_UNSUPPORTED for other regions).
+ * only (PIC_ERR_UNSUPPORTED for other regions, including the read-only DIA).
  */
 pic_status_t pic_bulk_erase(const pic_device_t *dev, uint8_t regions);
 pic_status_t pic_row_erase(const pic_device_t *dev, pic_region_t region, uint32_t offset);

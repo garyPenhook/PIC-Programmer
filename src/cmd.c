@@ -173,6 +173,8 @@ static int parse_region(const char *s, pic_region_t *region)
         *region = PIC_REGION_CONFIG;
     } else if (streq(s, "eeprom")) {
         *region = PIC_REGION_EEPROM;
+    } else if (streq(s, "dia")) {
+        *region = PIC_REGION_DIA;
     } else {
         return 0;
     }
@@ -441,6 +443,10 @@ static void do_scan(int argc, char *argv[ARG_MAX], int blank)
     if (!need_device() || !region_span(argc, argv, &region, &offset, &count)) {
         return;
     }
+    if (blank && region == PIC_REGION_DIA) { /* it is never erased, so the answer means nothing */
+        reply_status(PIC_ERR_UNSUPPORTED);
+        return;
+    }
     uint16_t erased = pic_cell_mask(device, region);
     pic_status_t st = PIC_OK;
     int entered = 0;
@@ -674,10 +680,18 @@ static void do_erase(int argc, char *argv[ARG_MAX])
     } else if (argc == 2 && parse_region(argv[1], &region)) {
         static const uint8_t masks[] = {PIC_ERASE_FLASH, PIC_ERASE_USERID, PIC_ERASE_CONFIG,
                                         PIC_ERASE_EEPROM};
+        if (region == PIC_REGION_DIA) { /* read only: refuse before touching the target */
+            reply_status(PIC_ERR_UNSUPPORTED);
+            return;
+        }
         mask = masks[region];
     } else if (argc == 4 && streq(argv[1], "ROW") && parse_region(argv[2], &region) &&
                parse_number(argv[3], &offset)) {
         row = 1;
+        if (region == PIC_REGION_DIA) {
+            reply_status(PIC_ERR_UNSUPPORTED);
+            return;
+        }
         if (!range_ok(region, offset, 1u)) {
             return;
         }
@@ -756,6 +770,10 @@ static void do_session(char *argv[ARG_MAX], session_kind_t kind)
     }
     if (count == 0u) {
         out_str("OK 0\n");
+        return;
+    }
+    if (kind == SESSION_WRITE && region == PIC_REGION_DIA) { /* read only: no session */
+        reply_status(PIC_ERR_UNSUPPORTED);
         return;
     }
     if (!range_ok(region, offset, count)) {

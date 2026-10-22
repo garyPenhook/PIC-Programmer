@@ -469,6 +469,22 @@ static void test_bad_arguments_send_nothing(void)
     pic_exit(dev);
 }
 
+static void test_no_device_information_area(void)
+{
+    uint16_t w = 0u;
+    uint64_t t0;
+
+    fresh();
+    CHECK(pic_enter(dev) == PIC_OK);
+    t0 = sim_time_us();
+    CHECK(pic_region_size(dev, PIC_REGION_DIA) == 0u);
+    CHECK(pic_read(dev, PIC_REGION_DIA, 0u, &w, 1u) == PIC_ERR_RANGE);
+    CHECK(pic_write(dev, PIC_REGION_DIA, 0u, &w, 1u) == PIC_ERR_UNSUPPORTED);
+    CHECK(pic_row_erase(dev, PIC_REGION_DIA, 0u) == PIC_ERR_UNSUPPORTED);
+    CHECK(sim_time_us() == t0);
+    pic_exit(dev);
+}
+
 static void test_exit_releases_target(void)
 {
     fresh();
@@ -512,6 +528,7 @@ int main(void)
         test_bulk_erase_takes_the_eeprom_when_code_protected();
         test_bulk_erase_sets_with_no_command_are_rejected();
         test_bad_arguments_send_nothing();
+        test_no_device_information_area();
         test_exit_releases_target();
     }
 

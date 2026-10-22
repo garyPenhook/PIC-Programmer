@@ -2,7 +2,7 @@
 import argparse
 import sys
 
-from . import configbits, devices, ihex, programmer
+from . import configbits, devices, dia, ihex, programmer
 from .link import Link, LinkError, LinkTimeout
 
 DEFAULT_PORT = "/dev/ttyACM0"
@@ -67,6 +67,21 @@ def cmd_read(link, args):
     for i in range(0, len(cells), 8):
         row = " ".join(f"{c:04X}" for c in cells[i:i + 8])
         print(f"{args.offset + i:06X}: {row}")
+
+
+def cmd_dia(link, args):
+    """The factory-set unique ID and calibration data (read only)."""
+    device = programmer.connect(link)
+    size = device.size("dia")
+    if not size:
+        raise LinkError(f"{device.name} has no Device Information Area")
+    words = link.read("dia", 0, size)
+    print(device.name)
+    if args.raw:
+        for i in range(0, len(words), 8):
+            print(f"{i:06X}: " + " ".join(f"{w:04X}" for w in words[i:i + 8]))
+    else:
+        print("\n".join(dia.decode(device, words)))
 
 
 def cmd_dump(link, args):
@@ -256,10 +271,14 @@ def main(argv=None):
     sub.add_parser("dci", help="show the Device Configuration Information").set_defaults(run=cmd_dci)
 
     p = sub.add_parser("read", help="print cells of one region")
-    p.add_argument("region", choices=devices.REGIONS)
+    p.add_argument("region", choices=devices.READ_REGIONS)
     p.add_argument("offset", type=lambda s: int(s, 0))
     p.add_argument("count", type=lambda s: int(s, 0))
     p.set_defaults(run=cmd_read)
+
+    p = sub.add_parser("dia", help="show the Device Information Area (unique ID, calibration)")
+    p.add_argument("--raw", action="store_true", help="print the words undecoded")
+    p.set_defaults(run=cmd_dia)
 
     p = sub.add_parser("dump", help="read every region into an Intel HEX file")
     p.add_argument("file")

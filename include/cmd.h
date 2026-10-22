@@ -25,8 +25,10 @@
  *          bytes> <PCNT pin count>
  *
  *   READ <region> <offset> <count>
- *       Read count cells of region (flash, userid, config or eeprom) starting at offset.
- *       Numbers are decimal or 0x hex. Needs a successful PROBE first. The target is put
+ *       Read count cells of region (flash, userid, config, eeprom or dia) starting at offset.
+ *       Numbers are decimal or 0x hex. dia is the read-only Device Information Area (WRITE, ERASE
+ *       and BLANK refuse it with ERR -4; its size is 0 on a family without one, so READ
+ *       there answers ERR -2). Needs a successful PROBE first. The target is put
  *       into programming mode for the read and released afterwards. The data arrives in
  *       lines of up to CMD_CHUNK_CELLS cells before the final OK:
  *           D <offset, 8 hex digits> <cell, 4 hex digits> ... *<crc, 4 hex digits>

@@ -37,6 +37,7 @@
 #define ADDR_USERID 0x200000u
 #define ADDR_CONFIG 0x300000u
 #define ADDR_EEPROM 0x310000u
+#define ADDR_DIA    0x3F0000u /* 3F 0000h to 3F 003Fh, read only: 32 words (section 2.2) */
 #define ADDR_DCI    0x3FFF00u
 #define ADDR_REVID  0x3FFFFCu
 #define ADDR_DEVID  0x3FFFFEu
@@ -107,6 +108,8 @@ static uint32_t address_of(pic_region_t region, uint32_t offset)
         return ADDR_CONFIG + 2u * offset;
     case PIC_REGION_EEPROM:
         return ADDR_EEPROM + offset;
+    case PIC_REGION_DIA:
+        return ADDR_DIA + 2u * offset;
     default:
         return ADDR_FLASH + 2u * offset;
     }
@@ -177,6 +180,9 @@ static pic_status_t k42_write(const pic_device_t *dev, pic_region_t region, uint
 {
     uint16_t mask = mask_of(region);
 
+    if (region == PIC_REGION_DIA) { /* read only: send nothing */
+        return PIC_ERR_UNSUPPORTED;
+    }
     if (region == PIC_REGION_FLASH) {
         uint32_t row = dev->latch_words;
         if (row == 0u) {
@@ -267,6 +273,7 @@ const pic_proto_t pic_proto_p18_k42 = {
     .read_dci = k42_read_dci,
     .confirm = NULL,
     .cell_mask = mask_of,
+    .dia_words = 32u,
     .read = k42_read,
     .write = k42_write,
     .bulk_erase = k42_bulk_erase,

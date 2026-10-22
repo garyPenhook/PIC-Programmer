@@ -156,7 +156,7 @@ Both:
    PIC18 word placement in MPLAB hex files; decode Configuration Words: done for every row in the device table (`picprog config`, table
    `data/pic_config_bits.csv` from DS40002266B, DS40002500B, DS40002646A, DS40002540B, DS40001874H and DS40002143F Appendix B; `write` warns before setting
    ICSPDIS, LVP = 0 or code protection; the Q41's reserved tenth byte is not decoded; see
-   "Program extraction"); read the DIA (needs a read-only region in `pic.h` first).
+   "Program extraction"); the DIA is done (`dia` region, `picprog dia`; simulator tests only, so the MUI/calibration words are untested on silicon).
 6. **M6:** more rows for the existing protocols (PIC16F13145, 13276, 15276, 18176 and 17576 families, PIC18-Q20, Q24, Q40, Q43, Q71, Q83 and Q84 done), plus the new p18_k42 protocol (done). Older families are out of scope.
 7. **M7:** high-voltage entry (MCLR 7.9 to 9.0 V) to recover parts with LVP = 0.
 8. **M8:** seed a bootloader over ICSP (see "Bootloaders"). Needs M3 (real silicon) and
@@ -199,8 +199,10 @@ Design:
    layout is **to confirm** from each data sheet, and fits the config-word editor in
    IDEAS.md) and warn, and flag a flash that is all zeros. This project does not try to
    defeat code protection.
-5. **Other areas:** the DIA (calibration data) needs the new read-only region already
-   noted in M5, and is worth including in a dump so a cloned board keeps its calibration.
+5. **Other areas:** the DIA has its read-only region and `picprog dia` (M5). It is deliberately
+   not in `dump`: it cannot be written to another part, and the hex address MPLAB gives it
+   is unconfirmed. A dump that records the source part's unique ID and calibration for
+   reference could be added if wanted.
 6. **Bootloaders:** the MDFU commands found in the specification (GetClientInfo,
    StartTransfer, WriteChunk, GetImageState, EndTransfer) include no read, so extracting
    an application from a target that has a bootloader goes through ICSP, not the

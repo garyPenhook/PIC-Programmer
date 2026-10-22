@@ -351,3 +351,57 @@ def test_a_timeout_on_another_command_points_at_status(monkeypatch, capsys):
     monkeypatch.setattr(cli, "open_link", lambda args: Link(ScriptedStream(b"")))
     assert cli.main(["probe"]) == 1
     assert "picprog status" in capsys.readouterr().err
+
+
+def test_dia_words_come_from_the_part(target):
+    programmer.connect(target)
+    words = target.read("dia", 0, 64)
+    assert words[:3] == [0x0A01, 0x0B02, 0x0C03]       # MUI0 to MUI2 of the simulator
+    assert words[10:18] == [0x3FFF] * 8                  # EUI not programmed
+    assert words[24:30] == [1024, 2048, 4096] * 2        # FVR readings
+    with pytest.raises(LinkError, match="range"):
+        target.read("dia", 60, 5)                        # past the 64-word window
+
+
+def test_dia_is_read_only_and_survives_an_erase(target):
+    programmer.connect(target)
+    before = target.read("dia", 0, 64)
+    for call in (lambda: target.write("dia", 0, [1]), lambda: target.erase("dia"),
+                 lambda: target.erase_row("dia", 0), lambda: target.blank("dia")):
+        with pytest.raises(LinkError, match="not supported"):
+            call()
+    target.erase("ALL")
+    assert target.read("dia", 0, 64) == before
+    assert target.crc("dia", 0, 64) == target.crc("dia", 0, 64)  # the CRC command accepts it
+
+
+def test_dia_is_not_part_of_a_dump(target):
+    device = programmer.connect(target)
+    image, _ = programmer.dump(target, device)
+    cells, unused = devices.image_to_cells(device, image)
+    assert unused == [] and "dia" not in cells
+
+
+def test_command_line_dia(target, monkeypatch, capsys):
+    from picprog import cli
+
+    monkeypatch.setattr(cli, "open_link", lambda args: target)
+    assert cli.main(["dia"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("PIC16F17146\n")
+    assert "MUI  0A01 0B02 0C03 0D04 0E05 0F06 1007 1108 1209" in out
+    assert "EUI  not programmed" in out
+    assert "TSLR2  0A20" in out and "TSHR2  0A60" in out
+    assert "FVRA1X  1024 mV" in out and "FVRC4X  4096 mV" in out
+    assert cli.main(["dia", "--raw"]) == 0
+    out = capsys.readouterr().out
+    assert "000000: 0A01 0B02 0C03 0D04 0E05 0F06 1007 1108" in out
+    assert "000038: " in out                             # 64 words, eight per row
+    assert cli.main(["read", "dia", "0", "2"]) == 0
+    assert "000000: 0A01 0B02" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("target", ["30E1"], indirect=True)
+def test_the_whole_device_table_agrees_on_the_p16_window(target):
+    # The firmware reads 64 words for every p16_8bit row; the host's table says the same.
+    assert devices.find("PIC16F17146").size("dia") == 64

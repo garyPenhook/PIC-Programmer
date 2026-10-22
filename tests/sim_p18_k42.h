@@ -32,6 +32,8 @@ uint16_t sim_flash_word(uint32_t word_index);
 void sim_set_flash_word(uint32_t word_index, uint16_t value);
 uint16_t sim_userid_word(uint32_t index);
 uint8_t sim_eeprom_byte(uint32_t index);
+/* The model's Device Information Area word (3F 0000h + 2 * index, 32 words); fixed. */
+uint16_t sim_dia_word(uint32_t index);
 void sim_set_eeprom_byte(uint32_t index, uint8_t value);
 uint16_t sim_config_word(uint32_t index);
 uint32_t sim_bulk_erases(void); /* Bulk Erase commands seen */

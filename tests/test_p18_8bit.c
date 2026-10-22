@@ -407,6 +407,62 @@ static void test_bad_arguments_send_nothing(void)
     pic_exit(dev);
 }
 
+#define DIA_WORDS 32u
+
+static void test_device_information_area(void)
+{
+    uint16_t got[DIA_WORDS];
+    uint16_t other[DIA_WORDS];
+    size_t bad = 0u;
+    uint64_t t0;
+
+    fresh();
+    CHECK(pic_region_size(dev, PIC_REGION_DIA) == DIA_WORDS);
+    CHECK(pic_cell_mask(dev, PIC_REGION_DIA) == 0xFFFFu);
+    CHECK(pic_enter(dev) == PIC_OK);
+
+    /* The whole area, then a window in the middle, then the last word. */
+    CHECK(pic_read(dev, PIC_REGION_DIA, 0u, got, DIA_WORDS) == PIC_OK);
+    for (uint32_t i = 0; i < DIA_WORDS; i++) {
+        CHECK(got[i] == sim_dia_word(i));
+    }
+    CHECK(pic_read(dev, PIC_REGION_DIA, 5u, got, 7u) == PIC_OK);
+    for (uint32_t i = 0; i < 7u; i++) {
+        CHECK(got[i] == sim_dia_word(5u + i));
+    }
+    CHECK(pic_read(dev, PIC_REGION_DIA, DIA_WORDS - 1u, got, 1u) == PIC_OK);
+    CHECK(got[0] == sim_dia_word(DIA_WORDS - 1u));
+
+    /* Verify compares the read-only words like any other region. */
+    for (uint32_t i = 0; i < DIA_WORDS; i++) {
+        other[i] = sim_dia_word(i);
+    }
+    CHECK(pic_verify(dev, PIC_REGION_DIA, 0u, other, DIA_WORDS, NULL) == PIC_OK);
+    other[9] = (uint16_t)(other[9] ^ 1u);
+    CHECK(pic_verify(dev, PIC_REGION_DIA, 0u, other, DIA_WORDS, &bad) == PIC_ERR_VERIFY);
+    CHECK(bad == 9u);
+
+    /* Outside the window, and read only: refused before anything is sent. */
+    t0 = sim_time_us();
+    CHECK(pic_read(dev, PIC_REGION_DIA, DIA_WORDS, got, 1u) == PIC_ERR_RANGE);
+    CHECK(pic_read(dev, PIC_REGION_DIA, 1u, got, DIA_WORDS) == PIC_ERR_RANGE);
+    CHECK(pic_write(dev, PIC_REGION_DIA, 0u, other, 1u) == PIC_ERR_UNSUPPORTED);
+    CHECK(pic_write(dev, PIC_REGION_DIA, DIA_WORDS, other, 1u) == PIC_ERR_UNSUPPORTED);
+    CHECK(pic_row_erase(dev, PIC_REGION_DIA, 0u) == PIC_ERR_UNSUPPORTED);
+    CHECK(sim_time_us() == t0);
+
+    /* A bulk erase of everything leaves it alone. */
+    CHECK(pic_bulk_erase(dev, PIC_ERASE_ALL) == PIC_OK);
+    CHECK(pic_read(dev, PIC_REGION_DIA, 0u, got, DIA_WORDS) == PIC_OK);
+    for (uint32_t i = 0; i < DIA_WORDS; i++) {
+        CHECK(got[i] == sim_dia_word(i));
+    }
+
+    pic_exit(dev);
+    CHECK(sim_violations() == 0u);
+    CHECK(sim_bad_commands() == 0u);
+}
+
 static void test_exit_releases_target(void)
 {
     fresh();
@@ -447,6 +503,7 @@ int main(void)
         test_eeprom_config_and_userid();
         test_config_run_across_the_end();
         test_bad_arguments_send_nothing();
+        test_device_information_area();
         test_exit_releases_target();
     }
 

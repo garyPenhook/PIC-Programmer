@@ -247,6 +247,7 @@ const pic_proto_t pic_proto_p18_q10 = {
     .read_dci = NULL,
     .confirm = q10_confirm,
     .cell_mask = mask_of,
+    .dia_words = 0u, /* DS40001874H and the Q10 data sheets describe no DIA */
     .read = q10_read,
     .write = q10_write,
     .bulk_erase = q10_bulk_erase,

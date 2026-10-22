@@ -33,6 +33,7 @@
 #define ADDR_REVID  0x8005u
 #define ADDR_DEVID  0x8006u
 #define ADDR_CONFIG 0x8007u
+#define ADDR_DIA    0x8100u /* 8100h to 813Fh, read only (Table 2-2) */
 #define ADDR_DCI    0x8200u
 #define ADDR_EEPROM 0xF000u
 
@@ -103,6 +104,8 @@ static uint16_t base_of(pic_region_t region)
         return ADDR_CONFIG;
     case PIC_REGION_EEPROM:
         return ADDR_EEPROM;
+    case PIC_REGION_DIA:
+        return ADDR_DIA;
     default:
         return ADDR_FLASH;
     }
@@ -177,6 +180,9 @@ static pic_status_t p16_write(const pic_device_t *dev, pic_region_t region, uint
     uint16_t base = base_of(region);
     uint16_t mask = mask_of(region);
 
+    if (region == PIC_REGION_DIA) { /* read only: the part ignores it, so send nothing */
+        return PIC_ERR_UNSUPPORTED;
+    }
     if (region == PIC_REGION_FLASH) {
         uint32_t row = dev->latch_words;
         if (row == 0u) {
@@ -250,6 +256,7 @@ const pic_proto_t pic_proto_p16_8bit = {
     .read_revision_id = p16_read_revision_id,
     .read_dci = p16_read_dci,
     .cell_mask = mask_of,
+    .dia_words = 64u,
     .read = p16_read,
     .write = p16_write,
     .bulk_erase = p16_bulk_erase,

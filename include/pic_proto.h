@@ -32,6 +32,7 @@ struct pic_proto {
      * read_dci is not. */
     pic_status_t (*confirm)(const pic_device_t *dev);
     uint16_t (*cell_mask)(pic_region_t region); /* bits a cell of this region stores */
+    uint16_t dia_words;                         /* size of the read-only DIA window; 0 = none */
     pic_status_t (*read)(const pic_device_t *dev, pic_region_t region, uint32_t offset,
                          uint16_t *buf, size_t count);
     pic_status_t (*write)(const pic_device_t *dev, pic_region_t region, uint32_t offset,

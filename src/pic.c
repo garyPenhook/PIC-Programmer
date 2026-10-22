@@ -123,6 +123,8 @@ uint32_t pic_region_size(const pic_device_t *dev, pic_region_t region)
         return dev->config_count;
     case PIC_REGION_EEPROM:
         return dev->eeprom_bytes;
+    case PIC_REGION_DIA:
+        return dev->proto != NULL ? dev->proto->dia_words : 0u;
     default:
         return 0u;
     }
@@ -131,7 +133,7 @@ uint32_t pic_region_size(const pic_device_t *dev, pic_region_t region)
 static int region_valid(pic_region_t region)
 {
     return region == PIC_REGION_FLASH || region == PIC_REGION_USERID ||
-           region == PIC_REGION_CONFIG || region == PIC_REGION_EEPROM;
+           region == PIC_REGION_CONFIG || region == PIC_REGION_EEPROM || region == PIC_REGION_DIA;
 }
 
 uint16_t pic_cell_mask(const pic_device_t *dev, pic_region_t region)
@@ -261,8 +263,12 @@ pic_status_t pic_write(const pic_device_t *dev, pic_region_t region, uint32_t of
                        const uint16_t *buf, size_t count)
 {
     int nothing;
-    pic_status_t st = check_transfer(dev, region, offset, buf, count, &nothing);
+    pic_status_t st;
 
+    if (dev_ok(dev) && region == PIC_REGION_DIA) { /* read only: nothing is sent */
+        return PIC_ERR_UNSUPPORTED;
+    }
+    st = check_transfer(dev, region, offset, buf, count, &nothing);
     return st != PIC_OK || nothing ? st : dev->proto->write(dev, region, offset, buf, count);
 }
 
@@ -320,6 +326,9 @@ pic_status_t pic_row_erase(const pic_device_t *dev, pic_region_t region, uint32_
 {
     if (!dev_ok(dev) || !region_valid(region)) {
         return PIC_ERR_ARG;
+    }
+    if (region == PIC_REGION_DIA) { /* read only */
+        return PIC_ERR_UNSUPPORTED;
     }
     if (!range_ok(dev, region, offset, 1u)) {
         return PIC_ERR_RANGE;

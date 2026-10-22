@@ -79,7 +79,8 @@ that would break the generated C.
 Layers:
 
 - `include/pic.h`, `src/pic.c`: the device API used by everything above the protocols.
-  Memory is addressed as (region, offset) with region = flash, User ID, config or EEPROM,
+  Memory is addressed as (region, offset) with region = flash, User ID, config, EEPROM or
+  the read-only Device Information Area (DIA),
   so callers never deal with a family's own address map. It checks every range against
   the device's geometry before anything reaches the wires, and `pic_probe()` tries each
   protocol until one returns a device ID that is in the table and the part's own DCI
@@ -163,7 +164,9 @@ cleanly at that rate). Commands are upper case, one per line. Every command ends
 | `WRITE <region> <offset> <count>` | `NEXT <offset> <n>` requests, then `OK <count>` |
 | `VERIFY <region> <offset> <count>` | `NEXT <offset> <n>` requests, then `OK <count>` or `ERR -8 verify mismatch @<offset>` |
 
-`region` is `flash`, `userid`, `config` or `eeprom`; numbers are decimal or `0x` hex. Each
+`region` is `flash`, `userid`, `config`, `eeprom` or `dia` (the read-only Device Information
+Area: `WRITE`, `ERASE` and `BLANK` refuse it with `ERR -4`; it is empty on a family without
+one, so `READ dia` answers `ERR -2` there); numbers are decimal or `0x` hex. Each
 `D` line carries up to 16 cells, with a CRC-16/CCITT-FALSE over the text before ` *`, so
 a host can detect corruption on the serial link. Errors read `ERR <code> <text>` (the code
 is the `pic_status_t` value, for example `ERR -2 range outside region`) or `ERR <word>`
@@ -208,9 +211,16 @@ Erase first: programming only turns 1s into 0s.
 < OK 12
 ```
 
-The API reads the device ID, revision ID and the five DCI values, but not the other
-read-only areas (the PIC16 DIA at 0x8100, for example); that would be a new read-only
-region.
+The API reads the device ID, revision ID, the five DCI values and, as the read-only region
+`dia`, the Device Information Area: the factory-set Microchip Unique Identifier, the
+temperature-indicator calibration and the Fixed Voltage Reference readings in mV. The window
+is 8100h to 813Fh on the p16_8bit parts (64 words), 2C 0000h to 2C 003Fh on the PIC18-Q parts
+and 3F 0000h to 3F 003Fh on the K42 (32 words each); the PIC18F2X/4XQ10 has none. It is not
+code-protected, but a part with ICSPDIS set cannot be entered at all. Only the PIC16F17146
+layout has been exercised end to end (PC simulator); no real silicon yet. Which words mean
+what differs by family (the K42 has six MUI words and only the 90 C temperature readings, the
+PIC16F152XX has no temperature data), so `picprog dia` decodes it per family and `picprog dia
+--raw` prints the words.
 
 Only low-voltage entry is supported: a part whose LVP configuration bit is 0 cannot be
 reached without a high-voltage (7.9 to 9.0 V) MCLR supply.
@@ -301,6 +311,7 @@ picprog verify firmware.hex      # compare the target with a file
 picprog erase all                # or: erase flash, erase flash --row 0x40
 picprog read flash 0 32          # print cells
 picprog dci                      # Device Configuration Information
+picprog dia                      # unique ID and calibration data (read only; --raw for the words)
 picprog crc firmware.hex         # compare by CRC-32, without reading the data back
 picprog blank                    # check every region is erased (or: blank flash)
 picprog config                   # decode the part's Configuration Words field by field

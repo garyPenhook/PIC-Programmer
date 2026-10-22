@@ -23,6 +23,25 @@
 
 #define KEY 0x4D434850u
 
+#define DIA_WORDS 32u
+
+/* Device Information Area, 3F 0000h to 3F 003Fh (DS40001919G Table 5-3). Not the PIC18-Q
+ * layout: MUI0 to MUI5 (6 words), two unassigned, EUI0 to EUI9 (10 words, not programmed:
+ * blank), then only TSLR2 (3F 0026h) and TSHR2 (3F 002Ch) with reserved words around them,
+ * FVRA1X to FVRA4X, FVRC1X to FVRC4X (mV), two unassigned words. The values are the model's
+ * own. */
+static const uint16_t dia[DIA_WORDS] = {
+    0xC001u, 0xC112u, 0xC223u, 0xC334u, 0xC445u, 0xC556u,                           /* MUI */
+    0x0000u, 0x0000u,                                                               /* unassigned */
+    0xFFFFu, 0xFFFFu, 0xFFFFu, 0xFFFFu, 0xFFFFu, 0xFFFFu, 0xFFFFu, 0xFFFFu, 0xFFFFu,
+    0xFFFFu,                                                                        /* EUI */
+    0x0000u, 0x0A20u, 0x0000u,                                                      /* TSLR2 */
+    0x0000u, 0x0A60u, 0x0000u,                                                      /* TSHR2 */
+    1024u, 2048u, 4096u,                                                            /* FVRA */
+    1024u, 2048u, 4096u,                                                            /* FVRC */
+    0x0000u, 0x0000u,                                                               /* unassigned */
+};
+
 /* Waits the spec requires (microseconds) between the end of one item and the next clock. */
 #define W_DLY   1u
 #define W_ENTER 250u
@@ -162,6 +181,10 @@ uint8_t sim_eeprom_byte(uint32_t i)
 {
     return i < eeprom_bytes() ? s.eeprom[i] : 0u;
 }
+uint16_t sim_dia_word(uint32_t i)
+{
+    return dia[i];
+}
 void sim_set_eeprom_byte(uint32_t i, uint8_t v)
 {
     s.eeprom[i] = v;
@@ -221,6 +244,8 @@ static uint32_t mem_read(uint32_t pc, uint32_t *step)
         *step = 1u;
         return s.eeprom[pc - 0x310000u];
     }
+    if (pc >= 0x3F0000u && pc < 0x3F0000u + 2u * DIA_WORDS)
+        return dia[(pc - 0x3F0000u) / 2u];
     switch (pc) {
     case 0x3FFF00u: /* DCI, Table C-1: ERSIZ, WLSIZ (bytes), URSIZ, EESIZ, PCNT */
         return ERASE_WORDS;

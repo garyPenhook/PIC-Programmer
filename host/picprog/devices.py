@@ -2,7 +2,9 @@
 
 Regions and cells are the same as in the firmware (include/pic.h): offsets count cells from
 the start of the region; flash and User ID cells are program words, config cells are
-Configuration Words (PIC16) or configuration bytes (PIC18), EEPROM cells are bytes.
+Configuration Words (PIC16) or configuration bytes (PIC18), EEPROM cells are bytes. The
+Device Information Area ("dia") is a sixth, read-only region of program words: it can be read
+but is left out of REGIONS, which is the set that dump, write, erase, blank and crc act on.
 """
 import importlib.util
 import os
@@ -11,6 +13,12 @@ import zlib
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 REGIONS = ("flash", "userid", "config", "eeprom")
+READ_REGIONS = REGIONS + ("dia",)
+# Words in each protocol's DIA window (src/proto: dia_words). The PIC16 window is 8100h to
+# 813Fh (DS40002266B 2.3); the PIC18-Q window is 2C 0000h to 2C 003Fh (DS40002214G 9.2) and the
+# K42's 3F 0000h to 3F 003Fh (DS40001919G 5.7), 16-bit words at two addresses each. The
+# PIC18F2X/4XQ10 has none.
+DIA_WORDS = {"p16_8bit": 64, "p18_8bit": 32, "p18_q10": 0, "p18_k42": 32}
 
 
 def _shared_file(packaged, in_repo):
@@ -42,7 +50,8 @@ class Device:
         self.erase_words = row["erase_words"]
         self.latch_words = row["latch_words"]
         self.sizes = {"flash": row["flash_words"], "userid": row["userid_words"],
-                      "config": row["config_count"], "eeprom": row["eeprom_bytes"]}
+                      "config": row["config_count"], "eeprom": row["eeprom_bytes"],
+                      "dia": DIA_WORDS[self.protocol]}
         self.layout = LAYOUTS[self.protocol]
         if row["config_map"]:
             self.layout = P18SplitConfigLayout(row["config_map"])
@@ -103,7 +112,7 @@ class P18Layout:
 
     @staticmethod
     def cell_mask(region):
-        return 0xFFFF if region in ("flash", "userid") else 0xFF
+        return 0xFFFF if region in ("flash", "userid", "dia") else 0xFF
 
     def cell_hex_bytes(self, region, offset):
         if region in ("flash", "userid"):

@@ -21,6 +21,21 @@
 
 #define KEY 0x4D434850u
 
+#define DIA_WORDS 32u
+
+/* Device Information Area, 2C 0000h to 2C 003Fh (DS40002214G Table 9-2): MUI0 to MUI8, one
+ * reserved word, EUI0 to EUI7 (not programmed: blank), TSLR1 to 3, TSHR1 to 3, FVRA1X to
+ * FVRA4X, FVRC1X to FVRC4X (mV), two unassigned words. The values are the model's own. */
+static const uint16_t dia[DIA_WORDS] = {
+    0xB001u, 0xB112u, 0xB223u, 0xB334u, 0xB445u, 0xB556u, 0xB667u, 0xB778u, 0xB889u, /* MUI */
+    0x0000u,                                                                         /* MUI9 */
+    0xFFFFu, 0xFFFFu, 0xFFFFu, 0xFFFFu, 0xFFFFu, 0xFFFFu, 0xFFFFu, 0xFFFFu,         /* EUI */
+    0x0150u, 0x0A20u, 0x0004u,                                                       /* TSLR */
+    0x0148u, 0x0A60u, 0x0008u,                                                       /* TSHR */
+    1024u, 2048u, 4096u,                                                             /* FVRA */
+    1024u, 2048u, 4096u,                                                             /* FVRC */
+};
+
 /* Waits the spec requires (microseconds) between the end of one item and the next clock. */
 #define W_DLY   1u
 #define W_ENTER 1500u
@@ -276,6 +291,11 @@ uint8_t sim_config_byte(uint32_t i)
     return i < s.config_count ? s.config[config_offset(i)] : 0u;
 }
 
+uint16_t sim_dia_word(uint32_t i)
+{
+    return dia[i];
+}
+
 /* The device must not see clocks before this much virtual time has passed. */
 static void require_wait(uint32_t us)
 {
@@ -293,6 +313,8 @@ static uint32_t mem_read(uint32_t pc, uint32_t *step)
         return s.flash[pc / 2u];
     if (pc >= 0x200000u && pc < 0x200000u + 2u * USERID_WORDS)
         return s.userid[(pc - 0x200000u) / 2u];
+    if (pc >= 0x2C0000u && pc < 0x2C0000u + 2u * DIA_WORDS)
+        return dia[(pc - 0x2C0000u) / 2u];
     if (config_at(pc) != NULL) {
         *step = 1u;
         return *config_at(pc);

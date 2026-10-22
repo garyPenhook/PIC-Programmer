@@ -12,6 +12,22 @@
 
 #define KEY 0x4D434850u
 
+#define DIA_WORDS 64u
+
+/* Device Information Area, 8100h to 813Fh, laid out as DS40002266B Table 2-2: MUI0 to MUI8,
+ * one reserved word, EUI0 to EUI7 (not programmed: blank), TSLR1 to 3, TSHR1 to 3, FVRA1X to
+ * FVRA4X, FVRC1X to FVRC4X (mV), two reserved words. The values are the model's own. The
+ * window past 811Fh is not defined by the spec; the model reads it as 0. */
+static const uint16_t dia[DIA_WORDS] = {
+    0x0A01u, 0x0B02u, 0x0C03u, 0x0D04u, 0x0E05u, 0x0F06u, 0x1007u, 0x1108u, 0x1209u, /* MUI */
+    0x0000u,                                                                         /* MUI9 */
+    0x3FFFu, 0x3FFFu, 0x3FFFu, 0x3FFFu, 0x3FFFu, 0x3FFFu, 0x3FFFu, 0x3FFFu,         /* EUI */
+    0x0150u, 0x0A20u, 0x0004u,                                                       /* TSLR */
+    0x0148u, 0x0A60u, 0x0008u,                                                       /* TSHR */
+    1024u, 2048u, 4096u,                                                             /* FVRA */
+    1024u, 2048u, 4096u,                                                             /* FVRC */
+};
+
 /* Waits the spec requires (microseconds) between the end of one item and the next clock
  * (Table 4-1). */
 #define W_DLY       1u
@@ -248,6 +264,10 @@ uint8_t sim_eeprom_byte(uint32_t i)
 {
     return s.eeprom[i];
 }
+uint16_t sim_dia_word(uint32_t i)
+{
+    return dia[i];
+}
 
 static void require_wait(uint32_t us)
 {
@@ -271,6 +291,8 @@ static uint32_t mem_read(uint32_t pc)
         return s.config[pc - 0x8007u];
     if (pc >= 0xF000u && pc < 0xF000u + s.eeprom_bytes)
         return s.eeprom[pc - 0xF000u];
+    if (pc >= 0x8100u && pc < 0x8100u + DIA_WORDS)
+        return dia[pc - 0x8100u];
     switch (pc) { /* Device Configuration Information */
     case 0x8200u:
         return ROW_WORDS; /* ERSIZ */

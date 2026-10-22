@@ -190,6 +190,45 @@ static void test_read_eeprom_cells_are_bytes(void)
     TEST_ASSERT_EQUAL_STRING(expected, stub_uart_output());
 }
 
+static void test_read_dia_returns_the_factory_words(void)
+{
+    uint16_t dia[64];
+    char expected[1024] = "";
+
+    for (uint32_t i = 0; i < 64u; i++) {
+        dia[i] = sim_dia_word(i);
+    }
+    send_line("PROBE");
+    send_line("READ dia 8 18");
+    expected_chunk(expected, sizeof expected, 8u, dia + 8, 16u);
+    expected_chunk(expected, sizeof expected, 24u, dia + 24, 2u);
+    strcat(expected, "OK 18\n");
+    TEST_ASSERT_EQUAL_STRING(expected, stub_uart_output());
+    send_line("READ dia 60 5"); /* the window is 64 words */
+    TEST_ASSERT_EQUAL_STRING("ERR -2 range outside region\n", stub_uart_output());
+    TEST_ASSERT_EQUAL_INT(0, sim_in_program_mode());
+    TEST_ASSERT_EQUAL_UINT32(0u, sim_violations());
+}
+
+static void test_dia_is_read_only_and_never_reaches_the_target(void)
+{
+    uint64_t t0;
+
+    send_line("PROBE");
+    t0 = sim_time_us();
+    send_line("WRITE dia 0 4");
+    TEST_ASSERT_EQUAL_STRING("ERR -4 not supported by this device\n", stub_uart_output());
+    send_line("ERASE dia");
+    TEST_ASSERT_EQUAL_STRING("ERR -4 not supported by this device\n", stub_uart_output());
+    send_line("ERASE ROW dia 0");
+    TEST_ASSERT_EQUAL_STRING("ERR -4 not supported by this device\n", stub_uart_output());
+    TEST_ASSERT_EQUAL_UINT64(t0, sim_time_us()); /* nothing was sent */
+    TEST_ASSERT_EQUAL_INT(0, sim_in_program_mode());
+    send_line("ERASE ALL"); /* and a bulk erase of everything leaves it readable */
+    send_line("CRC dia 0 2");
+    TEST_ASSERT_EQUAL_INT(0, strncmp(stub_uart_output(), "OK ", 3u));
+}
+
 static void test_read_count_zero_succeeds_without_touching_the_target(void)
 {
     send_line("PROBE");
@@ -550,6 +589,21 @@ static void test_write_then_read_back(void)
     TEST_ASSERT_EQUAL_HEX16(0x0003, sim_userid_word(2));
 }
 
+static void test_verify_dia_compares_the_read_only_words(void)
+{
+    uint16_t good[2] = {sim_dia_word(0), sim_dia_word(1)};
+    uint16_t bad[2] = {sim_dia_word(0), (uint16_t)(sim_dia_word(1) ^ 1u)};
+
+    send_line("PROBE");
+    send_line("VERIFY dia 0 2");
+    upload(0u, good);
+    TEST_ASSERT_EQUAL_STRING("OK 2\n", stub_uart_output());
+    send_line("VERIFY dia 0 2");
+    upload(0u, bad);
+    TEST_ASSERT_EQUAL_INT(0, strncmp(stub_uart_output(), "ERR -8 verify mismatch @00000001", 32u));
+    TEST_ASSERT_EQUAL_INT(0, sim_in_program_mode());
+}
+
 static void test_id_reads_device_and_revision(void)
 {
     send_line("ID");
@@ -757,6 +811,9 @@ int main(void)
     RUN_TEST(test_erase_row_erases_only_that_row);
     RUN_TEST(test_erase_one_region);
     RUN_TEST(test_erase_errors);
+    RUN_TEST(test_read_dia_returns_the_factory_words);
+    RUN_TEST(test_dia_is_read_only_and_never_reaches_the_target);
+    RUN_TEST(test_verify_dia_compares_the_read_only_words);
     RUN_TEST(test_write_flash_whole_rows_and_a_padded_last_row);
     RUN_TEST(test_write_asks_for_the_remainder_last);
     RUN_TEST(test_write_must_start_on_a_row_boundary);
