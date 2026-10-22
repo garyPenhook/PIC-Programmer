@@ -13,7 +13,7 @@
 #define ERASE_WORDS      128u
 #define ERASE_PAGE_BYTES (2u * ERASE_WORDS)
 #define USERID_WORDS     32u
-#define CONFIG_SPAN      0x1Du /* Q24: 30 0000h-30 001Ch */
+#define CONFIG_SPAN      0x23u /* Q84: 30 0000h-30 0022h */
 #define MAX_EEPROM_BYTES 1024u
 #define REVISION_ID      0xA041u /* revision B1, data sheet 8.7.2 tip */
 
@@ -55,8 +55,9 @@ static struct {
     uint32_t eeprom_bytes;
     uint16_t flash[MAX_FLASH_WORDS];
     uint16_t userid[USERID_WORDS];
-    uint32_t config_count; /* Q41/Q43: 10 bytes in a row; Q71: 11; Q20 and Q24: 13, with gaps */
+    uint32_t config_count; /* Q41/Q43: 10 bytes in a row; Q71: 11; Q84: 35; Q20 and Q24: 13, with gaps */
     int config_q24;        /* Q24 address map (DS40002503 8.6) instead of Q20's (DS40002327D 6.14) */
+    int config_q20;        /* Q20 address map; neither flag set means contiguous from 30 0000h */
     uint8_t config[CONFIG_SPAN];
     uint8_t eeprom[MAX_EEPROM_BYTES];
 } s;
@@ -104,18 +105,21 @@ void sim_reset(void)
         s.user_pages = 64u;
         s.eeprom_bytes = 256u;
         s.config_count = 13u;
+        s.config_q20 = 1;
         break; /* PIC18F04/14Q20, DS40002327D Table 2-1 */
     case 0x7AA0u:
     case 0x7A80u:
         s.user_pages = 128u;
         s.eeprom_bytes = 256u;
         s.config_count = 13u;
+        s.config_q20 = 1;
         break; /* PIC18F05/15Q20 */
     case 0x7A60u:
     case 0x7A40u:
         s.user_pages = 256u;
         s.eeprom_bytes = 256u;
         s.config_count = 13u;
+        s.config_q20 = 1;
         break; /* PIC18F06/16Q20 */
     case 0x78A0u:
         s.user_pages = 64u;
@@ -157,6 +161,26 @@ void sim_reset(void)
         s.eeprom_bytes = 256u;
         s.config_count = 11u;
         break; /* PIC18F26/46/56Q71 */
+    case 0xA300u:
+    case 0xA301u:
+    case 0xA302u:
+    case 0xA306u:
+    case 0xA307u:
+    case 0xA308u:
+        s.user_pages = 256u;
+        s.eeprom_bytes = 1024u;
+        s.config_count = 35u;
+        break; /* PIC18F26/46/56Q83/84, DS40002137D Table 2-1 */
+    case 0x9903u:
+    case 0x9904u:
+    case 0x9905u:
+    case 0x9909u:
+    case 0x990Au:
+    case 0x990Bu:
+        s.user_pages = 512u;
+        s.eeprom_bytes = 1024u;
+        s.config_count = 35u;
+        break; /* PIC18F27/47/57Q83/84 */
     default:
         s.user_pages = 256u;
         break; /* PIC18F06/16Q41 */
@@ -222,7 +246,7 @@ static uint32_t config_offset(uint32_t i)
     if (s.config_q24) {
         return q24[i];
     }
-    return s.config_count > 11u && i >= 11u ? 0x18u + (i - 11u) : i;
+    return s.config_q20 && i >= 11u ? 0x18u + (i - 11u) : i;
 }
 
 /* The Configuration Byte at address pc, or NULL if the part has none there. */
