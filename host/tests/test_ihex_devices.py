@@ -88,6 +88,25 @@ def test_p18_q24_config_decode():
     assert [w for w in warnings if "ICSPDIS" in w]
 
 
+def test_p18_q71_has_eleven_contiguous_config_bytes():
+    dev = devices.find("PIC18F46Q71")
+    # DS40002306D Figure 2-1: Configuration Bytes at 30 0000h-30 000Ah, 256 bytes of EEPROM.
+    assert dev.size("config") == 11 and dev.size("eeprom") == 256 and dev.size("flash") == 32768
+    assert dev.layout.cell_hex_bytes("config", 10) == (0x30000A, None)
+    assert dev.config_name(11) == "CONFIG11"
+
+
+def test_p18_q71_config_decode():
+    from picprog import configbits
+    dev = devices.find("PIC18F24Q71")
+    words = [0xFF] * 11
+    words[10] = 0xFE  # CONFIG11 = CP: code protection on
+    words[9] = 0xFE   # CONFIG10 = CPD
+    lines, warnings = configbits.decode(dev, words)
+    assert any(line.startswith("CONFIG11 = 0xFE") for line in lines)
+    assert [w for w in warnings if "CONFIG11 CP" in w] and [w for w in warnings if "CONFIG10 CPD" in w]
+
+
 def test_p18_q10_layout_follows_the_programming_spec():
     dev = devices.find("PIC18F27Q10")
     # DS40001874H Figure 2-1 and 3.4: Configuration Words from 300000h, two addresses each
