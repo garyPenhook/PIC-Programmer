@@ -107,9 +107,11 @@ def test_every_config_word_of_every_table_row_is_decoded():
     from picprog import configbits
     for dev in devices.load():
         fields = configbits.fields_for(dev)
-        # PIC18-Q41 has 10 Configuration Bytes, but the tenth (30 0009h) is reserved.
-        named = dev.size("config") - (1 if dev.protocol == "p18_8bit" else 0)
-        assert {f.word for f in fields} == set(range(1, named + 1)), dev.name
+        # PIC18-Q has 10 Configuration Bytes with one reserved: the tenth (30 0009h) on
+        # the Q41, the ninth (30 0008h) on the Q43.
+        reserved = {10} if "Q41" in dev.name else {9} if "Q43" in dev.name else set()
+        expected = set(range(1, dev.size("config") + 1)) - reserved
+        assert {f.word for f in fields} == expected, dev.name
         for f in fields:
             assert f.values or f.name == "CLBSA", (dev.name, f.name)
 

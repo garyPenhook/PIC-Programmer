@@ -43,7 +43,8 @@ in its address map), and give it a simulator, a test program, and a line in
 | `p16_8bit` | **PIC16F132XX** (PIC16F13214/15/24/25/26/44/45/46/54/55/56/74/75/76: 14 parts, 7 Configuration Words, 256-byte EEPROM) | DS40002646A, downloaded to `docs/f13276/` | **Implemented**, simulator only. Bulk erase is up to 40 ms, so the shared waits now cover it |
 | `p16_8bit` | **PIC16F175XX** (PIC16F17524/25/26/44/45/46/54/55/56/74/75/76: 12 parts, 5 Configuration Words, 128-byte EEPROM on the x4/x5, 256 on the x6) | DS40002540B and data sheet DS40002614A, downloaded to `docs/f17576/` | **Implemented**, simulator only. Same command set; its NVM time limits equal the F132XX's, so the shared waits already cover them |
 | `p18_8bit` | PIC18-Q41 (all 6 parts in the table) | Q41 data sheet DS40002214; Q24/Q41/Q43 programming specs via the Microchip MCP | Implemented |
-| `p18_8bit` | PIC18-Q20, Q24, Q43 | Programming specs via the Microchip MCP | Protocol present; **rows needed**. Q24 has 13 configuration bytes whose addresses "do not increment sequentially" (Q24 spec 2.4), so the config region needs an address list, not just a count, before Q24 can be added |
+| `p18_8bit` | **PIC18-Q43** (PIC18F25/26/27/45/46/47/55/56/57Q43: 9 parts, 1024-byte EEPROM, Configuration Byte 9 reserved and CP in byte 10) | DS40002079E, data sheet DS40002147, downloaded to `docs/q43/` | **Implemented**, simulator only. Same timing limits as the Q41 |
+| `p18_8bit` | PIC18-Q20, Q24 | Programming specs via the Microchip MCP | Protocol present; **rows needed**. Q24 has 13 configuration bytes whose addresses "do not increment sequentially" (Q24 spec 2.4), so the config region needs an address list, not just a count, before Q24 can be added |
 | `p18_q10` | PIC18F24/25/26/27Q10, PIC18F45/46/47Q10 (all 7) | DS40001874H (`docs/q10/`), data sheets DS40001945, DS40001996, DS40002043 | Implemented and tested against a simulator only; **not yet run on silicon** |
 | ? | Baseline PIC10/12/16F5x, older mid-range PIC16, older PIC18F (452, 2620, 4550, 8722), J-series (45J10), K-series (K22, K42, ...) | Not found | **Need the specs** |
 
@@ -112,7 +113,7 @@ PIC18-Q:
    PIC18-Q figures are images the search tool did not return as text.
 7. 8-bit items (EEPROM, config bytes) are assumed right-aligned.
 8. Bulk Erase is sent without loading a PC first.
-9. Only the Q41 parts are in the device table, so the probe does not recognise another
+9. Only the Q41 and Q43 parts are in the device table, so the probe does not recognise another
    Q-series part.
 
 Both:

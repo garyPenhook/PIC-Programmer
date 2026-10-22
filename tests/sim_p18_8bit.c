@@ -9,12 +9,12 @@
  * so the tests cross-check the table: section 8.3 (32 User ID words), 8.7.1 (device IDs),
  * Table 9-3 (DCI) and the memory map (config bytes 30 0000h to 30 0009h).
  */
-#define MAX_FLASH_WORDS  32768u
+#define MAX_FLASH_WORDS  65536u
 #define ERASE_WORDS      128u
 #define ERASE_PAGE_BYTES (2u * ERASE_WORDS)
 #define USERID_WORDS     32u
 #define CONFIG_BYTES     10u
-#define EEPROM_BYTES     512u
+#define MAX_EEPROM_BYTES 1024u
 #define REVISION_ID      0xA041u /* revision B1, data sheet 8.7.2 tip */
 
 #define FLASH_WORDS (s.user_pages * ERASE_WORDS)
@@ -52,10 +52,11 @@ static struct {
     uint32_t wait_us;
     uint32_t violations, bad_commands;
     uint32_t user_pages;
+    uint32_t eeprom_bytes;
     uint16_t flash[MAX_FLASH_WORDS];
     uint16_t userid[USERID_WORDS];
     uint8_t config[CONFIG_BYTES];
-    uint8_t eeprom[EEPROM_BYTES];
+    uint8_t eeprom[MAX_EEPROM_BYTES];
 } s;
 
 void sim_select_device(uint16_t device_id)
@@ -67,7 +68,8 @@ void sim_reset(void)
 {
     memset(&s, 0, sizeof s);
     s.mclr = 1;
-    switch (g_device_id) { /* URSIZ, Table 9-3 */
+    s.eeprom_bytes = 512u; /* Q41: EESIZ, Table 9-3 */
+    switch (g_device_id) { /* URSIZ, Table 9-3 (Q41); Table 2-1 of DS40002079E (Q43) */
     case 0x7540u:
     case 0x7520u:
         s.user_pages = 64u;
@@ -76,6 +78,24 @@ void sim_reset(void)
     case 0x74E0u:
         s.user_pages = 128u;
         break; /* PIC18F05/15Q41 */
+    case 0x73C0u:
+    case 0x73E0u:
+    case 0x7400u:
+        s.user_pages = 128u;
+        s.eeprom_bytes = 1024u;
+        break; /* PIC18F25/45/55Q43 */
+    case 0x7420u:
+    case 0x7440u:
+    case 0x7460u:
+        s.user_pages = 256u;
+        s.eeprom_bytes = 1024u;
+        break; /* PIC18F26/46/56Q43 */
+    case 0x7480u:
+    case 0x74A0u:
+    case 0x74C0u:
+        s.user_pages = 512u;
+        s.eeprom_bytes = 1024u;
+        break; /* PIC18F27/47/57Q43 */
     default:
         s.user_pages = 256u;
         break; /* PIC18F06/16Q41 */
@@ -126,7 +146,7 @@ uint16_t sim_userid_word(uint32_t i)
 }
 uint8_t sim_eeprom_byte(uint32_t i)
 {
-    return i < EEPROM_BYTES ? s.eeprom[i] : 0u;
+    return i < s.eeprom_bytes ? s.eeprom[i] : 0u;
 }
 void sim_set_eeprom_byte(uint32_t i, uint8_t v)
 {
@@ -158,7 +178,7 @@ static uint32_t mem_read(uint32_t pc, uint32_t *step)
         *step = 1u;
         return s.config[pc - 0x300000u];
     }
-    if (pc >= 0x380000u && pc < 0x380000u + EEPROM_BYTES) {
+    if (pc >= 0x380000u && pc < 0x380000u + s.eeprom_bytes) {
         *step = 1u;
         return s.eeprom[pc - 0x380000u];
     }
@@ -170,7 +190,7 @@ static uint32_t mem_read(uint32_t pc, uint32_t *step)
     case 0x3C0004u:
         return s.user_pages; /* URSIZ */
     case 0x3C0006u:
-        return EEPROM_BYTES; /* EESIZ */
+        return s.eeprom_bytes; /* EESIZ */
     case 0x3C0008u:
         return 20u; /* PCNT */
     case 0x3FFFFCu:
@@ -201,7 +221,7 @@ static void mem_program(uint32_t pc, uint32_t value, uint32_t *step, uint32_t *w
         s.config[pc - 0x300000u] &= (uint8_t)value;
         return;
     }
-    if (pc >= 0x380000u && pc < 0x380000u + EEPROM_BYTES) {
+    if (pc >= 0x380000u && pc < 0x380000u + s.eeprom_bytes) {
         s.eeprom[pc - 0x380000u] &= (uint8_t)value;
         return;
     }
