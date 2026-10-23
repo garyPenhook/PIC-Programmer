@@ -175,6 +175,8 @@ Both:
    the Intel HEX parser from M5.
 9. **M9:** act as a bootloader host and push application images over UART (see
    "Bootloaders"). Needs M4 and a second USART for the target.
+10. **M10:** source-level debugging of a PIC18F27Q10 through a target agent over UART (see
+    DEBUGGER.md). Needs a Q10 programmed on silicon first.
 
 ## Program extraction
 
@@ -307,14 +309,10 @@ after M3), then the UART bridge, then the embedded host.
 
 ## Debugging
 
-The programming specs cover programming and verification only. Microchip's PICkit 4 guide
-says on-chip debug (halt, step, breakpoints) uses a debug executive in program memory plus
-special debug registers, which these documents do not describe. Debug support would be a
-UART-based firmware agent on the target, as in `~/apps/Python_PIC_Debugger`, not hardware
-ICD.
+Milestone M10. The plan, facts and steps are in [DEBUGGER.md](DEBUGGER.md).
 
-The first step is already usable: `BRIDGE` gives the target `printf`-style output over its
-UART. `docs/hookup.md` ("PIC16F17146 as the target") has the pins and register settings. For
-the PIC16F17146, use RB7 (TX) and RB5 (RX) so the UART does not share ICSPCLK/ICSPDAT, which
-settles the pin conflict noted above for that part. Not yet tried on hardware: no target was
-connected when this was written.
+On a PIC16F17146, `BRIDGE` already gives the target `printf`-style output over its UART.
+`docs/hookup.md` ("PIC16F17146 as the target") has the pins and register settings. Use RB7
+(TX) and RB5 (RX) so the UART does not share ICSPCLK/ICSPDAT, which settles the pin
+conflict noted above for that part. Not yet tried on hardware: no target was connected
+when this was written.
