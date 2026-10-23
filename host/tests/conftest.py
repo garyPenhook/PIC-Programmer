@@ -91,3 +91,40 @@ def target(host_sim, request):
     yield Link(PipeStream(proc))
     proc.stdin.close()
     proc.wait(timeout=5)
+
+
+PDBG_SOURCES = ["target/pdbg/pdbg.c", "tests/pdbg_fake_target.c", "tests/pdbg_sim_main.c"]
+
+
+@pytest.fixture(scope="session")
+def pdbg_sim(tmp_path_factory):
+    """Path of the PC build of the debug agent (target/pdbg) on a fake part, stdin/stdout as
+    the UART."""
+    binary = tmp_path_factory.mktemp("pdbg_sim") / "pdbg_sim"
+    subprocess.run(["gcc", *FLAGS, "-Itarget/pdbg", "-Itests",
+                    *[os.path.join(ROOT, s) for s in PDBG_SOURCES], "-o", str(binary)],
+                   check=True, cwd=ROOT)
+    return str(binary)
+
+
+@pytest.fixture
+def spawn_agent(pdbg_sim):
+    """spawn_agent(*sim_args, timeout=5.0) -> (Pdbg, process); the process is closed at the end."""
+    from picprog.debug.pdbg import Pdbg
+    procs = []
+
+    def spawn(*args, timeout=5.0):
+        proc = subprocess.Popen([pdbg_sim, *args], stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE, bufsize=0)
+        procs.append(proc)
+        return Pdbg(PipeStream(proc, timeout)), proc
+    yield spawn
+    for proc in procs:
+        proc.stdin.close()
+        proc.wait(timeout=5)
+
+
+@pytest.fixture
+def agent(spawn_agent):
+    """A Pdbg talking to a fresh simulated agent."""
+    return spawn_agent()[0]

@@ -197,7 +197,7 @@ Each step ends with something that works and is tested.
 | D0 | `DEBUG` = 0 warning in the config table, plus a test (done: `test_q10_warns_when_debug_is_cleared`) | `picprog write` warns on such a hex |
 | D1 | Program a Q10 on silicon: `p18_q10` is simulator-tested only (M5), so this comes first. Hookup for the Q10 in `docs/hookup.md` (ICSP: D3 to pin 27, D5 to pin 28, D4 to pin 1; UART: D1 (PC4, TX) to RC7 pin 18, D0 (PC5, RX) from RC6 pin 17) | `id`, `write`, `verify` pass on a real PIC18F27Q10, revision recorded |
 | D2 | A plain `printf` program over `BRIDGE` at 115 200 baud, then the same with ABD on a 0x55 from the PC; the Nucleo `RESET` command | a long run counts framing errors and bad bytes with and without ABD (fact 4 says without it can fail); `RESET` restarts it |
-| D3 | Agent core, protocol and `pdbg.py`, tested on the PC (done: the C agent core in `target/pdbg`, `tests/test_pdbg.c` and the `pdbg_sim` stdin/stdout build; to do: `picprog.debug.pdbg` and `host/tests/test_pdbg.py`) | `run_tests.sh` and pytest pass |
+| D3 | Agent core, protocol and `pdbg.py`, tested on the PC (done: the C agent core in `target/pdbg`, `tests/test_pdbg.c`, the `pdbg_sim` stdin/stdout build, `picprog.debug.pdbg` and `host/tests/test_pdbg.py`) | `run_tests.sh` and pytest pass |
 | D4 | Entry stub, context save, stack walk on XC8, in the MDB simulator | halt, `REGS`, `STACK`, `CONT` match the simulator's own view |
 | D5 | The same on silicon, with ABD sync at `HELLO` and after reset: halt request, `PDBG_BREAK`, resume | a counting program halts, shows a correct backtrace, resumes without losing count or resetting |
 | D6 | `picprog debug` with ELF symbols, console channel, live watch | debug session by file:line and variable name |
