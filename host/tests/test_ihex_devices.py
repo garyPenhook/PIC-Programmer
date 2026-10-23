@@ -354,3 +354,12 @@ def test_config_decode_q41():
     assert "legacy interrupt behaviour" in text and "VBOR 2.7 V" in text
     assert any("LVP" in w for w in warnings) and any(w.startswith("CONFIG9 CP") for w in warnings)
     assert configbits.decode(dev, [0xFF] * dev.size("config"))[1] == []
+
+
+def test_q10_warns_when_debug_is_cleared():
+    from picprog import configbits
+    dev = devices.find("PIC18F27Q10")
+    lines, warnings = configbits.decode(dev, _words(dev))
+    assert warnings == []
+    lines, warnings = configbits.decode(dev, _words(dev, DEBUG=0))
+    assert [w for w in warnings if w.startswith("CONFIG2 DEBUG")]

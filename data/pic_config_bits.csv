@@ -200,7 +200,7 @@ PIC18F??Q10,2,5,5,LPBOREN,Low-power BOR,1=disabled|0=enabled,
 PIC18F??Q10,2,1,1,PWRTE,Power-up Timer,1=disabled|0=enabled,
 PIC18F??Q10,2,0,0,MCLRE,MCLR pin (applies only when LVP = 0; with LVP = 1 the pin is always MCLR),1=MCLR|0=port-defined function,
 PIC18F??Q10,2,15,15,XINST,Extended instruction set,1=disabled (legacy mode)|0=enabled,
-PIC18F??Q10,2,13,13,DEBUG,Background debugger (tools manage this; keep 1),1=disabled|0=enabled,
+PIC18F??Q10,2,13,13,DEBUG,Background debugger (tools manage this; keep 1),1=disabled|0=enabled,0=DEBUG cleared: the data sheet says it must stay 1 for normal operation (DS40002043F p.26); only a Microchip debug build clears it
 PIC18F??Q10,2,12,12,STVREN,Stack overflow/underflow reset,1=reset enabled|0=reset disabled,
 PIC18F??Q10,2,11,11,PPS1WAY,PPSLOCK one-way set,1=PPSLOCK can be cleared and set once|0=PPSLOCK can be set and cleared repeatedly,
 PIC18F??Q10,2,10,10,ZCDDIS,Zero-cross detect,1=disabled; enable with ZCDSEN|0=always enabled,

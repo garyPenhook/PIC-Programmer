@@ -194,7 +194,7 @@ Each step ends with something that works and is tested.
 
 | Step | Work | Done when |
 | --- | --- | --- |
-| D0 | `DEBUG` = 0 warning in the config table, plus a test | `picprog write` warns on such a hex |
+| D0 | `DEBUG` = 0 warning in the config table, plus a test (done: `test_q10_warns_when_debug_is_cleared`) | `picprog write` warns on such a hex |
 | D1 | Program a Q10 on silicon: `p18_q10` is simulator-tested only (M5), so this comes first. Hookup for the Q10 in `docs/hookup.md` (ICSP: D3 to pin 27, D5 to pin 28, D4 to pin 1; UART: D1 (PC4, TX) to RC7 pin 18, D0 (PC5, RX) from RC6 pin 17) | `id`, `write`, `verify` pass on a real PIC18F27Q10, revision recorded |
 | D2 | A plain `printf` program over `BRIDGE` at 115 200 baud, then the same with ABD on a 0x55 from the PC; the Nucleo `RESET` command | a long run counts framing errors and bad bytes with and without ABD (fact 4 says without it can fail); `RESET` restarts it |
 | D3 | Agent core, protocol and `pdbg.py`, tested on the PC | `run_tests.sh` and pytest pass |
