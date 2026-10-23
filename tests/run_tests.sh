@@ -58,6 +58,15 @@ gcc $flags -Itests/vendor/unity src/bridge.c tests/stub_board.c tests/stub_uart.
     tests/test_bridge.c tests/vendor/unity/unity.c -o "$out/test_bridge"
 "$out/test_bridge"
 
+# Debug agent core (target/pdbg), against a fake part.
+gcc $flags -Itarget/pdbg -Itests/vendor/unity target/pdbg/pdbg.c tests/pdbg_fake_target.c \
+    tests/test_pdbg.c tests/vendor/unity/unity.c -o "$out/test_pdbg"
+"$out/test_pdbg"
+
+# The same core with stdin/stdout as the link, for the host tool's tests.
+gcc $flags -Itarget/pdbg target/pdbg/pdbg.c tests/pdbg_fake_target.c tests/pdbg_sim_main.c \
+    -o "$out/pdbg_sim"
+
 # Host tool (host/picprog) against the PC build of the firmware's command layer.
 if command -v uv >/dev/null 2>&1; then
     uv run -q --project host pytest -q host/tests
